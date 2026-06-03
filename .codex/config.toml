@@ -1,7 +1,0 @@
-[mcp_servers.code-review-graph]
-args = [
-    "-m",
-    "code_review_graph",
-    "serve",
-]
-command = 'C:\ProgramData\miniconda3\python.exe'

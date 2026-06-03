@@ -3,5 +3,33 @@ dist/
 .env
 .env.local
 *.log
+
+# Local AI assistant/tooling state
+.agent/
+.agents/
+.claude/
+.codex/
+.cursor/
+.gemini/
+.kiro/
+.qoder/
+.vscode/
+.cursorrules
+.windsurfrules
+.mcp.json
+.opencode.json
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+QODER.md
+.github/code-review-graph.instruction.md
+
+# Local reports and scratch artifacts
+playwright-report/
+scratch/
+temp.css
+test-remote.ts
+vite.config.ts.timestamp-*.mjs
+
 # Added by code-review-graph
 .code-review-graph/
