@@ -1,21 +1,14 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Legacy/untyped client used throughout the imported AquaDealer codebase.
-// The Lovable Cloud generated client lives at @/integrations/supabase/client and is strictly typed
-// against the current public schema (which is empty for now). To keep the imported code compiling
-// while we incrementally bring up tables and RPCs, we expose an untyped client here.
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
-
-if (!supabaseUrl || !supabaseKey) {
-  // eslint-disable-next-line no-console
-  console.error('Lovable Cloud env vars missing: VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY');
-}
+// External Supabase project (user-provided AquaDealer backend).
+// Anon/publishable keys are safe to ship in client code.
+const SUPABASE_URL = 'https://xttuxtyjtqegjvirtpbr.supabase.co';
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dHV4dHlqdHFlZ2p2aXJ0cGJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDkyNDksImV4cCI6MjA5NTc4NTI0OX0.Wj5dvvzMX5VXNBo2DY2j_5jhsEPzHCC_OUmsZvjrU3A';
 
 export const supabase: SupabaseClient<any, any, any> = createClient(
-  supabaseUrl ?? '',
-  supabaseKey ?? '',
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
   {
     auth: {
       persistSession: true,
