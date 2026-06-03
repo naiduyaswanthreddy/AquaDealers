@@ -59,7 +59,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const [isDebouncing, setIsDebouncing] = useState(false);
 
     useEffect(() => {
-      let timeout: NodeJS.Timeout;
+      let timeout: ReturnType<typeof setTimeout>;
       if (isDebouncing) {
         timeout = setTimeout(() => setIsDebouncing(false), debounceMs);
       }
