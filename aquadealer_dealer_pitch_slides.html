@@ -1,0 +1,739 @@
+
+<h2 class="sr-only">AquaDealer dealer pitch presentation — 10 slides explaining the product, pain points, features, and pricing to aqua feed dealers</h2>
+
+<style>
+  :root {
+    --slide-bg: var(--color-background-primary);
+    --navy: #0A2342;
+    --blue: #1B6CA8;
+    --teal: #0D9488;
+    --amber: #F59E0B;
+    --green: #10B981;
+    --red: #EF4444;
+    --orange: #F97316;
+  }
+  .pitch-wrap { font-family: var(--font-sans); max-width: 720px; margin: 0 auto; padding: 1rem 0; }
+  .slide { display: none; min-height: 480px; border-radius: 16px; border: 0.5px solid var(--color-border-tertiary); background: var(--color-background-primary); overflow: hidden; position: relative; }
+  .slide.active { display: flex; flex-direction: column; }
+  .slide-dark { background: #0A2342 !important; }
+  .slide-teal { background: #0D9488 !important; }
+  .slide-amber { background: #F59E0B !important; }
+
+  .slide-nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0 0.5rem; }
+  .slide-dots { display: flex; gap: 6px; justify-content: center; flex: 1; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-border-tertiary); cursor: pointer; transition: background 0.2s; }
+  .dot.active { background: #1B6CA8; }
+  .nav-btn { border: 0.5px solid var(--color-border-secondary); background: var(--color-background-secondary); color: var(--color-text-primary); padding: 6px 16px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .nav-btn:hover { background: var(--color-background-tertiary); }
+  .nav-btn:disabled { opacity: 0.3; cursor: default; }
+  .slide-counter { font-size: 12px; color: var(--color-text-tertiary); text-align: center; margin-top: 6px; }
+
+  .s-header { padding: 2rem 2.5rem 1rem; }
+  .s-body { padding: 0 2.5rem 2rem; flex: 1; }
+  .s-full { padding: 2rem 2.5rem; flex: 1; display: flex; flex-direction: column; }
+
+  .badge { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; margin-bottom: 1rem; }
+  .badge-blue { background: #E6F1FB; color: #0C447C; }
+  .badge-white { background: rgba(255,255,255,0.2); color: white; }
+  .badge-dark { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); }
+
+  .hero-title { font-size: 32px; font-weight: 500; line-height: 1.25; margin: 0 0 1rem; color: var(--color-text-primary); }
+  .hero-title-white { font-size: 32px; font-weight: 500; line-height: 1.25; margin: 0 0 1rem; color: white; }
+  .hero-sub { font-size: 16px; color: var(--color-text-secondary); line-height: 1.6; margin: 0 0 1.5rem; }
+  .hero-sub-white { font-size: 16px; color: rgba(255,255,255,0.8); line-height: 1.6; margin: 0 0 1.5rem; }
+
+  .pain-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 1rem; }
+  .pain-card { background: var(--color-background-secondary); border-radius: 12px; padding: 1rem 1.25rem; border: 0.5px solid var(--color-border-tertiary); }
+  .pain-icon { font-size: 24px; margin-bottom: 8px; }
+  .pain-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 4px; }
+  .pain-desc { font-size: 13px; color: var(--color-text-secondary); margin: 0; line-height: 1.5; }
+  .pain-amt { font-size: 12px; font-weight: 500; color: #EF4444; margin-top: 6px; }
+
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .feat-card { background: var(--color-background-secondary); border-radius: 10px; padding: 0.875rem 1rem; border: 0.5px solid var(--color-border-tertiary); display: flex; gap: 10px; align-items: flex-start; }
+  .feat-icon { width: 32px; height: 32px; border-radius: 8px; background: #E6F1FB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .feat-icon i { color: #1B6CA8; font-size: 16px; }
+  .feat-icon-green { background: #EAF3DE !important; }
+  .feat-icon-green i { color: #3B6D11 !important; }
+  .feat-icon-amber { background: #FAEEDA !important; }
+  .feat-icon-amber i { color: #854F0B !important; }
+  .feat-icon-teal { background: #E1F5EE !important; }
+  .feat-icon-teal i { color: #0F6E56 !important; }
+  .feat-icon-red { background: #FCEBEB !important; }
+  .feat-icon-red i { color: #A32D2D !important; }
+  .feat-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 2px; }
+  .feat-desc { font-size: 12px; color: var(--color-text-secondary); margin: 0; line-height: 1.4; }
+
+  .scenario-box { background: var(--color-background-secondary); border-radius: 12px; padding: 1.25rem; border-left: 3px solid #1B6CA8; margin-bottom: 12px; }
+  .scenario-label { font-size: 11px; font-weight: 500; color: #1B6CA8; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .scenario-text { font-size: 14px; color: var(--color-text-primary); margin: 0; line-height: 1.5; }
+  .scenario-result { font-size: 13px; color: #10B981; font-weight: 500; margin: 6px 0 0; }
+
+  .comparison-row { display: flex; align-items: center; padding: 8px 0; border-bottom: 0.5px solid var(--color-border-tertiary); gap: 8px; }
+  .comp-feature { font-size: 13px; color: var(--color-text-primary); flex: 2; }
+  .comp-col { flex: 1; text-align: center; font-size: 13px; }
+  .comp-head { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); flex: 1; text-align: center; }
+  .comp-head-us { color: #1B6CA8 !important; }
+  .tick { color: #10B981; font-size: 16px; }
+  .cross { color: #EF4444; font-size: 16px; }
+  .partial { color: #F59E0B; font-size: 12px; }
+
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 1rem; }
+  .price-card { background: var(--color-background-secondary); border-radius: 14px; padding: 1.25rem; border: 0.5px solid var(--color-border-tertiary); position: relative; }
+  .price-card-pro { background: #0A2342 !important; border: 2px solid #1B6CA8 !important; }
+  .price-card-multi { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); }
+  .price-badge { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: #F59E0B; color: #412402; font-size: 11px; font-weight: 500; padding: 3px 12px; border-radius: 20px; white-space: nowrap; }
+  .price-name { font-size: 15px; font-weight: 500; margin: 0 0 4px; color: var(--color-text-primary); }
+  .price-name-white { color: white; }
+  .price-sub { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 1rem; }
+  .price-sub-white { color: rgba(255,255,255,0.6); margin: 0 0 1rem; }
+  .price-amount { font-size: 28px; font-weight: 500; color: var(--color-text-primary); margin: 0; }
+  .price-amount-white { color: white; }
+  .price-period { font-size: 12px; color: var(--color-text-secondary); }
+  .price-period-white { color: rgba(255,255,255,0.6); }
+  .price-divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 1rem 0; }
+  .price-divider-white { border-top-color: rgba(255,255,255,0.15) !important; }
+  .price-features { list-style: none; padding: 0; margin: 0; }
+  .price-features li { font-size: 12px; color: var(--color-text-secondary); padding: 3px 0; display: flex; gap: 6px; align-items: flex-start; }
+  .price-features-white li { color: rgba(255,255,255,0.7) !important; }
+  .price-features li i { color: #10B981; flex-shrink: 0; margin-top: 2px; }
+  .price-note { font-size: 11px; color: var(--color-text-tertiary); margin-top: 8px; text-align: center; }
+
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 1rem 0; }
+  .stat-card { background: var(--color-background-secondary); border-radius: 10px; padding: 1rem; text-align: center; border: 0.5px solid var(--color-border-tertiary); }
+  .stat-num { font-size: 26px; font-weight: 500; color: #1B6CA8; margin: 0; }
+  .stat-label { font-size: 12px; color: var(--color-text-secondary); margin: 4px 0 0; }
+
+  .step-row { display: flex; gap: 0; margin: 1.5rem 0; }
+  .step { flex: 1; text-align: center; position: relative; }
+  .step-num { width: 36px; height: 36px; border-radius: 50%; background: #1B6CA8; color: white; font-size: 15px; font-weight: 500; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; }
+  .step-line { position: absolute; top: 18px; left: 50%; width: 100%; height: 1px; background: var(--color-border-secondary); z-index: 0; }
+  .step-num { position: relative; z-index: 1; }
+  .step-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 3px; }
+  .step-desc { font-size: 12px; color: var(--color-text-secondary); }
+
+  .telugu-quote { font-size: 18px; color: white; font-style: italic; line-height: 1.6; margin: 0 0 8px; }
+  .quote-source { font-size: 13px; color: rgba(255,255,255,0.7); }
+
+  .daily-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .daily-label { font-size: 13px; color: var(--color-text-secondary); }
+  .daily-val { font-size: 14px; font-weight: 500; color: var(--color-text-primary); }
+  .daily-val-green { color: #10B981; }
+  .daily-val-red { color: #EF4444; }
+  .daily-val-blue { color: #1B6CA8; }
+
+  .gst-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px; }
+  .gst-label { color: var(--color-text-secondary); }
+  .gst-val { font-weight: 500; color: var(--color-text-primary); }
+  .gst-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+  .tag-green { background: #EAF3DE; color: #27500A; }
+  .tag-amber { background: #FAEEDA; color: #633806; }
+  .tag-blue { background: #E6F1FB; color: #0C447C; }
+
+  .cta-btn { display: inline-block; background: #F59E0B; color: #412402; font-size: 15px; font-weight: 500; padding: 12px 32px; border-radius: 10px; border: none; cursor: pointer; margin-top: 1rem; }
+  .cta-btn-outline { display: inline-block; background: transparent; color: white; font-size: 14px; font-weight: 500; padding: 10px 28px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.4); cursor: pointer; margin-top: 0.5rem; margin-left: 12px; }
+
+  .saving-pill { display: inline-block; background: #EAF3DE; color: #27500A; font-size: 11px; padding: 3px 10px; border-radius: 20px; margin-left: 8px; }
+
+  .lang-pill { display: inline-block; font-size: 12px; padding: 4px 14px; border-radius: 20px; margin-right: 6px; margin-bottom: 6px; }
+  .lang-te { background: #FAEEDA; color: #633806; }
+  .lang-hi { background: #E1F5EE; color: #085041; }
+  .lang-en { background: #E6F1FB; color: #0C447C; }
+
+  .module-list { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 1rem; }
+  .mod-item { background: var(--color-background-secondary); border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; border: 0.5px solid var(--color-border-tertiary); }
+  .mod-item i { color: #1B6CA8; font-size: 15px; }
+  .mod-name { font-size: 12px; color: var(--color-text-primary); }
+
+  .counter-box { background: var(--color-background-secondary); border-radius: 12px; padding: 1.25rem; border: 0.5px solid var(--color-border-tertiary); }
+  .counter-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; }
+</style>
+
+<div class="pitch-wrap">
+
+  <div class="slide active" id="slide-1">
+    <div class="s-full slide-dark">
+      <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+        <div class="badge badge-dark">మీ దుకాణం కోసం తయారు చేశాం</div>
+        <div class="hero-title-white" style="font-size:36px; line-height:1.2;">మీ shop manage చేయండి<br><span style="color:#F59E0B;">మీ phone లో. మీ భాషలో.</span></div>
+        <div class="hero-sub-white" style="max-width:500px;">Bill farmers in 60 seconds. Never forget a due. Know your stock before it runs out. Works in Telugu — offline — on any Android phone.</div>
+        <div style="margin-top:1.5rem;">
+          <span class="lang-pill lang-te">తెలుగు</span>
+          <span class="lang-pill lang-hi">हिन्दी</span>
+          <span class="lang-pill lang-en">English</span>
+        </div>
+        <div style="margin-top:2rem; display:flex; gap:16px; align-items:center;">
+          <div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:10px 20px; text-align:center;">
+            <div style="font-size:22px; font-weight:500; color:#F59E0B;">60 sec</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.6);">per bill</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:10px 20px; text-align:center;">
+            <div style="font-size:22px; font-weight:500; color:#10B981;">15 modules</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.6);">complete platform</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.08); border-radius:10px; padding:10px 20px; text-align:center;">
+            <div style="font-size:22px; font-weight:500; color:#60A5FA;">100%</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.6);">offline capable</div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center; padding-top:1rem;">
+        <div style="font-size:12px; color:rgba(255,255,255,0.4);">AquaDealer · Built exclusively for aqua feed & medicine dealers</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" id="slide-2">
+    <div class="s-header">
+      <div class="badge badge-blue">మీ నిజమైన సమస్యలు</div>
+      <div class="hero-title" style="font-size:26px;">ప్రతి dealer చెప్పే మాటలు —<br><span style="color:#EF4444;">ఇవి మీవి కూడా అవుతాయా?</span></div>
+    </div>
+    <div class="s-body">
+      <div class="pain-grid">
+        <div class="pain-card">
+          <div class="pain-icon"><i class="ti ti-notebook" style="font-size:24px; color:#EF4444;"></i></div>
+          <div class="pain-title">Forgotten dues</div>
+          <div class="pain-desc">Ramu Reddy took 20 bags in January. It's April. Harvest is done. You forgot to collect.</div>
+          <div class="pain-amt">Average loss: ₹15,000–50,000/year</div>
+        </div>
+        <div class="pain-card">
+          <div class="pain-icon"><i class="ti ti-pill" style="font-size:24px; color:#F97316;"></i></div>
+          <div class="pain-title">Expired medicines</div>
+          <div class="pain-desc">40 bottles expired in your godown. Nobody warned you. Money straight into the bin.</div>
+          <div class="pain-amt">Average loss: ₹8,000–20,000/year</div>
+        </div>
+        <div class="pain-card">
+          <div class="pain-icon"><i class="ti ti-file-off" style="font-size:24px; color:#8B5CF6;"></i></div>
+          <div class="pain-title">Farmer disputes</div>
+          <div class="pain-desc">"I never took that bag." No receipt. No proof. You absorb the loss silently.</div>
+          <div class="pain-amt">No way to prove. No way to recover.</div>
+        </div>
+        <div class="pain-card">
+          <div class="pain-icon"><i class="ti ti-building-store" style="font-size:24px; color:#1B6CA8;"></i></div>
+          <div class="pain-title">Second shop blind spot</div>
+          <div class="pain-desc">You're in Shop 1. What is happening in Shop 2 right now? You have no idea.</div>
+          <div class="pain-amt">Invisible stock loss, uncollected cash</div>
+        </div>
+      </div>
+      <div style="margin-top:14px; background:#FCEBEB; border-radius:10px; padding:10px 14px; border-left:3px solid #EF4444;">
+        <div style="font-size:13px; color:#A32D2D; font-weight:500;">Research finding: Credit recovery (28%) and stock management (39%) are the two biggest risks aqua dealers face. No existing tool solves these.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" id="slide-3">
+    <div class="s-full" style="background: linear-gradient(135deg, #0A2342 0%, #185FA5 100%);">
+      <div class="badge badge-dark">అన్నీ ఒకే చోట</div>
+      <div class="hero-title-white" style="font-size:26px; margin-bottom:0.5rem;">AquaDealer అన్నీ solve చేస్తుంది.</div>
+      <div class="hero-sub-white" style="margin-bottom:1.25rem;">Everything a dealer needs. Nothing extra. Built only for aqua feed & medicine dealers.</div>
+      <div class="module-list">
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-file-invoice" style="color:#F59E0B;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Daily Billing</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-users" style="color:#10B981;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Farmer Ledger</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-package" style="color:#60A5FA;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Stock Control</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-cash" style="color:#F59E0B;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Cash Counter</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-receipt" style="color:#C084FC;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">GST Billing</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-signature" style="color:#F97316;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Signature Proof</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-truck" style="color:#10B981;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Supplier Ledger</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-chart-bar" style="color:#60A5FA;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Reports & PDF</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-building" style="color:#F59E0B;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Multi-branch</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-clock" style="color:#EF4444;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Expiry Alerts</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-wifi-off" style="color:#10B981;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Offline Mode</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-microphone" style="color:#C084FC;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Voice Search</span>
+        </div>
+        <div class="mod-item" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+          <i class="ti ti-currency-rupee" style="color:#10B981;"></i>
+          <span class="mod-name" style="color:rgba(255,255,255,0.85);">Smart Rate Diff</span>
+        </div>
+      </div>
+      <div style="margin-top:1.5rem; background:rgba(245,158,11,0.15); border-radius:10px; padding:10px 16px; border-left:3px solid #F59E0B;">
+        <div style="font-size:13px; color:rgba(255,255,255,0.85);">One subscription. All 15 modules. No hidden features locked away.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" id="slide-4">
+    <div class="s-header">
+      <div class="badge badge-blue">రోజువారీ bills</div>
+      <div class="hero-title" style="font-size:24px;">Counter మీద bill — <span style="color:#1B6CA8;">60 seconds లో ready</span></div>
+    </div>
+    <div class="s-body">
+      <div class="step-row">
+        <div class="step">
+          <div class="step-line"></div>
+          <div class="step-num">1</div>
+          <div class="step-title">Farmer select</div>
+          <div class="step-desc">Voice లో పేరు చెప్పండి</div>
+        </div>
+        <div class="step">
+          <div class="step-line"></div>
+          <div class="step-num">2</div>
+          <div class="step-title">Products add</div>
+          <div class="step-desc">Feed + medicine తో</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-title">Payment & sign</div>
+          <div class="step-desc">Cash/UPI/Credit/Partial</div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:0.5rem;">
+        <div class="scenario-box">
+          <div class="scenario-label">రోజువారీ situation</div>
+          <div class="scenario-text">3 farmers at counter at same time. Dealer handles all 3 bills in under 2 minutes. Each gets printed receipt.</div>
+          <div class="scenario-result">3 bills · 3 receipts · 2 minutes total</div>
+        </div>
+        <div class="scenario-box" style="border-left-color:#10B981;">
+          <div class="scenario-label" style="color:#10B981;">Signature proof</div>
+          <div class="scenario-text">Credit bill మీద farmer phone లో sign చేస్తాడు. PDF లో save అవుతుంది. Dispute వస్తే — proof ready.</div>
+          <div class="scenario-result" style="color:#10B981;">Dispute ends in 30 seconds</div>
+        </div>
+      </div>
+      <div style="margin-top:12px; display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+        <div style="background:#EAF3DE; border-radius:8px; padding:8px; text-align:center;">
+          <div style="font-size:11px; color:#27500A; font-weight:500;">CASH</div>
+        </div>
+        <div style="background:#E6F1FB; border-radius:8px; padding:8px; text-align:center;">
+          <div style="font-size:11px; color:#0C447C; font-weight:500;">UPI</div>
+        </div>
+        <div style="background:#FAEEDA; border-radius:8px; padding:8px; text-align:center;">
+          <div style="font-size:11px; color:#633806; font-weight:500;">CREDIT</div>
+        </div>
+        <div style="background:#FBEAF0; border-radius:8px; padding:8px; text-align:center;">
+          <div style="font-size:11px; color:#4B1528; font-weight:500;">PARTIAL</div>
+        </div>
+      </div>
+      <div style="margin-top:12px; background:var(--color-background-secondary); border-radius:10px; padding:10px 14px; border:0.5px solid var(--color-border-tertiary);">
+        <div style="font-size:13px; color:var(--color-text-secondary);">Bill type: <span style="color:var(--color-text-primary); font-weight:500;">Tax Invoice</span> (with GST) or <span style="color:var(--color-text-primary); font-weight:500;">Bill of Supply</span> (without GST) — automatically correct based on your settings.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" id="slide-5">
+    <div class="s-header">
+      <div class="badge badge-blue">రోజువారీ counter</div>
+      <div class="hero-title" style="font-size:24px;">ఈ రోజు ఎంత cash — <span style="color:#1B6CA8;">ఒక్క చూపులో</span></div>
+    </div>
+    <div class="s-body">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="counter-box">
+          <div class="counter-title">Counter summary — today</div>
+          <div class="daily-row">
+            <span class="daily-label">Opening cash</span>
+            <span class="daily-val">₹42,500</span>
+          </div>
+          <div class="daily-row">
+            <span class="daily-label"><i class="ti ti-cash" style="font-size:13px;"></i> Cash in</span>
+            <span class="daily-val daily-val-green">+₹38,200</span>
+          </div>
+          <div class="daily-row">
+            <span class="daily-label"><i class="ti ti-device-mobile" style="font-size:13px;"></i> UPI in</span>
+            <span class="daily-val daily-val-blue">+₹24,500</span>
+          </div>
+          <div class="daily-row">
+            <span class="daily-label">Cash expenses out</span>
+            <span class="daily-val daily-val-red">-₹3,200</span>
+          </div>
+          <div class="daily-row">
+            <span class="daily-label">Supplier paid</span>
+            <span class="daily-val daily-val-red">-₹22,000</span>
+          </div>
+          <div style="border-top:1.5px solid var(--color-border-secondary); padding-top:8px; margin-top:4px; display:flex; justify-content:space-between;">
+            <span style="font-size:14px; font-weight:500; color:var(--color-text-primary);">Counter now</span>
+            <span style="font-size:16px; font-weight:500; color:#10B981;">₹80,000</span>
+          </div>
+        </div>
+        <div>
+          <div class="counter-box" style="margin-bottom:10px;">
+            <div class="counter-title">Yesterday vs today</div>
+            <div class="daily-row">
+              <span class="daily-label">Total sales</span>
+              <span style="font-size:12px; color:#10B981; font-weight:500;">₹94,500 → ₹1,02,300 ↑</span>
+            </div>
+            <div class="daily-row">
+              <span class="daily-label">Cash received</span>
+              <span style="font-size:12px; color:var(--color-text-primary); font-weight:500;">₹48,200 → ₹38,200</span>
+            </div>
+            <div class="daily-row" style="border:none;">
+              <span class="daily-label">UPI received</span>
+              <span style="font-size:12px; color:#10B981; font-weight:500;">₹18,000 → ₹24,500 ↑</span>
+            </div>
+          </div>
+          <div class="counter-box">
+            <div class="counter-title">Daily stock movement</div>
+            <div style="font-size:12px; color:var(--color-text-secondary); display:flex; justify-content:space-between; padding:3px 0;">
+              <span>Avanti 3mm</span><span>Sold: <b style="color:#EF4444;">45</b> · Left: <b style="color:#10B981;">570</b></span>
+            </div>
+            <div style="font-size:12px; color:var(--color-text-secondary); display:flex; justify-content:space-between; padding:3px 0;">
+              <span>iFeed 3mm</span><span>Sold: <b style="color:#EF4444;">18</b> · Left: <b style="color:#EF4444;">10 ⚠️</b></span>
+            </div>
+            <div style="font-size:12px; color:var(--color-text-secondary); display:flex; justify-content:space-between; padding:3px 0;">
+              <span>Cipro 100ml</span><span>Sold: <b style="color:#EF4444;">6</b> · Left: <b style="color:#10B981;">32</b></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <div style="background:#E6F1FB; border-radius:8px; padding:7px 14px; font-size:12px; color:#0C447C; display:flex; align-items:center; gap:6px;">
+          <i class="ti ti-download" style="font-size:14px;"></i> Download PDF
+        </div>
+        <div style="background:#EAF3DE; border-radius:8px; padding:7px 14px; font-size:12px; color:#27500A; display:flex; align-items:center; gap:6px;">
+          <i class="ti ti-brand-whatsapp" style="font-size:14px;"></i> Share WhatsApp
+        </div>
+        <div style="background:#FAEEDA; border-radius:8px; padding:7px 14px; font-size:12px; color:#633806; display:flex; align-items:center; gap:6px;">
+          <i class="ti ti-table" style="font-size:14px;"></i> Export Excel
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" id="slide-6">
+    <div class="s-header">
+      <div class="badge badge-blue">AquaDealer vs మిగతా apps</div>
+      <div class="hero-title" style="font-size:24px;">ఎందుకు KhataBook కాదు — <span style="color:#1B6CA8;">ఎందుకు AquaDealer?</span></div>
+    </div>
+    <div class="s-body">
+      <div style="border:0.5px solid var(--color-border-tertiary); border-radius:12px; overflow:hidden;">
+        <div style="display:flex; background:var(--color-background-secondary); padding:8px 12px; gap:8px; align-items:center; border-bottom:0.5px solid var(--color-border-tertiary);">
+          <div class="comp-feature" style="font-size:12px; font-weight:500; color:var(--color-text-secondary);">Dealer needs</div>
+          <div class="comp-head">KhataBook</div>
+          <div class="comp-head">Vyapar</div>
+          <div class="comp-head comp-head-us">AquaDealer</div>
+        </div>
+        <div id="comp-rows"></div>
+      </div>
+      <div style="margin-top:12px; background:#EAF3DE; border-radius:10px; padding:10px 14px; border-left:3px solid #3B6D11;">
+        <div style="font-size:13px; color:#27500A; font-weight:500;">Real competition is not KhataBook or Tally. It is the register on your counter. That is what we replace.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" id="slide-7">
+    <div class="s-header">
+      <div class="badge badge-blue">GST సులభంగా</div>
+      <div class="hero-title" style="font-size:24px;">Aqua GST — <span style="color:#1B6CA8;">automatically correct</span></div>
+    </div>
+    <div class="s-body">
+      <div style="background:var(--color-background-secondary); border-radius:12px; padding:1.25rem; border:0.5px solid var(--color-border-tertiary); margin-bottom:12px;">
+        <div style="font-size:12px; font-weight:500; color:var(--color-text-secondary); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px;">Product-wise GST — pre-loaded</div>
+        <div class="gst-row">
+          <span class="gst-label">Avanti 3mm, iFeed 5mm (all feed)</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="gst-tag tag-green">HSN 2309</span>
+            <span class="gst-val">0% GST</span>
+          </div>
+        </div>
+        <div class="gst-row">
+          <span class="gst-label">Ciprofloxacin, generic medicines</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="gst-tag tag-amber">HSN 3004</span>
+            <span class="gst-val">5% GST</span>
+          </div>
+        </div>
+        <div class="gst-row" style="border:none;">
+          <span class="gst-label">Branded medicines, probiotics</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="gst-tag tag-blue">HSN 3004</span>
+            <span class="gst-val">12% GST</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div style="background:var(--color-background-secondary); border-radius:10px; padding:1rem; border:0.5px solid var(--color-border-tertiary);">
+          <div style="font-size:12px; font-weight:500; color:var(--color-text-secondary); margin-bottom:8px;">Sample bill calculation</div>
+          <div style="font-size:12px; color:var(--color-text-secondary); display:flex; justify-content:space-between; padding:3px 0;">
+            <span>Avanti 3mm × 20</span><span style="color:var(--color-text-primary);">₹25,000 · GST ₹0</span>
+          </div>
+          <div style="font-size:12px; color:var(--color-text-secondary); display:flex; justify-content:space-between; padding:3px 0;">
+            <span>Cipro × 2 (5%)</span><span style="color:var(--color-text-primary);">₹360 · GST ₹18</span>
+          </div>
+          <div style="font-size:12px; color:var(--color-text-secondary); display:flex; justify-content:space-between; padding:3px 0;">
+            <span>Probiotic × 1 (12%)</span><span style="color:var(--color-text-primary);">₹450 · GST ₹54</span>
+          </div>
+          <div style="border-top:0.5px solid var(--color-border-tertiary); margin-top:8px; padding-top:8px; display:flex; justify-content:space-between;">
+            <span style="font-size:13px; font-weight:500;">Total</span>
+            <span style="font-size:14px; font-weight:500; color:#1B6CA8;">₹25,882</span>
+          </div>
+        </div>
+        <div style="background:var(--color-background-secondary); border-radius:10px; padding:1rem; border:0.5px solid var(--color-border-tertiary);">
+          <div style="font-size:12px; font-weight:500; color:var(--color-text-secondary); margin-bottom:8px;">Monthly GST report for CA</div>
+          <div style="font-size:12px; color:var(--color-text-secondary); display:flex; justify-content:space-between; padding:3px 0;">
+            <span>Output tax (collected)</span><span style="color:var(--color-text-primary);">₹8,400</span>
+          </div>
+          <div style="font-size:12px; color:var(--color-text-secondary); display:flex; justify-content:space-between; padding:3px 0;">
+            <span>Input tax credit</span><span style="color:#10B981;">-₹3,200</span>
+          </div>
+          <div style="border-top:0.5px solid var(--color-border-tertiary); margin-top:8px; padding-top:8px; display:flex; justify-content:space-between;">
+            <span style="font-size:13px; font-weight:500;">Net payable</span>
+            <span style="font-size:14px; font-weight:500; color:#EF4444;">₹5,200</span>
+          </div>
+          <div style="margin-top:8px; background:#E6F1FB; border-radius:6px; padding:6px 10px; font-size:11px; color:#0C447C;">Export PDF → give to CA → done in 2 minutes</div>
+        </div>
+      </div>
+      <div style="margin-top:10px; background:var(--color-background-secondary); border-radius:8px; padding:8px 12px; font-size:12px; color:var(--color-text-secondary); border:0.5px solid var(--color-border-tertiary);">
+        GST billing is a toggle in settings. <span style="color:var(--color-text-primary); font-weight:500;">OFF by default</span> — non-GST dealers see completely simple bills with no GST anywhere.
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" id="slide-8">
+    <div class="s-header">
+      <div class="badge badge-blue">Pricing</div>
+      <div class="hero-title" style="font-size:24px;">Simple pricing — <span style="color:#1B6CA8;">yearly, no surprises</span></div>
+      <div style="font-size:13px; color:var(--color-text-secondary);">Pay once a year. Use all year. No monthly headache.</div>
+    </div>
+    <div class="s-body" style="padding-top:0.5rem;">
+      <div class="pricing-grid">
+        <div class="price-card">
+          <div class="price-name">Free Trial</div>
+          <div class="price-sub">Try before you pay</div>
+          <div class="price-amount">₹0</div>
+          <div class="price-period">for 30 days · no card needed</div>
+          <hr class="price-divider">
+          <ul class="price-features">
+            <li><i class="ti ti-check" style="font-size:12px;"></i>10 farmers</li>
+            <li><i class="ti ti-check" style="font-size:12px;"></i>50 bills</li>
+            <li><i class="ti ti-check" style="font-size:12px;"></i>1 branch</li>
+            <li><i class="ti ti-check" style="font-size:12px;"></i>All 15 modules</li>
+            <li><i class="ti ti-check" style="font-size:12px;"></i>No credit card</li>
+          </ul>
+        </div>
+        <div class="price-card price-card-pro" style="padding-top:1.75rem;">
+          <div class="price-badge">Most Popular</div>
+          <div class="price-name price-name-white">Basic</div>
+          <div class="price-sub price-sub-white">For single-shop dealers</div>
+          <div class="price-amount price-amount-white">₹3,499<span style="font-size:14px; color:rgba(255,255,255,0.6);">/year</span></div>
+          <div class="price-period price-period-white">= ₹291/month · save 30% vs monthly</div>
+          <hr class="price-divider price-divider-white">
+          <ul class="price-features price-features-white">
+            <li><i class="ti ti-check" style="font-size:12px; color:#10B981;"></i>Unlimited farmers</li>
+            <li><i class="ti ti-check" style="font-size:12px; color:#10B981;"></i>Unlimited bills</li>
+            <li><i class="ti ti-check" style="font-size:12px; color:#10B981;"></i>1 branch</li>
+            <li><i class="ti ti-check" style="font-size:12px; color:#10B981;"></i>All core features</li>
+            <li><i class="ti ti-check" style="font-size:12px; color:#10B981;"></i>Cashbook + expenses</li>
+            <li><i class="ti ti-check" style="font-size:12px; color:#10B981;"></i>Data export Excel</li>
+          </ul>
+        </div>
+        <div class="price-card">
+          <div class="price-name">Pro</div>
+          <div class="price-sub">Multi-branch + GST + Voice</div>
+          <div class="price-amount">₹4,999<span style="font-size:14px; color:var(--color-text-secondary);">/year</span></div>
+          <div class="price-period">= ₹416/month <span class="saving-pill">save 33%</span></div>
+          <hr class="price-divider">
+          <ul class="price-features">
+            <li><i class="ti ti-check" style="font-size:12px;"></i>Everything in Basic</li>
+            <li><i class="ti ti-check" style="font-size:12px;"></i>Up to 3 branches</li>
+            <li><i class="ti ti-check" style="font-size:12px;"></i>GST billing + report</li>
+            <li><i class="ti ti-check" style="font-size:12px;"></i>Telugu voice search</li>
+            <li><i class="ti ti-check" style="font-size:12px;"></i>Monthly P&L summary</li>
+            <li><i class="ti ti-check" style="font-size:12px;"></i>App PIN lock</li>
+          </ul>
+        </div>
+      </div>
+      <div style="margin-top:10px; background:var(--color-background-secondary); border-radius:10px; padding:10px 14px; border:0.5px solid var(--color-border-tertiary); display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size:12px; color:var(--color-text-secondary);">Need premium features? <span style="color:#1B6CA8; font-weight:500;">Pro+: ₹6,999/year · unlimited branches, staff, signature, photos, rate diff</span></div>
+        <div style="font-size:11px; color:var(--color-text-tertiary);">All plans: UPI payment · Annual renewal</div>
+      </div>
+      <div style="margin-top:8px; background:#EAF3DE; border-radius:8px; padding:8px 14px; font-size:12px; color:#27500A;">
+        One expired medicine batch avoided = ₹8,000–20,000 saved. AquaDealer pays for itself in the first month.
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" id="slide-9">
+    <div class="s-header">
+      <div class="badge badge-blue">Start చేయడం చాలా easy</div>
+      <div class="hero-title" style="font-size:24px;">10 minutes లో ready — <span style="color:#1B6CA8;">zero training</span></div>
+    </div>
+    <div class="s-body">
+      <div class="step-row" style="margin-bottom:1.5rem;">
+        <div class="step">
+          <div class="step-line"></div>
+          <div class="step-num">1</div>
+          <div class="step-title">Phone register</div>
+          <div class="step-desc">OTP తో sign up</div>
+        </div>
+        <div class="step">
+          <div class="step-line"></div>
+          <div class="step-num">2</div>
+          <div class="step-title">Language pick</div>
+          <div class="step-desc">తెలుగు select</div>
+        </div>
+        <div class="step">
+          <div class="step-line"></div>
+          <div class="step-num">3</div>
+          <div class="step-title">Products add</div>
+          <div class="step-desc">One tap from list</div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-title">First bill</div>
+          <div class="step-desc">Guided walkthrough</div>
+        </div>
+      </div>
+      <div class="feature-grid">
+        <div class="feat-card">
+          <div class="feat-icon feat-icon-teal"><i class="ti ti-wifi-off" aria-hidden="true"></i></div>
+          <div>
+            <div class="feat-name">Works offline</div>
+            <div class="feat-desc">Internet లేకున్నా bills create చేయవచ్చు. Net వస్తే sync అవుతుంది.</div>
+          </div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon feat-icon-amber"><i class="ti ti-microphone" aria-hidden="true"></i></div>
+          <div>
+            <div class="feat-name">Telugu voice search</div>
+            <div class="feat-desc">"రాము రెడ్డి" అని చెప్పండి — app immediately opens his account.</div>
+          </div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon feat-icon-green"><i class="ti ti-printer" aria-hidden="true"></i></div>
+          <div>
+            <div class="feat-name">80mm thermal print</div>
+            <div class="feat-desc">Bluetooth printer — Android phone నుండి receipt print అవుతుంది.</div>
+          </div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon feat-icon-red"><i class="ti ti-brand-whatsapp" aria-hidden="true"></i></div>
+          <div>
+            <div class="feat-name">WhatsApp bill share</div>
+            <div class="feat-desc">Bill save అయిన వెంటనే farmer కి WhatsApp చేయవచ్చు — one tap.</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px; background:#FAEEDA; border-radius:10px; padding:10px 14px; border-left:3px solid #F59E0B;">
+        <div style="font-size:13px; color:#633806; font-weight:500;">No laptop needed. No training needed. No accountant needed. Just your Android phone.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide" id="slide-10">
+    <div class="s-full slide-dark">
+      <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding: 0 1rem;">
+        <div style="font-size:13px; color:rgba(255,255,255,0.5); margin-bottom:1.5rem; letter-spacing:1px; text-transform:uppercase;">AquaDealer</div>
+        <div class="telugu-quote">"నా దుకాణం manage చేయడానికి<br>ఇప్పుడు నాకు ఏ register అక్కర్లేదు."</div>
+        <div class="quote-source">— What every dealer says after 30 days</div>
+        <div class="stat-row" style="margin:2rem 0; width:100%;">
+          <div class="stat-card" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+            <div class="stat-num" style="color:#F59E0B;">₹0</div>
+            <div class="stat-label" style="color:rgba(255,255,255,0.6);">to start · 30 days free</div>
+          </div>
+          <div class="stat-card" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+            <div class="stat-num" style="color:#10B981;">60 sec</div>
+            <div class="stat-label" style="color:rgba(255,255,255,0.6);">per bill at counter</div>
+          </div>
+          <div class="stat-card" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.1);">
+            <div class="stat-num" style="color:#60A5FA;">15</div>
+            <div class="stat-label" style="color:rgba(255,255,255,0.6);">modules, one app</div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:10px; width:100%; max-width:380px;">
+          <div style="background:#F59E0B; color:#412402; font-size:15px; font-weight:500; padding:13px 0; border-radius:10px; width:100%; text-align:center;">30 రోజులు Free — ఇప్పుడే start చేయండి</div>
+          <div style="color:rgba(255,255,255,0.5); font-size:12px;">No credit card · No training · Works on any Android</div>
+        </div>
+        <div style="margin-top:2rem; display:flex; gap:20px; justify-content:center;">
+          <div style="text-align:center;">
+            <div style="font-size:13px; font-weight:500; color:rgba(255,255,255,0.85);">Basic · ₹3,499/yr</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.4);">1 branch · unlimited farmers</div>
+          </div>
+          <div style="width:1px; background:rgba(255,255,255,0.15);"></div>
+          <div style="text-align:center;">
+            <div style="font-size:13px; font-weight:500; color:rgba(255,255,255,0.85);">Pro · ₹4,999/yr</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.4);">3 branches · GST · voice · PIN</div>
+          </div>
+          <div style="width:1px; background:rgba(255,255,255,0.15);"></div>
+          <div style="text-align:center;">
+            <div style="font-size:13px; font-weight:500; color:rgba(255,255,255,0.85);">Pro+ · ₹6,999/yr</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.4);">unlimited branches · staff · signature · rate diff</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-nav">
+    <button class="nav-btn" id="prev-btn" onclick="changeSlide(-1)" disabled>← Back</button>
+    <div class="slide-dots" id="dots"></div>
+    <button class="nav-btn" id="next-btn" onclick="changeSlide(1)">Next →</button>
+  </div>
+  <div class="slide-counter" id="counter">Slide 1 of 10</div>
+</div>
+
+<script>
+const compData = [
+  ["Farmer karza + ageing", "Basic", "No", true],
+  ["Feed stock by company+size", "No", "Generic", true],
+  ["Medicine expiry alerts", "No", "No", true],
+  ["Telugu voice search", "No", "No", true],
+  ["80mm thermal print (mobile)", "No", "No", true],
+  ["Correct aqua GST rates", "No", "Manual", true],
+  ["Digital signature on bill", "No", "No", true],
+  ["Multi-branch dashboard", "No", "Paid extra", true],
+  ["Works fully offline", "Partial", "Partial", true],
+  ["Zero training needed", "Mostly", "No", true],
+];
+const rows = document.getElementById("comp-rows");
+compData.forEach(([feat, kb, vp, us]) => {
+  rows.innerHTML += `<div class="comparison-row" style="padding:6px 12px;">
+    <div class="comp-feature">${feat}</div>
+    <div class="comp-col"><span class="${kb==='No'?'cross':'partial'}">${kb==='No'?'✕':kb}</span></div>
+    <div class="comp-col"><span class="${vp==='No'?'cross':'partial'}">${vp==='No'?'✕':vp}</span></div>
+    <div class="comp-col"><span class="tick">✓</span></div>
+  </div>`;
+});
+
+const slides = document.querySelectorAll('.slide');
+const dotsContainer = document.getElementById('dots');
+let current = 0;
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===0?' active':'');
+  d.onclick = () => goTo(i);
+  dotsContainer.appendChild(d);
+});
+function goTo(n) {
+  slides[current].classList.remove('active');
+  dotsContainer.children[current].classList.remove('active');
+  current = n;
+  slides[current].classList.add('active');
+  dotsContainer.children[current].classList.add('active');
+  document.getElementById('prev-btn').disabled = current===0;
+  document.getElementById('next-btn').disabled = current===slides.length-1;
+  document.getElementById('counter').textContent = `Slide ${current+1} of ${slides.length}`;
+}
+function changeSlide(d) { goTo(Math.max(0,Math.min(slides.length-1,current+d))); }
+</script>
