@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -17,6 +17,14 @@ import {
   ShoppingCart,
   TrendingDown,
   TrendingUp,
+  LayoutGrid,
+  BarChart2,
+  Layers,
+  Clock,
+  SlidersHorizontal,
+  Plus,
+  ArrowDownCircle,
+  ArrowUpCircle
 } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { PageShell } from '@/components/layout/PageShell';
@@ -128,6 +136,47 @@ const InventoryDetailPage: React.FC = () => {
   const [transactionModalType, setTransactionModalType] = useState<'in' | 'out' | 'net' | null>(null);
   const [isEditInventoryOpen, setIsEditInventoryOpen] = useState(false);
   const [dailyMovementDate, setDailyMovementDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'lots' | 'history'>('overview');
+  const [historyStartDate, setHistoryStartDate] = useState('');
+  const [historyEndDate, setHistoryEndDate] = useState('');
+
+  const [isQuickStatsPaused, setIsQuickStatsPaused] = useState(false);
+  const quickStatsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = quickStatsRef.current;
+    if (!container) return;
+
+    let animationFrameId: number;
+    let direction = 1;
+    const scrollStep = 0.4; 
+
+    const scrollLoop = () => {
+      if (!isQuickStatsPaused && container) {
+        container.scrollLeft += (scrollStep * direction);
+        if (container.scrollLeft >= container.scrollWidth - container.clientWidth - 1) {
+          direction = -1;
+        } else if (container.scrollLeft <= 0) {
+          direction = 1;
+        }
+      }
+      animationFrameId = requestAnimationFrame(scrollLoop);
+    };
+
+    animationFrameId = requestAnimationFrame(scrollLoop);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [isQuickStatsPaused]);
+
+  const historyFilteredMovements = useMemo(() => {
+    if (!data?.movements) return [];
+    return data.movements.filter(m => {
+      const dateStr = m.created_at.slice(0, 10);
+      if (historyStartDate && dateStr < historyStartDate) return false;
+      if (historyEndDate && dateStr > historyEndDate) return false;
+      return true;
+    });
+  }, [data?.movements, historyStartDate, historyEndDate]);
 
   const inventory = data?.inventory;
 
@@ -155,7 +204,7 @@ const InventoryDetailPage: React.FC = () => {
   const recentBills = useMemo(() => {
     if (!data) return [];
     const seen = new Set<string>();
-    return data.movements
+    return historyFilteredMovements
       .filter((movement) => movement.bill?.id)
       .filter((movement) => {
         if (!movement.bill || seen.has(movement.bill.id)) return false;
@@ -163,12 +212,12 @@ const InventoryDetailPage: React.FC = () => {
         return true;
       })
       .slice(0, 4);
-  }, [data]);
+  }, [data, historyFilteredMovements]);
 
   const recentPurchases = useMemo(() => {
     if (!data) return [];
     const seen = new Set<string>();
-    return data.movements
+    return historyFilteredMovements
       .filter((movement) => movement.purchase?.id)
       .filter((movement) => {
         if (!movement.purchase || seen.has(movement.purchase.id)) return false;
@@ -176,11 +225,19 @@ const InventoryDetailPage: React.FC = () => {
         return true;
       })
       .slice(0, 4);
-  }, [data]);
-  const pagedMovements = useLoadMoreList(data?.movements || [], {
+  }, [data, historyFilteredMovements]);
+
+  const recentAdjustments = useMemo(() => {
+    if (!data) return [];
+    return historyFilteredMovements
+      .filter((movement) => movement.reference_type === 'ADJUSTMENT' || movement.reference_type === 'INITIAL_STOCK')
+      .slice(0, 4);
+  }, [data, historyFilteredMovements]);
+
+  const pagedMovements = useLoadMoreList(historyFilteredMovements, {
     initialCount: 12,
     step: 12,
-    resetDeps: [data?.movements.length || 0],
+    resetDeps: [historyFilteredMovements.length, historyStartDate, historyEndDate],
   });
   const modalMovements = useMemo(() => {
     if (!data?.movements.length || !selectedMonthData) return [];
@@ -297,7 +354,7 @@ const InventoryDetailPage: React.FC = () => {
   const statCards = buildStatCards(data.summary, stockUnit);
 
   return (
-    <PageShell>
+    <PageShell width="full" className="pb-8 bg-transparent">
       <PageHeader
         title={inventory.product.name}
         eyebrow={`${inventory.product.type}${inventory.product.category ? ` · ${inventory.product.category}` : ''}`}
@@ -313,47 +370,32 @@ const InventoryDetailPage: React.FC = () => {
           </button>
         }
         description={
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-white/20 px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-white backdrop-blur-sm">
-              {inventory.product.type}
-            </span>
-            <span
-              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] ${
-                health.badge === 'danger'
-                  ? 'bg-rose-500 text-white'
-                  : health.badge === 'warning'
-                    ? 'bg-amber-400 text-amber-950'
-                    : 'bg-emerald-400 text-emerald-950'
-              }`}
-            >
-              {health.label}
-            </span>
-            {inventory.product.company ? (
-              <span className="inline-flex items-center rounded-full border border-white/30 px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-white">
-                {inventory.product.company}
-              </span>
-            ) : null}
+          <div className="mt-3 md:mt-1 flex items-center gap-2 sm:gap-3 text-sm font-medium w-full overflow-x-auto hide-scrollbar pb-1">
+            <div className="inline-flex flex-1 sm:flex-none items-center justify-between sm:justify-start gap-2 bg-white/10 px-2.5 sm:px-3.5 py-2 rounded-xl border border-white/10 backdrop-blur-sm whitespace-nowrap">
+              <span className="text-white/70 text-[10px] sm:text-xs uppercase tracking-wider font-bold">Selling</span>
+              <span className="text-white font-bold text-sm sm:text-base">₹{inventory.selling_price?.toLocaleString()} <span className="text-[10px] sm:text-xs font-semibold text-white/50 capitalize">/ {inventory.product.unit}</span></span>
+            </div>
+            <div className="inline-flex flex-1 sm:flex-none items-center justify-between sm:justify-start gap-2 bg-white/10 px-2.5 sm:px-3.5 py-2 rounded-xl border border-white/10 backdrop-blur-sm whitespace-nowrap">
+              <span className="text-white/70 text-[10px] sm:text-xs uppercase tracking-wider font-bold">Cost</span>
+              <span className="text-white font-bold text-sm sm:text-base">₹{inventory.cost_price?.toLocaleString()} <span className="text-[10px] sm:text-xs font-semibold text-white/50 capitalize">/ {inventory.product.unit}</span></span>
+            </div>
           </div>
         }
         action={
-          <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:flex-row mt-2">
+          <div className="grid grid-cols-2 gap-3 w-full sm:flex sm:w-auto mt-3 md:mt-0">
             <Button
-              size="sm"
-              variant="outline"
-              className="bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30 font-semibold"
+              className="bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30 font-semibold h-12 rounded-xl"
               fullWidth
               onClick={() => setIsAdjustOpen(true)}
-              leftIcon={<Boxes className="h-4 w-4 sm:h-5 sm:w-5" />}
+              leftIcon={<Boxes className="h-5 w-5 opacity-80" />}
             >
               Adjust Stock
             </Button>
             <Button
-              size="sm"
-              variant="primary"
-              className="bg-white text-sky-900 hover:bg-slate-50 font-bold"
+              className="bg-white text-[#0052cc] hover:bg-slate-50 font-bold h-12 rounded-xl shadow-[0_4px_14px_0_rgba(0,0,0,0.1)]"
               fullWidth
               onClick={() => navigate('/purchases/new')}
-              leftIcon={<PackagePlus className="h-4 w-4 sm:h-5 sm:w-5" />}
+              leftIcon={<PackagePlus className="h-5 w-5" />}
             >
               Add Stock
             </Button>
@@ -361,657 +403,665 @@ const InventoryDetailPage: React.FC = () => {
         }
       />
 
-      <section
-        className="relative z-10 rounded-[24px] border border-slate-200 bg-white px-5 py-5 shadow-[0_18px_40px_rgba(148,163,184,0.16)]"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="text-[0.82rem] font-bold uppercase tracking-[0.1em] text-slate-400">
-                Current Stock
-              </span>
-            </div>
-            <div className="mt-3 flex items-end gap-2">
-              <span className="text-[2.75rem] font-extrabold leading-none tracking-[-0.06em] text-slate-900">
-                {data.summary.currentStock}
-              </span>
-              <span className="pb-1.5 text-base font-bold text-slate-500">{stockUnit}</span>
-            </div>
-            <div className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-slate-500">
-              Alert threshold: {data.summary.lowStockThreshold ?? 0} {stockUnit}
-            </div>
-
-            {/* Pricing Information */}
-            <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3 border-t border-slate-100 pt-5">
-              {inventory.product.type === 'medicine' && (
-                <div>
-                  <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-0.5">MRP</p>
-                  <p className="text-sm font-extrabold text-slate-800">
-                    {inventory.medicine_discount_percentage > 0 && inventory.medicine_discount_percentage < 100
-                      ? formatCurrency(inventory.selling_price! / (1 - inventory.medicine_discount_percentage / 100))
-                      : formatCurrency(inventory.selling_price || 0)}
-                  </p>
+      {/* ── Current Stock Card (Always Visible) ── */}
+      <div className="px-1 mt-6 relative z-10 mb-4 max-w-7xl mx-auto w-full">
+        <div className="bg-white rounded-[20px] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-100/50 p-5">
+          <div className="flex items-start justify-between mb-4">
+             <div>
+                <div className="flex items-center gap-2 text-slate-800 font-bold text-sm mb-2">
+                   <Package2 className="w-4 h-4 text-sky-500" />
+                   Current Stock
                 </div>
-              )}
-              <div>
-                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Selling Price</p>
-                <p className="text-sm font-extrabold text-sky-600">{formatCurrency(inventory.selling_price || 0)}</p>
-              </div>
-              <div>
-                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Cost Price</p>
-                <p className="text-sm font-extrabold text-slate-600">{formatCurrency(inventory.cost_price || 0)}</p>
-              </div>
-            </div>
+                <div className="flex items-baseline gap-1.5">
+                   <span className="text-5xl font-extrabold text-[#0070F3] tracking-tight">{data.summary.currentStock}</span>
+                   <span className="text-sm font-semibold text-slate-500">{stockUnit}</span>
+                </div>
+                <div className="text-xs font-medium text-slate-500 mt-1">
+                   Alert threshold: {data.summary.lowStockThreshold ?? 0} {stockUnit}
+                </div>
+             </div>
+             
+             {/* Expiry Box */}
+             <div className="bg-[#FFF9EB] border border-[#FFE8B3] rounded-xl p-3 text-center min-w-[110px]">
+                <div className="text-[#B77A00] text-[10px] font-bold uppercase flex items-center justify-center gap-1 mb-2">
+                   <AlertTriangle className="w-3.5 h-3.5" />
+                   {health.label}
+                </div>
+                <div className="text-[10px] font-medium text-slate-500 mb-0.5">Latest expiry</div>
+                <div className="text-xs font-bold text-slate-800">
+                   {inventory.expiry_date ? formatDate(inventory.expiry_date) : '—'}
+                </div>
+             </div>
           </div>
 
-          <div className={`rounded-[18px] border px-4 py-3 text-right ${health.cardClass}`}>
-            <div className="flex items-center justify-end gap-1.5 text-sm font-black uppercase tracking-[0.1em]">
-              {health.label}
-            </div>
-            <div className="mt-2 text-xs font-semibold">Latest expiry</div>
-            <div className="mt-0.5 text-base font-extrabold tracking-[-0.02em]">
-              {inventory.expiry_date ? formatDate(inventory.expiry_date) : '—'}
-            </div>
+          <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-100">
+             <div className="flex flex-col gap-1 items-center justify-center text-center">
+                <div className="flex items-center gap-1.5">
+                   <CircleDollarSign className="w-3.5 h-3.5 text-slate-400" />
+                   <span className="text-[10px] font-medium text-slate-500">Stock Value</span>
+                </div>
+                <span className="text-sm font-bold text-[#0070F3]">
+                   {data.summary.estimatedStockValue !== null ? `₹${data.summary.estimatedStockValue.toLocaleString()}` : '—'}
+                </span>
+             </div>
+             <div className="flex flex-col gap-1 items-center justify-center text-center border-l border-slate-100">
+                <div className="flex items-center gap-1.5">
+                   <ShoppingCart className="w-3.5 h-3.5 text-slate-400" />
+                   <span className="text-[10px] font-medium text-slate-500">Unit</span>
+                </div>
+                <span className="text-sm font-bold text-slate-800 capitalize">{inventory.product.unit}</span>
+             </div>
+             <div className="flex flex-col gap-1 items-center justify-center text-center border-l border-slate-100">
+                <div className="flex items-center gap-1.5">
+                   <ReceiptText className="w-3.5 h-3.5 text-slate-400" />
+                   <span className="text-[10px] font-medium text-slate-500">Tax (GST)</span>
+                </div>
+                <span className="text-sm font-bold text-slate-800">{inventory.product.gst_rate}%</span>
+             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* ── Section 4: Stock Value Card ────────────── */}
-      <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-base font-extrabold tracking-[-0.02em] text-slate-900">
-            <CalendarRange className="h-5 w-5 text-sky-600" />
-            Daily Stock Diary
-          </div>
-          <Input
-            type="date"
-            value={dailyMovementDate}
-            onChange={(event) => setDailyMovementDate(event.target.value)}
-            className="w-full sm:w-48"
-          />
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+      {/* ── Inline Tabs ── */}
+      <div className="px-2 max-w-7xl mx-auto w-full mb-5 z-10 relative">
+        <div className="flex items-center gap-6 overflow-x-auto hide-scrollbar border-b border-slate-200/60">
           {[
-            { label: 'Opening', value: dailyMovement.opening, tone: 'text-slate-900 bg-slate-50' },
-            { label: 'In', value: dailyMovement.incoming, tone: 'text-emerald-700 bg-emerald-50' },
-            { label: 'Sold', value: dailyMovement.sold, tone: 'text-rose-700 bg-rose-50' },
-            { label: 'Other Out', value: dailyMovement.adjustedOut, tone: 'text-orange-700 bg-orange-50' },
-            { label: 'Remaining', value: dailyMovement.remaining, tone: 'text-sky-700 bg-sky-50 col-span-2 sm:col-span-1' },
-          ].map((item) => (
-            <div key={item.label} className={`rounded-2xl border border-slate-100 p-3 ${item.tone}`}>
-              <p className="text-[10px] font-black uppercase tracking-wider opacity-70">{item.label}</p>
-              <p className="mt-1 text-xl font-black tracking-tight">
-                {item.value} <span className="text-[10px] font-bold">{stockUnit}</span>
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4 space-y-2">
-          {dailyMovement.rows.length ? (
-            dailyMovement.rows.map((movement) => {
-              const isIncoming = movement.quantity_change >= 0;
-              const clickable = Boolean(movement.bill?.id || movement.purchase?.id);
-              const title =
-                movement.bill?.farmer_name_snapshot ||
-                movement.purchase?.supplier_name ||
-                movement.notes ||
-                getMovementLabel(movement.reference_type, movement.quantity_change);
-
-              return (
-                <button
-                  key={movement.id}
-                  type="button"
-                  disabled={!clickable}
-                  onClick={() => {
-                    if (movement.bill?.id) {
-                      navigate(`/bills/${movement.bill.id}`, { state: { from: location.pathname } });
-                    } else if (movement.purchase?.id) {
-                      navigate(`/purchases/${movement.purchase.id}`, { state: { from: location.pathname } });
-                    }
-                  }}
-                  className={`flex w-full items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-left ${
-                    clickable ? 'hover:bg-white' : ''
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-black text-slate-900">{title}</p>
-                    <p className="mt-0.5 truncate text-xs font-semibold text-slate-500">
-                      {getMovementLabel(movement.reference_type, movement.quantity_change)}
-                      {movement.bill?.bill_number ? ` · ${movement.bill.bill_number}` : ''}
-                      {movement.purchase?.invoice_number ? ` · ${movement.purchase.invoice_number}` : ''}
-                    </p>
-                  </div>
-                  <p className={`shrink-0 text-lg font-black ${isIncoming ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {isIncoming ? '+' : ''}
-                    {movement.quantity_change}
-                  </p>
-                </button>
-              );
-            })
-          ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm font-semibold text-slate-500">
-              No stock moved on this day.
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="rounded-[24px] bg-gradient-to-br from-slate-900 to-slate-950 p-5 text-white shadow-[0_18px_40px_rgba(15,23,42,0.2)]">
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/10 text-white">
-            <CircleDollarSign className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="text-[0.72rem] font-bold uppercase tracking-[0.16em] text-sky-200/70">
-              Stock Value
-            </div>
-            <div className="mt-1 text-[1.85rem] font-extrabold tracking-[-0.05em]">
-              {data.summary.estimatedStockValue !== null
-                ? formatCurrency(data.summary.estimatedStockValue)
-                : 'N/A'}
-            </div>
-            <div className="mt-1 text-sm font-medium text-slate-300/80">
-              Based on selling price and current quantity
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Section 6: Stats Grid (4×2) ──────────── */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {statCards.map((card) => (
-          <div
-            key={card.label}
-            className="flex flex-col items-center gap-2 rounded-[20px] border border-slate-200 bg-white px-3 py-4 text-center shadow-sm"
-          >
-            <div className={`flex h-9 w-9 items-center justify-center rounded-full ${card.tone}`}>
-              <card.icon className="h-4 w-4" />
-            </div>
-            <div className="text-[0.65rem] font-bold uppercase leading-tight tracking-[0.1em] text-slate-400">
-              {card.label}
-            </div>
-            <div className="text-[0.95rem] font-extrabold tracking-[-0.03em] text-slate-900">
-              {card.value}
-            </div>
-          </div>
-        ))}
-      </section>
-
-      {/* ── Section 7: Monthly Analytics ─────────── */}
-      <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-base font-extrabold tracking-[-0.02em] text-slate-900">
-            <TrendingUp className="h-5 w-5 text-sky-600" />
-            Monthly Analytics
-          </div>
-
-          {/* Month selector calendar picker */}
-          <div className="relative">
-            <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 pr-8 hover:bg-slate-100 transition-colors cursor-pointer">
-              <CalendarRange className="h-3.5 w-3.5 text-slate-500" />
-              <span className="text-sm font-bold text-slate-700">
-                {selectedMonthData ? selectedMonthData.month : 'Select Month'}
-              </span>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <input
-                type="month"
-                value={selectedMonthData ? parseMonthLabelToInputVal(selectedMonthData.month) : ''}
-                onChange={handleMonthChange}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              />
-            </div>
-          </div>
-        </div>
-
-        {selectedMonthData ? (
-          <>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-              {/* IN Card */}
-              <div 
-                onClick={() => setTransactionModalType('in')}
-                className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 p-4 transition-all hover:shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-0.5 group cursor-pointer"
+            { id: 'overview', label: 'Overview' },
+            { id: 'analytics', label: 'Analytics' },
+            { id: 'lots', label: 'Lots' },
+            { id: 'history', label: 'History' }
+          ].map(tab => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`relative py-3 text-sm font-bold transition-colors whitespace-nowrap outline-none ${
+                  isActive ? 'text-[#0052cc]' : 'text-slate-500 hover:text-slate-800'
+                }`}
               >
-                <div className="absolute top-0 right-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-emerald-500/10 blur-xl group-hover:bg-emerald-500/20 transition-all duration-500"></div>
-                <div className="flex items-center justify-between relative z-10">
-                  <div className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-emerald-600/90">
-                    This Month In
-                  </div>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100/80 text-emerald-600 shadow-sm">
-                    <TrendingUp className="h-4 w-4" />
-                  </div>
-                </div>
-                <div className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-emerald-700 relative z-10">
-                  {selectedMonthData.received + selectedMonthData.cancelledBack + selectedMonthData.adjustedIn}
-                </div>
-                <div className="mt-1 text-xs font-medium text-emerald-600/70 relative z-10">
-                  Received {selectedMonthData.received} • Adj {selectedMonthData.adjustedIn}
-                </div>
-              </div>
+                {tab.label}
+                {isActive && (
+                  <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#0052cc] rounded-t-full" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
-              {/* OUT Card */}
-              <div 
-                onClick={() => setTransactionModalType('out')}
-                className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-rose-500/10 to-rose-500/5 border border-rose-500/20 p-4 transition-all hover:shadow-lg hover:shadow-rose-500/10 hover:-translate-y-0.5 group cursor-pointer"
-              >
-                <div className="absolute top-0 right-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-rose-500/10 blur-xl group-hover:bg-rose-500/20 transition-all duration-500"></div>
-                <div className="flex items-center justify-between relative z-10">
-                  <div className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-rose-600/90">
-                    This Month Out
-                  </div>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100/80 text-rose-600 shadow-sm">
-                    <TrendingDown className="h-4 w-4" />
-                  </div>
+      {/* ── Tab Content ── */}
+      <div className="px-1 max-w-7xl mx-auto space-y-4 w-full">
+        {activeTab === 'overview' && (
+          <div className="space-y-4">
+            {/* Today's Movement */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                  <CalendarRange className="w-4 h-4 text-slate-400" />
+                  Today's Movement
                 </div>
-                <div className="mt-2 text-2xl font-extrabold tracking-[-0.04em] text-rose-700 relative z-10">
-                  {selectedMonthData.sold + selectedMonthData.adjustedOut}
-                </div>
-                <div className="mt-1 text-xs font-medium text-rose-600/70 relative z-10">
-                  Sold {selectedMonthData.sold} • Adj {selectedMonthData.adjustedOut}
-                </div>
-              </div>
-
-              {/* NET Card */}
-              <div 
-                onClick={() => setTransactionModalType('net')}
-                className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-slate-900 to-slate-800 p-4 text-white shadow-xl transition-all hover:shadow-2xl hover:shadow-slate-900/20 hover:-translate-y-0.5 group cursor-pointer"
-              >
-                <div className="absolute top-0 right-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-white/5 blur-xl group-hover:bg-white/10 transition-all duration-500"></div>
-                <div className="flex items-center justify-between relative z-10">
-                  <div className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-slate-300">
-                    Net Movement
-                  </div>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white shadow-sm border border-white/5">
-                    <Package2 className="h-4 w-4" />
-                  </div>
-                </div>
-                <div className="mt-2 text-2xl font-extrabold tracking-[-0.04em] relative z-10">
-                  {selectedMonthData.net > 0 ? '+' : ''}{selectedMonthData.net}
-                </div>
-                <div className="mt-1 text-xs font-medium text-slate-400 relative z-10">
-                  Overall inventory change
-                </div>
-              </div>
-            </div>
-
-            {/* Elegant SVG/Flex Bar Chart */}
-            <div className="mt-5 border-t border-slate-100 pt-5">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-2">
-                <span>Monthly Trends (In vs Out)</span>
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400" /> Stock In
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="h-2 w-2 rounded-full bg-rose-400" /> Stock Out
-                  </span>
-                </div>
-              </div>
-              
-              <div className="relative h-36 flex items-end justify-center gap-6 sm:gap-8 px-4 pt-6 pb-2 border-b border-slate-100/50">
-                {/* Horizontal Grid Lines */}
-                <div className="absolute inset-x-0 top-3 bottom-8 flex flex-col justify-between pointer-events-none z-0">
-                  <div className="w-full border-t border-slate-100" />
-                  <div className="w-full border-t border-slate-100" />
-                  <div className="w-full border-t border-slate-100" />
-                  <div className="w-full border-t border-slate-100" />
-                </div>
-
-                {plotData.map((m) => {
-                  const inVal = m.received + m.cancelledBack + m.adjustedIn;
-                  const outVal = m.sold + m.adjustedOut;
-                  
-                  const inHeight = Math.max(4, Math.round((inVal / maxChartVal) * 100));
-                  const outHeight = Math.max(4, Math.round((outVal / maxChartVal) * 100));
-                  
-                  const isSelected = m.month === selectedMonthData.month;
-                  
-                  return (
-                    <div
-                      key={m.month}
-                      onClick={() => {
-                        const originalIdx = data.monthlySeries.findIndex((item) => item.month === m.month);
-                        if (originalIdx !== -1) {
-                          setSelectedMonthIndex(originalIdx);
-                        }
-                      }}
-                      className={`relative z-10 flex flex-col items-center cursor-pointer group transition-all duration-200 w-16 ${
-                        isSelected ? 'scale-105' : 'hover:scale-102 opacity-80 hover:opacity-100'
-                      }`}
-                    >
-                      {/* Side-by-side bars */}
-                      <div className="w-full flex items-end justify-center gap-1.5 h-24 relative">
-                        {/* Tooltip on hover */}
-                        <div className="absolute -top-7 scale-0 group-hover:scale-100 transition-transform bg-slate-900 text-white text-[0.65rem] font-bold py-1 px-2 rounded-md shadow-md z-20 pointer-events-none whitespace-nowrap flex gap-2">
-                          <span className="text-emerald-300">+{inVal} units</span>
-                          <span className="text-rose-300">-{outVal} units</span>
-                        </div>
-                        
-                        {/* Bar In */}
-                        <div 
-                          style={{ height: `${inHeight}%` }} 
-                          className={`w-3.5 rounded-t-[5px] transition-all duration-300 ${
-                            isSelected ? 'bg-gradient-to-t from-emerald-400 to-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'bg-emerald-300/80 group-hover:bg-emerald-400'
-                          }`}
-                        />
-                        {/* Bar Out */}
-                        <div 
-                          style={{ height: `${outHeight}%` }} 
-                          className={`w-3.5 rounded-t-[5px] transition-all duration-300 ${
-                            isSelected ? 'bg-gradient-to-t from-rose-400 to-rose-500 shadow-[0_0_8px_rgba(251,113,133,0.3)]' : 'bg-rose-300/80 group-hover:bg-rose-400'
-                          }`}
-                        />
-                      </div>
-                      
-                      {/* Month label */}
-                      <span className={`mt-2 text-[0.62rem] font-extrabold tracking-tight transition-colors whitespace-nowrap ${
-                        isSelected ? 'text-slate-900 underline decoration-sky-500 decoration-2 underline-offset-4' : 'text-slate-400 group-hover:text-slate-600'
-                      }`}>
-                        {m.month.split(' ')[0]}
-                      </span>
+                <div className="relative">
+                  <div className="relative h-[30px] bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors shadow-sm focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:border-sky-500 cursor-pointer flex items-center min-w-[130px]">
+                    <div className="absolute right-2.5 pointer-events-none text-slate-400">
+                      <CalendarRange className="w-3.5 h-3.5" />
                     </div>
-                  );
-                })}
+                    <div className="absolute left-2.5 pointer-events-none text-xs font-semibold text-slate-600">
+                      {formatDate(dailyMovementDate)}
+                    </div>
+                    <input
+                      type="date"
+                      value={dailyMovementDate}
+                      onChange={(e) => setDailyMovementDate(e.target.value)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-2 border border-slate-100 rounded-[14px] p-3">
+                 <div className="text-center flex flex-col items-center">
+                    <span className="text-[10px] font-bold text-slate-600 mb-0.5">Opening</span>
+                    <span className="text-[1.35rem] font-black text-[#0070F3] leading-none">{dailyMovement.opening}</span>
+                    <span className="text-[9px] font-bold text-[#0070F3] mt-1">units</span>
+                 </div>
+                 <div className="text-center flex flex-col items-center border-l border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-600 mb-0.5">In</span>
+                    <span className="text-[1.35rem] font-black text-emerald-500 leading-none">{dailyMovement.incoming}</span>
+                    <span className="text-[9px] font-bold text-emerald-500 mt-1">units</span>
+                 </div>
+                 <div className="text-center flex flex-col items-center border-l border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-600 mb-0.5">Out (Sold)</span>
+                    <span className="text-[1.35rem] font-black text-rose-500 leading-none">{dailyMovement.sold + dailyMovement.adjustedOut}</span>
+                    <span className="text-[9px] font-bold text-rose-500 mt-1">units</span>
+                 </div>
+                 <div className="text-center flex flex-col items-center border-l border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-600 mb-0.5">Remaining</span>
+                    <span className="text-[1.35rem] font-black text-[#0070F3] leading-none">{dailyMovement.remaining}</span>
+                    <span className="text-[9px] font-bold text-[#0070F3] mt-1">units</span>
+                 </div>
               </div>
             </div>
-          </>
-        ) : (
-          <div className="mt-4 text-center text-sm font-medium text-slate-400">
-            No movement data available
+
+            {/* Quick Stats */}
+            <div>
+              <div className="flex items-center justify-between mb-3 px-1">
+                <h3 className="text-sm font-bold text-slate-800">Quick Stats</h3>
+                <div className="flex items-center gap-0.5 text-[10px] font-bold text-slate-400/80 uppercase tracking-widest sm:hidden">
+                  <span>Swipe</span>
+                  <ChevronRight className="w-3 h-3" />
+                </div>
+              </div>
+              <div 
+                ref={quickStatsRef}
+                onMouseEnter={() => setIsQuickStatsPaused(true)}
+                onMouseLeave={() => setIsQuickStatsPaused(false)}
+                onTouchStart={() => setIsQuickStatsPaused(true)}
+                onTouchEnd={() => setIsQuickStatsPaused(false)}
+                className="flex gap-3 overflow-x-auto pb-3 px-1 hide-scrollbar"
+              >
+                {/* 1. Sold This Month */}
+                <div className="flex-none w-28 bg-emerald-50 border border-emerald-100 rounded-[18px] p-3.5 text-center flex flex-col items-center justify-center shadow-sm">
+                   <TrendingUp className="w-5 h-5 text-emerald-600 mb-2" />
+                   <span className="text-[10px] font-medium text-slate-500 mb-1 leading-tight">Sold This Month</span>
+                   <div className="flex items-baseline gap-1 mt-auto">
+                     <span className="text-xl font-black text-emerald-600 leading-none">{selectedMonthData ? selectedMonthData.sold : 0}</span>
+                   </div>
+                   <span className="text-[9px] font-bold text-emerald-600 mt-1 leading-tight">units</span>
+                </div>
+                {/* 2. Profit This Month */}
+                <div className="flex-none w-28 bg-[#F4F7FB] border border-[#E5EDF6] rounded-[18px] p-3.5 text-center flex flex-col items-center justify-center shadow-sm">
+                   <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-[11px] mb-2">₹</div>
+                   <span className="text-[10px] font-medium text-slate-500 mb-1 leading-tight">Profit This Mth</span>
+                   <span className="text-sm font-black text-blue-600 leading-none mt-auto">
+                     ₹{(((inventory.selling_price || 0) - (inventory.cost_price || 0)) * (selectedMonthData ? selectedMonthData.sold : 0)).toLocaleString()}
+                   </span>
+                </div>
+                {/* 3. Total Received */}
+                <div className="flex-none w-28 bg-[#FFF6EE] border border-[#FFE8D6] rounded-[18px] p-3.5 text-center flex flex-col items-center justify-center shadow-sm">
+                   <TrendingDown className="w-5 h-5 text-[#E36B15] mb-2" />
+                   <span className="text-[10px] font-medium text-slate-500 mb-1 leading-tight">Total Received</span>
+                   <span className="text-xl font-black text-[#E36B15] leading-none mt-auto">{data.summary.totalReceived}</span>
+                   <span className="text-[9px] font-bold text-[#E36B15] mt-1 leading-tight">units</span>
+                </div>
+                {/* 4. Total Sold */}
+                <div className="flex-none w-28 bg-rose-50 border border-rose-100 rounded-[18px] p-3.5 text-center flex flex-col items-center justify-center shadow-sm">
+                   <TrendingUp className="w-5 h-5 text-rose-600 mb-2" />
+                   <span className="text-[10px] font-medium text-slate-500 mb-1 leading-tight">Total Sold</span>
+                   <span className="text-xl font-black text-rose-600 leading-none mt-auto">{data.summary.totalIssued}</span>
+                   <span className="text-[9px] font-bold text-rose-600 mt-1 leading-tight">units</span>
+                </div>
+                {/* 5. Available Lots */}
+                <div className="flex-none w-28 bg-teal-50 border border-teal-100 rounded-[18px] p-3.5 text-center flex flex-col items-center justify-center shadow-sm">
+                   <Layers className="w-5 h-5 text-teal-600 mb-2" />
+                   <span className="text-[10px] font-medium text-slate-500 mb-1 leading-tight">Available Lots</span>
+                   <span className="text-xl font-black text-teal-600 leading-none mt-auto">{data.summary.availableLots}</span>
+                </div>
+                {/* 6. Stock Value */}
+                <div className="flex-none w-28 bg-[#F9F5FF] border border-[#F3EBFF] rounded-[18px] p-3.5 text-center flex flex-col items-center justify-center shadow-sm">
+                   <div className="w-6 h-6 rounded-full bg-[#EADDFF] text-[#6B21A8] flex items-center justify-center font-bold text-[11px] mb-2">₹</div>
+                   <span className="text-[10px] font-medium text-slate-500 mb-1 leading-tight">Stock Value</span>
+                   <span className="text-sm font-black text-[#6B21A8] leading-none mt-auto">
+                     {data.summary.estimatedStockValue !== null ? `₹${data.summary.estimatedStockValue.toLocaleString()}` : '—'}
+                   </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div>
+               <div className="flex items-center justify-between mb-3 px-1">
+                 <h3 className="text-sm font-bold text-slate-800">Recent Activity</h3>
+                 <button onClick={() => setActiveTab('history')} className="text-[11px] font-bold text-[#0070F3] uppercase tracking-wider">View All</button>
+               </div>
+               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-2">
+                 {data.movements.slice(0, 5).map((movement, idx) => {
+                   const isIncoming = movement.quantity_change >= 0;
+                   const title = movement.reference_type === 'bill' ? 'Sale' : 
+                                 movement.reference_type === 'purchase' ? 'Purchase' : 
+                                 movement.reference_type === 'manual_adjustment' ? 'Manual Adjustment' :
+                                 getMovementLabel(movement.reference_type, movement.quantity_change);
+                   
+                   const subtitle = movement.bill?.bill_number ? `Bill ${movement.bill.bill_number}` :
+                                    movement.purchase?.invoice_number ? `Purchase record` :
+                                    movement.notes || (movement.quantity_change < 0 ? 'Stock reduced' : 'Stock increased');
+                   
+                   return (
+                     <div key={movement.id} className={`flex items-center justify-between p-3 ${idx !== 0 ? 'border-t border-slate-50' : ''}`}>
+                       <div className="flex items-center gap-3">
+                         <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                           movement.reference_type === 'manual_adjustment' ? 'bg-orange-50 text-orange-500' :
+                           isIncoming ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'
+                         }`}>
+                           {movement.reference_type === 'manual_adjustment' ? (
+                             <SlidersHorizontal className="w-4 h-4" />
+                           ) : isIncoming ? (
+                             <ArrowUpCircle className="w-5 h-5" />
+                           ) : (
+                             <ArrowDownCircle className="w-5 h-5" />
+                           )}
+                         </div>
+                         <div>
+                           <div className="text-sm font-bold text-slate-800">{title}</div>
+                           <div className="text-[10px] font-medium text-slate-500">{subtitle}</div>
+                         </div>
+                       </div>
+                       <div className="text-right">
+                         <div className={`text-sm font-black ${isIncoming ? 'text-emerald-500' : 'text-rose-500'}`}>
+                           {isIncoming ? '+' : ''}{movement.quantity_change} units
+                         </div>
+                         <div className="text-[9px] font-medium text-slate-400 mt-0.5">
+                           {formatDateTime(movement.created_at)}
+                         </div>
+                       </div>
+                     </div>
+                   );
+                 })}
+                 {data.movements.length === 0 && (
+                   <div className="p-6 text-center text-sm font-medium text-slate-400">No recent activity</div>
+                 )}
+               </div>
+            </div>
           </div>
         )}
-      </section>
 
-      {/* ── Section 8: Lot Breakdown ─────────────── */}
-      <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-base font-extrabold tracking-[-0.02em] text-slate-900">
-            <ReceiptText className="h-5 w-5 text-sky-600" />
-            Lot Breakdown
-          </div>
-          {data.lots.length > 0 && (
-            <button type="button" className="text-sm font-bold text-sky-600 hover:text-sky-700">
-              View all
-            </button>
-          )}
-        </div>
+        {/* Other Tabs content ... */}
+        {activeTab === 'analytics' && (
+          <div className="py-4">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-base font-extrabold tracking-[-0.02em] text-slate-900">
+                  <TrendingUp className="h-5 w-5 text-sky-600" />
+                  Monthly Analytics
+                </div>
 
-        <div className="mt-4">
-          {data.lots.length ? (
-            <div className="space-y-3">
-              {data.lots.slice(0, 3).map((lot) => (
-                <div key={lot.id} className="rounded-[18px] border border-slate-100 bg-slate-50 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-bold text-slate-900">
-                        {lot.batch_number || 'Unlabelled Batch'}
-                      </div>
-                      <div className="mt-1 text-xs font-semibold text-slate-500">
-                        Received {formatDate(lot.received_at)}
-                        {lot.expiry_date ? ` · Exp ${formatDate(lot.expiry_date)}` : ''}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-extrabold text-slate-900">
-                        {lot.remaining_quantity} {stockUnit}
-                      </div>
-                      <div className="text-[0.68rem] font-semibold text-slate-400">remaining</div>
-                    </div>
+                <div className="relative">
+                  <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 pr-8 hover:bg-slate-100 transition-colors cursor-pointer">
+                    <CalendarRange className="h-3.5 w-3.5 text-slate-500" />
+                    <span className="text-sm font-bold text-slate-700">
+                      {selectedMonthData ? selectedMonthData.month : 'Select Month'}
+                    </span>
+                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="month"
+                      value={selectedMonthData ? parseMonthLabelToInputVal(selectedMonthData.month) : ''}
+                      onChange={handleMonthChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
-              <div className="text-sm font-bold text-slate-600">No tracked lots yet</div>
-              <div className="mt-1 text-xs font-medium text-slate-400">
-                This stock item does not have lot-level purchase tracking available yet.
+              </div>
+
+              {selectedMonthData ? (
+                <>
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div 
+                      onClick={() => setTransactionModalType('in')}
+                      className="relative overflow-hidden rounded-[20px] bg-emerald-50 border border-emerald-100 p-4 transition-all hover:-translate-y-0.5 group cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between relative z-10">
+                        <div className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-emerald-600">
+                          This Month In
+                        </div>
+                        <TrendingUp className="h-4 w-4 text-emerald-500" />
+                      </div>
+                      <div className="mt-2 text-2xl font-extrabold text-emerald-700">
+                        {selectedMonthData.received + selectedMonthData.cancelledBack + selectedMonthData.adjustedIn}
+                      </div>
+                      <div className="mt-1 text-xs font-medium text-emerald-600/70">
+                        Received {selectedMonthData.received} • Adj {selectedMonthData.adjustedIn}
+                      </div>
+                    </div>
+
+                    <div 
+                      onClick={() => setTransactionModalType('out')}
+                      className="relative overflow-hidden rounded-[20px] bg-rose-50 border border-rose-100 p-4 transition-all hover:-translate-y-0.5 group cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between relative z-10">
+                        <div className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-rose-600">
+                          This Month Out
+                        </div>
+                        <TrendingDown className="h-4 w-4 text-rose-500" />
+                      </div>
+                      <div className="mt-2 text-2xl font-extrabold text-rose-700">
+                        {selectedMonthData.sold + selectedMonthData.adjustedOut}
+                      </div>
+                      <div className="mt-1 text-xs font-medium text-rose-600/70">
+                        Sold {selectedMonthData.sold} • Adj {selectedMonthData.adjustedOut}
+                      </div>
+                    </div>
+
+                    <div 
+                      onClick={() => setTransactionModalType('net')}
+                      className="relative overflow-hidden rounded-[20px] bg-sky-50 border border-sky-100 p-4 transition-all hover:-translate-y-0.5 group cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between relative z-10">
+                        <div className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-sky-600">
+                          Net Movement
+                        </div>
+                        <Layers className="h-4 w-4 text-sky-500" />
+                      </div>
+                      <div className="mt-2 text-2xl font-extrabold text-sky-700">
+                        {(selectedMonthData.received + selectedMonthData.cancelledBack + selectedMonthData.adjustedIn) - (selectedMonthData.sold + selectedMonthData.adjustedOut)}
+                      </div>
+                      <div className="mt-1 text-xs font-medium text-sky-600/70">
+                        Total In - Total Out
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 border-t border-slate-100 pt-5">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-2">
+                      <span>Monthly Trends</span>
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <span className="h-2 w-2 rounded-full bg-emerald-400" /> In
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="h-2 w-2 rounded-full bg-rose-400" /> Out
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="relative h-36 flex items-end justify-center gap-6 px-4 pt-6 pb-2 border-b border-slate-100/50">
+                      <div className="absolute inset-x-0 top-3 bottom-8 flex flex-col justify-between pointer-events-none z-0">
+                        <div className="w-full border-t border-slate-100" />
+                        <div className="w-full border-t border-slate-100" />
+                        <div className="w-full border-t border-slate-100" />
+                      </div>
+
+                      {plotData.map((m) => {
+                        const inVal = m.received + m.cancelledBack + m.adjustedIn;
+                        const outVal = m.sold + m.adjustedOut;
+                        const inHeight = Math.max(4, Math.round((inVal / maxChartVal) * 100));
+                        const outHeight = Math.max(4, Math.round((outVal / maxChartVal) * 100));
+                        const isSelected = m.month === selectedMonthData.month;
+                        
+                        return (
+                          <div key={m.month} className="relative z-10 flex flex-col items-center w-12 cursor-pointer group" onClick={() => handleMonthChange({target:{value:parseMonthLabelToInputVal(m.month)}} as any)}>
+                            <div className="w-full flex items-end justify-center gap-1 h-24">
+                              <div style={{ height: `${inHeight}%` }} className={`w-3 rounded-t-sm transition-all duration-300 ${isSelected ? 'bg-emerald-500' : 'bg-emerald-200 group-hover:bg-emerald-300'}`} />
+                              <div style={{ height: `${outHeight}%` }} className={`w-3 rounded-t-sm transition-all duration-300 ${isSelected ? 'bg-rose-500' : 'bg-rose-200 group-hover:bg-rose-300'}`} />
+                            </div>
+                            <span className={`mt-2 text-[10px] font-bold ${isSelected ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                              {m.month.split(' ')[0]}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="mt-4 text-center text-sm font-medium text-slate-400">
+                  No data available
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {activeTab === 'lots' && (
+          <div className="py-4">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-base font-extrabold tracking-[-0.02em] text-slate-900 mb-4">
+                <ReceiptText className="h-5 w-5 text-sky-600" />
+                Lot Breakdown
+              </div>
+              {data.lots.length ? (
+                <div className="space-y-3">
+                  {data.lots.map((lot) => (
+                    <div key={lot.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-bold text-slate-900">
+                            {lot.batch_number || 'Unlabelled Batch'}
+                          </div>
+                          <div className="mt-1 text-xs font-semibold text-slate-500">
+                            Received {formatDate(lot.received_at)}
+                            {lot.expiry_date ? ` · Exp ${formatDate(lot.expiry_date)}` : ''}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-extrabold text-slate-900">
+                            {lot.remaining_quantity} {stockUnit}
+                          </div>
+                          <div className="text-[0.68rem] font-semibold text-slate-400">remaining</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 p-6 text-center">
+                  <div className="text-sm font-bold text-slate-600">No tracked lots yet</div>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="py-4 space-y-4">
+            <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-sm font-extrabold text-slate-800 tracking-tight">
+                <CalendarRange className="h-5 w-5 text-sky-500" /> Filter History
+              </div>
+              <div className="flex flex-row items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+                <div className="flex flex-col gap-1.5 flex-1 sm:w-[150px]">
+                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest pl-1">From</span>
+                  <div className="relative h-11 bg-white border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:border-sky-500 transition-all">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600">
+                      <CalendarRange className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="date"
+                      value={historyStartDate}
+                      onChange={(e) => setHistoryStartDate(e.target.value)}
+                      className="absolute inset-0 w-full h-full pl-9 pr-3 bg-transparent text-[13px] sm:text-sm font-extrabold text-slate-800 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5 flex-1 sm:w-[150px]">
+                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest pl-1">To</span>
+                  <div className="relative h-11 bg-white border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:border-sky-500 transition-all">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600">
+                      <CalendarRange className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="date"
+                      value={historyEndDate}
+                      onChange={(e) => setHistoryEndDate(e.target.value)}
+                      className="absolute inset-0 w-full h-full pl-9 pr-3 bg-transparent text-[13px] sm:text-sm font-extrabold text-slate-800 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-        </div>
-      </section>
 
-      {/* ── Section 9: Linked Records ────────────── */}
-      <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-2 text-base font-extrabold tracking-[-0.02em] text-slate-900">
-          <Link2 className="h-5 w-5 text-sky-600" />
-          Linked Records
-        </div>
-
-        <div className="mt-5 space-y-5">
-          {/* Recent Bills */}
-          <div>
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
-              <ReceiptText className="h-4 w-4 text-slate-400" />
-              Recent Bills
-            </div>
-            <div className="mt-2 space-y-2">
-              {recentBills.length ? (
-                recentBills.map((movement) => (
-                  <button
-                    key={movement.id}
-                    type="button"
-                    onClick={() =>
-                      movement.bill &&
-                      navigate(`/bills/${movement.bill.id}`, { state: { from: location.pathname } })
-                    }
-                    className="flex w-full items-center justify-between rounded-[16px] border border-slate-100 bg-slate-50 px-4 py-3 text-left transition-all hover:border-slate-200 hover:bg-white"
-                  >
-                    <div>
-                      <div className="text-sm font-bold text-slate-900">{movement.bill?.bill_number}</div>
-                      <div className="mt-0.5 text-xs font-semibold text-slate-500">
-                        {movement.bill?.farmer_name_snapshot || 'Walk-in customer'}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-500">
-                        {movement.bill ? formatDate(movement.bill.bill_date) : ''}
-                      </span>
-                      <ChevronRight className="h-4 w-4 text-slate-400" />
-                    </div>
-                  </button>
-                ))
-              ) : (
-                <p className="py-2 text-sm font-medium text-slate-400">No bill references yet.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Recent Purchases */}
-          <div>
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
-              <ShoppingCart className="h-4 w-4 text-slate-400" />
-              Recent Purchases
-            </div>
-            <div className="mt-2 space-y-2">
-              {recentPurchases.length ? (
-                recentPurchases.map((movement) => (
-                  <button
-                    key={movement.id}
-                    type="button"
-                    onClick={() =>
-                      movement.purchase &&
-                      navigate(`/purchases/${movement.purchase.id}`, {
-                        state: { from: location.pathname },
-                      })
-                    }
-                    className="flex w-full items-center justify-between rounded-[16px] border border-slate-100 bg-slate-50 px-4 py-3 text-left transition-all hover:border-slate-200 hover:bg-white"
-                  >
-                    <div>
-                      <div className="text-sm font-bold text-slate-900">
-                        {movement.purchase?.invoice_number || 'Purchase record'}
-                      </div>
-                      <div className="mt-0.5 text-xs font-semibold text-slate-500">
-                        {movement.purchase?.supplier_name || 'Supplier not linked'}
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
-                  </button>
-                ))
-              ) : (
-                <p className="py-2 text-sm font-medium text-slate-400">No purchase references yet.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Section 10: Movement History ─────────── */}
-      <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-2 text-base font-extrabold tracking-[-0.02em] text-slate-900">
-          <CalendarRange className="h-5 w-5 text-sky-600" />
-          Movement History
-        </div>
-
-        <div className="mt-4 space-y-3">
-          {pagedMovements.visibleItems.length ? (
-            pagedMovements.visibleItems.map((movement) => {
-              const isIncoming = movement.quantity_change >= 0;
-              const isBillLink = !!movement.bill?.id;
-              const isPurchaseLink = !!movement.purchase?.id;
-              const isClickable = isBillLink || isPurchaseLink;
-
-              const handleClick = () => {
-                if (isBillLink) {
-                  navigate(`/bills/${movement.bill?.id}`, { state: { from: location.pathname } });
-                } else if (isPurchaseLink) {
-                  navigate(`/purchases/${movement.purchase?.id}`, { state: { from: location.pathname } });
-                }
-              };
-
-              return (
-                <button
-                  key={movement.id}
-                  type="button"
-                  onClick={isClickable ? handleClick : undefined}
-                  disabled={!isClickable}
-                  className={`flex w-full items-center gap-3 rounded-[18px] border border-slate-100 bg-slate-50 p-4 text-left transition-all ${
-                    isClickable
-                      ? 'cursor-pointer hover:border-slate-200 hover:bg-white'
-                      : 'cursor-default'
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge
-                        variant={isIncoming ? 'success' : 'danger'}
-                        className="normal-case tracking-[0.02em]"
-                      >
-                        {getMovementLabel(movement.reference_type, movement.quantity_change)}
-                      </Badge>
-                      {movement.lot_id ? (
-                        <Badge variant="neutral" className="normal-case tracking-[0.02em]">
-                          Lot linked
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <div className="mt-2 truncate text-sm font-semibold text-slate-700">
-                      {movement.notes || 'No note provided'}
-                    </div>
-                    <div className="mt-1 text-xs font-semibold text-slate-400">
-                      {formatDateTime(movement.created_at)}
-                      {movement.bill?.bill_number ? ` · ${movement.bill.bill_number}` : ''}
-                      {movement.purchase?.invoice_number ? ` · ${movement.purchase.invoice_number}` : ''}
-                    </div>
+            <>
+                <div className="w-full rounded-[14px] border border-slate-200/70 bg-white shadow-sm overflow-hidden">
+                  <div className="flex items-center gap-2 text-sm font-extrabold text-slate-700 uppercase tracking-wider px-5 py-4 border-b border-slate-100 bg-[#F4F7FB]/50">
+                    <ReceiptText className="h-4.5 w-4.5 text-slate-400" /> Recent Bills
                   </div>
-
-                  <div className={`shrink-0 text-right ${isIncoming ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    <div className="text-lg font-extrabold tracking-[-0.03em]">
-                      {isIncoming ? '+' : ''}
-                      {movement.quantity_change}
-                    </div>
-                    <div className="text-[0.68rem] font-bold uppercase tracking-[0.1em]">{stockUnit}</div>
-                  </div>
-                </button>
-              );
-            })
-          ) : (
-            <EmptyState
-              icon={Boxes}
-              title="No stock movement recorded yet"
-              description="Movement history will appear here after purchases, bills, cancellations, or manual adjustments."
-              className="rounded-[18px] border border-dashed border-slate-200 bg-slate-50/60"
-            />
-          )}
-        </div>
-        <ListLoadMore
-          shown={pagedMovements.visibleCount}
-          total={pagedMovements.totalCount}
-          onLoadMore={pagedMovements.loadMore}
-          label="Load more movements"
-        />
-      </section>
-
-      {isAdjustOpen ? <StockAdjustmentModal item={inventory} onClose={() => setIsAdjustOpen(false)} /> : null}
-      {isEditInventoryOpen && inventory ? (
-        <EditInventoryModal
-          isOpen={isEditInventoryOpen}
-          onClose={() => setIsEditInventoryOpen(false)}
-          inventoryId={inventory.id}
-          productId={inventory.product.id}
-          productType={inventory.product.type}
-          initialData={{
-            selling_price: inventory.selling_price,
-            cost_price: inventory.cost_price,
-            min_stock_alert: inventory.min_stock_alert,
-            medicine_discount_percentage: inventory.medicine_discount_percentage,
-          }}
-        />
-      ) : null}
-
-      <Modal
-        isOpen={!!transactionModalType}
-        onClose={() => setTransactionModalType(null)}
-        title={
-          transactionModalType === 'in' ? 'This Month In'
-          : transactionModalType === 'out' ? 'This Month Out'
-          : 'Net Movement'
-        }
-      >
-        <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
-          {(() => {
-            if (!pagedModalMovements.visibleItems.length) return <p className="text-sm text-slate-500 text-center py-4">No transactions found.</p>;
-
-            return pagedModalMovements.visibleItems.map(movement => {
-              const isIncoming = movement.quantity_change >= 0;
-              
-              let title = isIncoming ? 'Adjusted In / Returned' : 'Adjusted Out';
-              if (movement.bill) {
-                title = movement.bill.farmer_name_snapshot || 'Walk-in customer';
-              } else if (movement.purchase) {
-                title = movement.purchase.supplier_name || 'Walk-in supplier';
-              }
-
-              return (
-                <div key={movement.id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                  <div>
-                    <div className="font-semibold text-sm text-slate-900">
-                      {title}
-                    </div>
-                    <div className="text-xs text-slate-500 mt-0.5">
-                      {movement.notes || getMovementLabel(movement.reference_type, movement.quantity_change)}
-                    </div>
-                    <div className="text-[10px] font-semibold text-slate-400 mt-1">
-                      {formatDateTime(movement.created_at)}
-                    </div>
-                  </div>
-                  <div className={`text-right font-bold ${isIncoming ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {isIncoming ? '+' : ''}{movement.quantity_change}
+                  <div className="w-full overflow-x-auto hide-scrollbar">
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                      <thead className="bg-slate-50/80 border-b border-slate-200/70 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
+                        <tr>
+                          <th className="px-4 py-2.5 font-semibold">Customer</th>
+                          <th className="px-4 py-2.5 font-semibold">Bill No.</th>
+                          <th className="px-4 py-2.5 font-semibold">Date</th>
+                          <th className="px-4 py-2.5 font-semibold text-right"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {recentBills.length ? recentBills.map(m => (
+                          <tr key={m.id} onClick={() => m.bill && navigate(`/bills/${m.bill.id}`)} className="group hover:bg-sky-50 transition-colors cursor-pointer">
+                            <td className="px-4 py-3 font-bold text-slate-800 group-hover:text-sky-900">{m.bill?.farmer_name_snapshot || 'Unknown Customer'}</td>
+                            <td className="px-4 py-3">
+                              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[11px] font-semibold">{m.bill?.bill_number}</span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-500 text-xs font-semibold">{formatDate(m.created_at)}</td>
+                            <td className="px-4 py-3 text-right">
+                              <ChevronRight className="inline-block h-4 w-4 text-slate-300 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all" />
+                            </td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={4} className="px-4 py-6 text-center text-sm font-medium text-slate-400 italic">No recent bills found.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              );
-            });
-          })()}
-          <ListLoadMore
-            shown={pagedModalMovements.visibleCount}
-            total={pagedModalMovements.totalCount}
-            onLoadMore={pagedModalMovements.loadMore}
-            label="Load more transactions"
-          />
-        </div>
-      </Modal>
+                
+
+
+                <div className="w-full rounded-[14px] border border-slate-200/70 bg-white shadow-sm overflow-hidden">
+                  <div className="flex items-center gap-2 text-sm font-extrabold text-slate-700 uppercase tracking-wider px-5 py-4 border-b border-slate-100 bg-[#F4F7FB]/50">
+                    <ShoppingCart className="h-4.5 w-4.5 text-slate-400" /> Recent Purchases
+                  </div>
+                  <div className="w-full overflow-x-auto hide-scrollbar">
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                      <thead className="bg-slate-50/80 border-b border-slate-200/70 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
+                        <tr>
+                          <th className="px-4 py-2.5 font-semibold">Supplier</th>
+                          <th className="px-4 py-2.5 font-semibold">Invoice No.</th>
+                          <th className="px-4 py-2.5 font-semibold">Date</th>
+                          <th className="px-4 py-2.5 font-semibold text-right"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {recentPurchases.length ? recentPurchases.map(m => (
+                          <tr key={m.id} onClick={() => m.purchase && navigate(`/purchases/${m.purchase.id}`)} className="group hover:bg-emerald-50 transition-colors cursor-pointer">
+                            <td className="px-4 py-3 font-bold text-slate-800 group-hover:text-emerald-900">{m.purchase?.supplier_name || 'Unknown Supplier'}</td>
+                            <td className="px-4 py-3">
+                              <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[11px] font-semibold">{m.purchase?.invoice_number || 'N/A'}</span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-500 text-xs font-semibold">{formatDate(m.created_at)}</td>
+                            <td className="px-4 py-3 text-right">
+                              <ChevronRight className="inline-block h-4 w-4 text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
+                            </td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={4} className="px-4 py-6 text-center text-sm font-medium text-slate-400 italic">No recent purchases found.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+
+
+                <div className="w-full rounded-[14px] border border-slate-200/70 bg-white shadow-sm overflow-hidden">
+                  <div className="flex items-center gap-2 text-sm font-extrabold text-slate-700 uppercase tracking-wider px-5 py-4 border-b border-slate-100 bg-[#F4F7FB]/50">
+                    <SlidersHorizontal className="h-4.5 w-4.5 text-slate-400" /> Recent Adjustments
+                  </div>
+                  <div className="w-full overflow-x-auto hide-scrollbar">
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                      <thead className="bg-slate-50/80 border-b border-slate-200/70 text-slate-500 font-bold text-[10px] uppercase tracking-wider">
+                        <tr>
+                          <th className="px-4 py-2.5 font-semibold">Reason / Notes</th>
+                          <th className="px-4 py-2.5 font-semibold">Qty Change</th>
+                          <th className="px-4 py-2.5 font-semibold">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {recentAdjustments.length ? recentAdjustments.map(m => (
+                          <tr key={m.id} className="group hover:bg-amber-50 transition-colors">
+                            <td className="px-4 py-3 font-bold text-slate-800">{m.notes || (m.reference_type === 'INITIAL_STOCK' ? 'Initial Stock' : 'Manual Adjustment')}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${m.quantity_change > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                {m.quantity_change > 0 ? '+' : ''}{m.quantity_change}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-500 text-xs font-semibold">{formatDate(m.created_at)}</td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={3} className="px-4 py-6 text-center text-sm font-medium text-slate-400 italic">No recent adjustments found.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+            </>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-base font-extrabold tracking-[-0.02em] text-slate-900 mb-4">
+                <Clock className="h-5 w-5 text-sky-600" />
+                Full Movement History
+              </div>
+              <div className="space-y-2">
+                {pagedMovements.visibleItems.length > 0 ? (
+                  <>
+                    <div className="max-h-[500px] overflow-y-auto overflow-x-auto hide-scrollbar border border-slate-100 rounded-[14px]">
+                      <table className="w-full text-left text-sm whitespace-nowrap">
+                        <thead className="bg-slate-50/80 border-b border-slate-200/70 text-slate-500 font-bold text-[10px] uppercase tracking-wider sticky top-0 z-10">
+                          <tr>
+                            <th className="px-4 py-2.5 font-semibold">Type</th>
+                            <th className="px-4 py-2.5 font-semibold">Date & Time</th>
+                            <th className="px-4 py-2.5 font-semibold text-right">Qty Change</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {pagedMovements.visibleItems.map((item) => {
+                            const isIncoming = item.quantity_change > 0;
+                            return (
+                              <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-4 py-3 font-bold text-slate-800">{getMovementLabel(item.reference_type, item.quantity_change)}</td>
+                                <td className="px-4 py-3 text-slate-500 text-xs font-semibold">{formatDateTime(item.created_at)}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${isIncoming ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                    {isIncoming ? '+' : ''}{item.quantity_change}
+                                  </span>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <ListLoadMore 
+                      shown={pagedMovements.visibleItems.length} 
+                      total={data.movements.length} 
+                      onLoadMore={pagedMovements.loadMore} 
+                    />
+                  </>
+                ) : (
+                  <div className="text-sm text-slate-400">No history available.</div>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+      </div>
+
+
+
+      {/* ── Modals ── */}
+      {isAdjustOpen && (
+        <StockAdjustmentModal
+          item={inventory as any}
+          onClose={() => setIsAdjustOpen(false)}
+        />
+      )}
+      <EditInventoryModal
+        isOpen={isEditInventoryOpen}
+        onClose={() => setIsEditInventoryOpen(false)}
+        inventoryId={inventory.id}
+        productId={inventory.product_id}
+        productType={inventory.product.type}
+        initialData={{
+          selling_price: inventory.selling_price,
+          cost_price: inventory.cost_price,
+          min_stock_alert: inventory.min_stock_alert,
+          medicine_discount_percentage: inventory.medicine_discount_percentage
+        }}
+      />
     </PageShell>
   );
 };

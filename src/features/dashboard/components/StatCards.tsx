@@ -112,7 +112,7 @@ export const StatCards: React.FC = () => {
     {
       label: t('dashboard.lowStockItems', 'Low Stock Items'),
       value: String(stats?.lowStockCount ?? 0),
-      path: '/inventory',
+      path: '/inventory?filter=low-stock',
       tone: 'orange',
       trendVariant: 'dot',
       trend: {

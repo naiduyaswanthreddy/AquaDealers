@@ -171,18 +171,18 @@ const CashBookPage: React.FC = () => {
 
           <div className="mt-5 grid grid-cols-2 gap-2.5 xl:grid-cols-6">
             {[
-              { label: 'Opening Cash', value: dailyCash?.openingCash ?? 0, icon: Wallet, tone: 'bg-slate-50 text-slate-700', gridClass: 'col-span-2 xl:col-span-1' },
-              { label: 'Cash In', value: dailyCash?.cashIn ?? 0, icon: ArrowDownRight, tone: 'bg-emerald-50 text-emerald-700', gridClass: 'col-span-1' },
-              { label: 'Cash Out', value: dailyCash?.cashOut ?? 0, icon: ArrowUpRight, tone: 'bg-rose-50 text-rose-700', gridClass: 'col-span-1' },
-              { label: 'UPI In', value: dailyCash?.upiIn ?? 0, icon: Smartphone, tone: 'bg-sky-50 text-sky-700', gridClass: 'col-span-1' },
-              { label: 'Shop Expenses', value: dailyCash?.shopExpenses ?? 0, icon: Landmark, tone: 'bg-indigo-50 text-indigo-700', gridClass: 'col-span-1' },
-              { label: 'Expected Cash', value: dailyCash?.expectedClosingCash ?? 0, icon: Scale, tone: 'bg-amber-50 text-amber-700', gridClass: 'col-span-2 xl:col-span-1' },
+              { label: 'Opening Cash', value: dailyCash?.openingCash ?? 0, icon: Wallet, cardTone: 'from-slate-50 to-slate-100/60 border-slate-200', iconTone: 'bg-white text-slate-700 shadow-sm', gridClass: 'col-span-2 xl:col-span-1' },
+              { label: 'Cash In', value: dailyCash?.cashIn ?? 0, icon: ArrowDownRight, cardTone: 'from-emerald-50/80 to-emerald-100/50 border-emerald-100', iconTone: 'bg-white text-emerald-600 shadow-sm', gridClass: 'col-span-1' },
+              { label: 'Cash Out', value: dailyCash?.cashOut ?? 0, icon: ArrowUpRight, cardTone: 'from-rose-50/80 to-rose-100/50 border-rose-100', iconTone: 'bg-white text-rose-600 shadow-sm', gridClass: 'col-span-1' },
+              { label: 'UPI In', value: dailyCash?.upiIn ?? 0, icon: Smartphone, cardTone: 'from-sky-50/80 to-sky-100/50 border-sky-100', iconTone: 'bg-white text-sky-600 shadow-sm', gridClass: 'col-span-1' },
+              { label: 'Shop Expenses', value: dailyCash?.shopExpenses ?? 0, icon: Landmark, cardTone: 'from-indigo-50/80 to-indigo-100/50 border-indigo-100', iconTone: 'bg-white text-indigo-600 shadow-sm', gridClass: 'col-span-1' },
+              { label: 'Expected Cash', value: dailyCash?.expectedClosingCash ?? 0, icon: Scale, cardTone: 'from-amber-50/80 to-amber-100/50 border-amber-100', iconTone: 'bg-white text-amber-600 shadow-sm', gridClass: 'col-span-2 xl:col-span-1' },
             ].map((card) => (
-              <div key={card.label} className={cn("rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-slate-50/70 p-3 shadow-sm sm:p-4", card.gridClass)}>
-                <div className={cn('mb-2.5 flex h-9 w-9 items-center justify-center rounded-xl', card.tone)}>
+              <div key={card.label} className={cn("rounded-2xl border bg-gradient-to-br p-3 shadow-sm sm:p-4", card.cardTone, card.gridClass)}>
+                <div className={cn('mb-2.5 flex h-9 w-9 items-center justify-center rounded-xl', card.iconTone)}>
                   <card.icon className="h-4.5 w-4.5" />
                 </div>
-                <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 sm:text-xs">{card.label}</p>
+                <p className="text-[9px] font-black uppercase tracking-wider text-slate-500 sm:text-xs">{card.label}</p>
                 <p className="mt-1 text-[0.95rem] font-black tracking-tight text-slate-900 sm:text-xl">{formatCurrency(card.value)}</p>
               </div>
             ))}

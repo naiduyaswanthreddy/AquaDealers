@@ -359,8 +359,13 @@ export async function getCollectTodayFarmers(dealerId: string, branchId?: string
       if (f.crop_status === 'harvested') return true;
       if (overLimit) return true;
       if (f.stocking_date) {
-        const days = differenceInDays(today, parseISO(f.stocking_date));
-        return days > 60;
+        try {
+          const days = differenceInDays(today, parseISO(f.stocking_date));
+          return days > 60;
+        } catch (err) {
+          console.warn('Invalid stocking_date for farmer:', f.id);
+          return false;
+        }
       }
       return false;
     })
@@ -502,4 +507,105 @@ export async function getRecentTransactions(
   return [...formattedBills, ...formattedPayments]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, limit);
+}
+
+export async function getMonthlySalesTrend(dealerId: string, branchId?: string | null) {
+  // Get date 30 days ago
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 29); // 30 days including today
+  
+  const startStr = startDate.toISOString().split('T')[0];
+  const endStr = endDate.toISOString().split('T')[0];
+
+  let query = supabase
+    .from('bills')
+    .select('bill_date, total')
+    .eq('dealer_id', dealerId)
+    .eq('status', 'active')
+    .gte('bill_date', startStr)
+    .lte('bill_date', endStr);
+
+  if (branchId) {
+    query = query.eq('branch_id', branchId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const totalsByDate = new Map<string, number>();
+  
+  // Initialize last 30 days with 0
+  const series = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dStr = d.toISOString().split('T')[0];
+    const displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    totalsByDate.set(dStr, 0);
+    series.push({ date: dStr, displayDate, amount: 0 });
+  }
+
+  for (const item of data ?? []) {
+    const billDate = item.bill_date;
+    if (totalsByDate.has(billDate)) {
+      totalsByDate.set(billDate, totalsByDate.get(billDate)! + Number(item.total));
+    }
+  }
+
+  return series.map(item => ({
+    ...item,
+    amount: totalsByDate.get(item.date) || 0
+  }));
+}
+
+export async function getTopSoldProducts(dealerId: string, branchId?: string | null) {
+  // Fetch top sold products from bill_items for the last 30 days
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 30);
+  const startStr = startDate.toISOString().split('T')[0];
+
+  let query = supabase
+    .from('bill_items')
+    .select(`
+      quantity,
+      product_id,
+      products(name, type, unit),
+      bills!inner(bill_date, status, dealer_id, branch_id)
+    `)
+    .eq('bills.dealer_id', dealerId)
+    .eq('bills.status', 'active')
+    .gte('bills.bill_date', startStr);
+
+  if (branchId) {
+    query = query.eq('bills.branch_id', branchId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const productMap = new Map<string, any>();
+
+  for (const item of data ?? []) {
+    const pId = item.product_id;
+    if (!pId || !item.products) continue;
+
+    if (!productMap.has(pId)) {
+      const prod = Array.isArray(item.products) ? item.products[0] : item.products;
+      if (!prod) continue;
+      productMap.set(pId, {
+        id: pId,
+        name: prod.name,
+        type: prod.type,
+        unit: prod.unit || 'units',
+        quantity: 0
+      });
+    }
+    const p = productMap.get(pId);
+    p.quantity += Number(item.quantity || 0);
+  }
+
+  return Array.from(productMap.values())
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 5); // top 5
 }

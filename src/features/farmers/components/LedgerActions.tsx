@@ -33,7 +33,8 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
       <div className="grid grid-cols-3 gap-3">
         <button
           onClick={onCollect}
-          className="flex h-24 flex-col items-center justify-center gap-2 rounded-[22px] border border-emerald-200 bg-[linear-gradient(180deg,#ecfdf5_0%,#d1fae5_100%)] text-emerald-900 shadow-sm transition-all active:scale-95"
+          style={{ backgroundColor: '#e6f7ec' }}
+          className="flex h-24 flex-col items-center justify-center gap-2 rounded-[22px] border border-emerald-200/60 text-emerald-900 shadow-[0_1px_2px_rgba(16,185,129,0.05)] transition-all active:scale-95 hover:brightness-[0.97]"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
             <IndianRupee className="w-5 h-5" />
@@ -43,7 +44,8 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
 
         <button
           onClick={() => navigate(`/bills/new?farmer=${farmerId}`)}
-          className="flex h-24 flex-col items-center justify-center gap-2 rounded-[22px] border border-sky-200 bg-[linear-gradient(180deg,#eff6ff_0%,#dbeafe_100%)] text-sky-950 shadow-sm transition-all active:scale-95"
+          style={{ backgroundColor: '#e6f3ff' }}
+          className="flex h-24 flex-col items-center justify-center gap-2 rounded-[22px] border border-sky-200/60 text-sky-950 shadow-[0_1px_2px_rgba(14,165,233,0.05)] transition-all active:scale-95 hover:brightness-[0.97]"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500 text-white shadow-sm">
             <Plus className="w-5 h-5" />
@@ -53,7 +55,8 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
 
         <button
           onClick={() => navigate(`/bills/historical?farmer=${farmerId}`)}
-          className="flex h-24 flex-col items-center justify-center gap-2 rounded-[22px] border border-orange-200 bg-[linear-gradient(180deg,#fff7ed_0%,#ffedd5_100%)] text-orange-950 shadow-sm transition-all active:scale-95"
+          style={{ backgroundColor: '#fff3e6' }}
+          className="flex h-24 flex-col items-center justify-center gap-2 rounded-[22px] border border-orange-200/60 text-orange-950 shadow-[0_1px_2px_rgba(249,115,22,0.05)] transition-all active:scale-95 hover:brightness-[0.97]"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-white shadow-sm">
             <History className="w-5 h-5" />
@@ -66,7 +69,8 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
         <button
           onClick={handleWhatsApp}
           disabled={!farmerPhone}
-          className="flex h-14 items-center justify-center gap-3 rounded-[18px] border border-slate-200 bg-slate-50 text-slate-700 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+          style={{ backgroundColor: '#f0fcf4' }}
+          className="flex h-14 items-center justify-center gap-3 rounded-[18px] border border-emerald-200/50 text-emerald-900 shadow-sm transition-all active:scale-95 disabled:opacity-50 hover:brightness-[0.97]"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm">
             <MessageCircle className="w-4 h-4 text-emerald-500" />
@@ -77,7 +81,8 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
         <button
           onClick={handleCall}
           disabled={!farmerPhone}
-          className="flex h-14 items-center justify-center gap-3 rounded-[18px] border border-slate-200 bg-slate-50 text-slate-700 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+          style={{ backgroundColor: '#f0f8ff' }}
+          className="flex h-14 items-center justify-center gap-3 rounded-[18px] border border-sky-200/50 text-sky-900 shadow-sm transition-all active:scale-95 disabled:opacity-50 hover:brightness-[0.97]"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm">
             <Phone className="w-4 h-4 text-sky-500" />

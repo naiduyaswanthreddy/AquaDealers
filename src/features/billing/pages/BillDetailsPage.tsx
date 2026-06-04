@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Download, Printer, MessageCircle } from 'lucide-react';
 import { useBillDetails } from '../hooks/useBilling';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import Button from '@/components/ui/Button';
@@ -74,7 +74,7 @@ const BillDetailsPage: React.FC = () => {
     if (!bill) return;
     try {
       setIsGenerating(true);
-      await shareBillPdfViaWhatsApp(bill, dealer);
+      await shareBillPdfViaWhatsApp(bill, dealer, bill.farmer?.phone);
     } catch (err) {
       console.error('Failed to share PDF', err);
     } finally {
@@ -157,7 +157,7 @@ const BillDetailsPage: React.FC = () => {
             </div>
             <div className="text-left sm:text-right">
               <p className="text-sm text-gray-500 mb-1">{t('billing.date')}</p>
-              <p className="font-bold text-gray-900">{formatDate(bill.bill_date)}</p>
+              <p className="font-bold text-gray-900">{formatDateTime(bill.created_at)}</p>
             </div>
           </div>
         </div>

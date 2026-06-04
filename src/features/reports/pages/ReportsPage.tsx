@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { BarChart3, BookOpen, Building2, CalendarDays, Download, FileSpreadsheet, LineChart, ShieldAlert, ShoppingCart, Wallet } from 'lucide-react';
+import DateRangeFilter from '@/components/ui/DateRangeFilter';
+import { BarChart3, BookOpen, Building2, CalendarDays, Download, FileSpreadsheet, LineChart, ShieldAlert, ShoppingCart, Wallet, ChevronRight, ArrowLeft, Package, CreditCard, Users, PieChart, FileText, Award } from 'lucide-react';
 import { format } from 'date-fns';
 import { useMonthlyFinancePack } from '../hooks/useReports';
 import { exportRowsToCsv, exportRowsToExcelCompatibleHtml, exportSummaryPdf } from '../utils/reportExport';
@@ -112,7 +114,9 @@ function ReportSection<T extends Record<string, any>>({
                         column.align === 'center' && 'text-center'
                       )}
                     >
-                      {typeof value === 'number' ? formatCurrency(value) : (value ?? '—')}
+                      {typeof value === 'number' 
+                        ? ((column.type === 'number' || ['qty', 'quantity', 'ageDays', 'gstRate'].includes(column.key)) ? value.toLocaleString('en-IN') : formatCurrency(value)) 
+                        : (value ?? '—')}
                     </td>
                   );
                 })}
@@ -145,10 +149,76 @@ function ReportSection<T extends Record<string, any>>({
 
 const ReportsPage: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [month, setMonth] = useState(currentDate.getMonth() + 1);
   const [year, setYear] = useState(currentDate.getFullYear());
+  
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [isCustomRange, setIsCustomRange] = useState(false);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
-  const { data: pack, isLoading, error } = useMonthlyFinancePack(month, year);
+  const queryStart = isCustomRange ? startDate : month;
+  const queryEnd = isCustomRange ? endDate : year;
+
+  const prevQueryStart = useMemo(() => {
+    if (!isCustomRange) {
+      return month === 1 ? 12 : month - 1;
+    }
+    const s = new Date(startDate);
+    const e = new Date(endDate);
+    const diff = e.getTime() - s.getTime();
+    const prevS = new Date(s.getTime() - diff - 86400000);
+    return prevS.toISOString().split('T')[0];
+  }, [isCustomRange, month, startDate, endDate]);
+
+  const prevQueryEnd = useMemo(() => {
+    if (!isCustomRange) {
+      return month === 1 ? year - 1 : year;
+    }
+    const s = new Date(startDate);
+    const prevE = new Date(s.getTime() - 86400000);
+    return prevE.toISOString().split('T')[0];
+  }, [isCustomRange, month, year, startDate]);
+
+  const { data: pack, isLoading, error } = useMonthlyFinancePack(queryStart, queryEnd);
+  const { data: prevPack } = useMonthlyFinancePack(prevQueryStart, prevQueryEnd);
+
+  const getTrend = (current?: number, previous?: number) => {
+    if (current === undefined || previous === undefined) return undefined;
+    if (previous === 0 && current === 0) return undefined;
+    if (previous === 0) return current > 0 ? '↑ 100.0%' : '↓ 100.0%';
+    const percent = ((current - previous) / Math.abs(previous)) * 100;
+    const absPercent = Math.abs(percent).toFixed(1);
+    if (percent > 0) return `↑ ${absPercent}%`;
+    if (percent < 0) return `↓ ${absPercent}%`;
+    return undefined;
+  };
+
+  const selectedReport = useMemo(() => {
+    if (!pack || !selectedReportId) return null;
+    return (pack as any)[selectedReportId];
+  }, [pack, selectedReportId]);
+
+  const handleOpenReport = (id: string) => {
+    if (!isCustomRange) {
+      const today = new Date(year, month - 1, 1);
+      const lastDay = new Date(year, month, 0);
+      
+      const offsetFirst = new Date(today.getTime() - (today.getTimezoneOffset() * 60000));
+      const offsetLast = new Date(lastDay.getTime() - (lastDay.getTimezoneOffset() * 60000));
+      
+      setStartDate(offsetFirst.toISOString().split('T')[0]);
+      setEndDate(offsetLast.toISOString().split('T')[0]);
+      setIsCustomRange(true);
+    }
+    setSelectedReportId(id);
+  };
+
+  const handleCloseReport = () => {
+    setSelectedReportId(null);
+    setIsCustomRange(false);
+  };
 
   const overviewCards = useMemo(() => {
     if (!pack) return [];
@@ -248,12 +318,59 @@ const ReportsPage: React.FC = () => {
     );
   }
 
+  if (selectedReport) {
+    const isPnL = selectedReport.title === 'Profit & Loss';
+
+    return (
+      <PageShell width="wide" className="space-y-6 pb-20 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" onClick={handleCloseReport} leftIcon={<ArrowLeft className="h-4 w-4" />}>
+              Back to Dashboard
+            </Button>
+            <h1 className="text-2xl font-black text-slate-900">{selectedReport.title}</h1>
+          </div>
+          
+          <div className="bg-white p-2 rounded-xl border border-slate-100 shadow-sm flex-shrink-0">
+            <DateRangeFilter
+              startDate={startDate}
+              endDate={endDate}
+              onChange={(s, e) => {
+                setStartDate(s);
+                setEndDate(e);
+                setIsCustomRange(true);
+              }}
+            />
+          </div>
+        </div>
+        
+        {isPnL ? (
+          <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm max-w-3xl">
+            <p className="text-sm font-bold text-emerald-800">Monthly Snapshot</p>
+            <h2 className="mt-2 text-4xl font-black text-emerald-700">
+              {selectedReport.summaries.find((item: any) => item.label === 'Net Profit')?.value || '0'}
+            </h2>
+            <p className="mt-2 text-xs text-emerald-700/70">Revenue − Purchases − Expenses</p>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              {selectedReport.summaries.map((item: any) => (
+                <div key={item.label} className="rounded-2xl bg-white/80 px-5 py-4 border border-emerald-50">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{item.label}</p>
+                  <p className="mt-1 text-xl font-black text-slate-900">{item.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <ReportSection table={selectedReport} />
+        )}
+      </PageShell>
+    );
+  }
+
   return (
     <PageShell width="wide" className="space-y-6 pb-20 animate-fade-in">
       <PageHeader
-        eyebrow={t('nav.reports', 'Reports & Analytics')}
-        title="CA Monthly Reports Center"
-        description="Monthly finance pack with accountant-ready exports"
+        title={t('nav.reports', 'Reports & Analytics')}
         action={
           <div className="flex flex-wrap gap-2">
             <Button
@@ -294,7 +411,6 @@ const ReportsPage: React.FC = () => {
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400">Reporting Month</p>
             <h2 className="mt-1 text-2xl font-black text-slate-900">{pack.period.label}</h2>
-            <p className="mt-1 text-sm text-slate-500">Use the month selector to review GST, cash flow, profit, dues, and supporting ledgers.</p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -381,42 +497,69 @@ const ReportsPage: React.FC = () => {
         </div>
       </div>
 
-      <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-        <div className="flex items-start justify-between gap-4">
+      {/* Main Reports Grid */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {[
+          { id: 'sales', title: 'Sales Report', description: 'Analyze sales performance, trends and revenue.', icon: LineChart, color: 'text-blue-600', bg: 'bg-blue-50', period: 'Last 30 days', action: () => handleOpenReport('sales'), trend: getTrend(pack?.rawTotals.totalSales, prevPack?.rawTotals.totalSales) },
+          { id: 'purchases', title: 'Purchase Report', description: 'Track purchases, expenses and vendor analysis.', icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-50', period: 'Last 30 days', action: () => handleOpenReport('purchases'), trend: getTrend(pack?.rawTotals.totalPurchases, prevPack?.rawTotals.totalPurchases) },
+          { id: 'stock', title: 'Stock Report', description: 'Monitor stock levels, movements and value.', icon: Package, color: 'text-purple-600', bg: 'bg-purple-50', period: 'Current Stock', action: () => navigate('/inventory/report') },
+          { id: 'payments', title: 'Payment Report', description: 'View payments received, outstanding and collection.', icon: CreditCard, color: 'text-rose-600', bg: 'bg-rose-50', period: 'Last 30 days', action: () => handleOpenReport('receivables'), trend: getTrend(pack?.rawTotals.totalCollections, prevPack?.rawTotals.totalCollections) },
+          { id: 'dues', title: 'Customer Dues', description: 'Track customer outstanding and due amounts.', icon: Users, color: 'text-orange-600', bg: 'bg-orange-50', period: 'All Customers', action: () => handleOpenReport('receivables'), trend: getTrend(pack?.rawTotals.outstandingDues, prevPack?.rawTotals.outstandingDues) },
+          { id: 'pnl', title: 'Profit & Loss', description: 'Analyze profit, expenses and business profitability.', icon: PieChart, color: 'text-teal-600', bg: 'bg-teal-50', period: 'This Financial Year', action: () => handleOpenReport('profitAndLoss'), trend: getTrend(pack?.rawTotals.netProfit, prevPack?.rawTotals.netProfit) },
+          { id: 'gst', title: 'GST Report', description: 'View GST summary, returns and tax analysis.', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', period: 'This Month', action: () => navigate('/gst') },
+          { id: 'cashbook', title: 'Cash Book', description: 'Cash inflow and outflow with running balance.', icon: BookOpen, color: 'text-amber-600', bg: 'bg-amber-50', period: 'This Month', action: () => handleOpenReport('cashBook') },
+          { id: 'products', title: 'Top Products', description: 'Check your top selling products and performance.', icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50', period: 'Last 30 days', action: () => handleOpenReport('topProducts') },
+        ].map((item) => (
+          <div key={item.id} onClick={item.action} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm flex flex-col hover:shadow-md hover:border-slate-200 transition-all cursor-pointer">
+            <div className="flex items-start gap-4 mb-4">
+              <div className={cn('rounded-xl p-3 shrink-0', item.bg)}>
+                <item.icon className={cn('h-6 w-6', item.color)} />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-slate-900 text-lg">{item.title}</h3>
+                <p className="mt-1 text-sm text-slate-500 leading-snug">{item.description}</p>
+                {item.trend && (
+                  <span className={cn('inline-block mt-3 px-2 py-0.5 rounded text-xs font-bold', item.trend.startsWith('↑') ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700')}>
+                    {item.trend}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500 font-medium">
+              <span>{item.period}</span>
+              <ChevronRight className="h-4 w-4 text-slate-400" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* GST Return Reports */}
+      <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400">Optional add-ons</p>
-            <h2 className="mt-1 text-xl font-black text-slate-900">Additional CA reports when those data sources are active</h2>
+            <h2 className="text-xl font-black text-slate-900">GST Return Reports</h2>
+            <p className="text-sm text-slate-500 mt-1">Statutory GST return reports</p>
           </div>
         </div>
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {[
-            { title: 'Inventory Summary', description: 'Stock valuation, slow movers, and low stock alerts.', icon: Building2 },
-            { title: 'Payroll & Statutory', description: 'Salary, TDS/PT, and attendance-linked payouts.', icon: CalendarDays },
-            { title: 'Fixed Assets', description: 'Asset register, depreciation, and additions/disposals.', icon: LineChart },
-            { title: 'Loans & EMI', description: 'Outstanding principal, interest, and due instalments.', icon: Wallet },
+            { id: 'gstr1', title: 'GSTR-1', description: 'Outward supplies return', period: 'This Month', action: () => exportRowsToExcelCompatibleHtml(`${pack.sales.exportBaseName}_GSTR1`, 'GSTR-1 Outward Supplies', pack.sales.columns, pack.sales.rows) },
+            { id: 'gstr2', title: 'GSTR-2', description: 'Inward supplies return', period: 'This Month', action: () => exportRowsToExcelCompatibleHtml(`${pack.purchases.exportBaseName}_GSTR2`, 'GSTR-2 Inward Supplies', pack.purchases.columns, pack.purchases.rows) },
+            { id: 'gstr3b', title: 'GSTR-3B', description: 'Monthly summary return', period: 'This Month', action: () => navigate('/gst') },
+            { id: 'gstr4', title: 'GSTR-4', description: 'Composition scheme return', period: 'This Quarter', action: () => exportRowsToExcelCompatibleHtml(`${pack.sales.exportBaseName}_GSTR4`, 'GSTR-4 Composition Summary', pack.sales.columns, pack.sales.rows) },
+            { id: 'gstr9', title: 'GSTR-9', description: 'Annual return', period: 'This Financial Year', action: () => alert('GSTR-9 is an annual return. To generate, please export 12 months of GSTR-1 and GSTR-3B data.') },
           ].map((item) => (
-            <div key={item.title} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-              <div className="flex items-start gap-3">
-                <div className="rounded-xl bg-white p-2 shadow-sm">
-                  <item.icon className="h-5 w-5 text-slate-700" />
-                </div>
-                <div>
-                  <h3 className="font-black text-slate-900">{item.title}</h3>
-                  <p className="mt-1 text-sm text-slate-500">{item.description}</p>
-                </div>
+            <div key={item.id} onClick={item.action} className="rounded-2xl border border-slate-100 bg-white p-4 text-center hover:border-blue-200 hover:shadow-md transition-all cursor-pointer flex flex-col items-center">
+              <h3 className="font-black text-slate-900 text-lg">{item.title}</h3>
+              <p className="mt-2 text-xs text-slate-500 flex-1 px-2">{item.description}</p>
+              <div className="mt-5 px-3 py-1.5 bg-slate-50 rounded-lg text-xs font-bold text-slate-500 w-full">
+                {item.period}
               </div>
             </div>
           ))}
         </div>
-      </section>
-
-      <ReportSection table={pack.sales} />
-      <ReportSection table={pack.purchases} />
-      <ReportSection table={pack.expenses} />
-      <ReportSection table={pack.cashBook} />
-      <ReportSection table={pack.bankReconciliation} note={pack.bankReconciliation.note} />
-      <ReportSection table={pack.receivables} />
-      <ReportSection table={pack.payables} />
+      </div>
     </PageShell>
   );
 };

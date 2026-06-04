@@ -76,10 +76,13 @@ const SupplierListPage: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {pagedSuppliers.visibleItems.map((supplier) => (
-          <button
+          <div
             key={supplier.id}
+            role="button"
+            tabIndex={0}
             onClick={() => navigate(`/suppliers/${supplier.id}`)}
-            className="flex flex-col p-4 bg-white rounded-2xl shadow-sm border border-gray-100 transition-all hover:shadow-md hover:border-blue-200 text-left"
+            style={{ backgroundColor: '#ffffff' }}
+            className="flex flex-col p-4 rounded-[22px] shadow-sm border border-slate-200/80 transition-all hover:shadow-md hover:-translate-y-0.5 hover:border-blue-300 text-left relative overflow-hidden cursor-pointer"
           >
             <div className="flex items-start justify-between w-full mb-4">
               <div className="flex items-center gap-3">
@@ -97,7 +100,7 @@ const SupplierListPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 w-full bg-gray-50 p-3 rounded-xl border border-gray-100">
+            <div className="grid grid-cols-2 gap-4 w-full bg-slate-50/50 p-3.5 rounded-xl border border-slate-100/60">
               <div>
                 <p className="text-xs text-gray-500 mb-0.5">{t('suppliers.totalDue')}</p>
                 <p className={cn(
@@ -114,7 +117,7 @@ const SupplierListPage: React.FC = () => {
                 </p>
               </div>
             </div>
-          </button>
+          </div>
         ))}
 
         {pagedSuppliers.visibleItems.length === 0 && (

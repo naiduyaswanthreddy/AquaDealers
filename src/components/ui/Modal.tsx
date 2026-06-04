@@ -11,7 +11,7 @@ interface ModalProps {
   children: React.ReactNode;
   footerButtons?: {
     label: string;
-    onClick: () => void;
+    onClick?: () => void;
     variant?: 'primary' | 'secondary' | 'accent' | 'danger' | 'ghost' | 'outline' | 'success' | 'dark' | 'darkOutline';
     loading?: boolean;
     disabled?: boolean;

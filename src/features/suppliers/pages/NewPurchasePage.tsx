@@ -185,38 +185,26 @@ const NewPurchasePage: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Product Type</label>
-              <div className="flex gap-2">
+              <div className="flex p-1.5 bg-slate-100 rounded-xl shrink-0 gap-1.5">
                 <button
                   type="button"
                   onClick={() => setProductTypeFilter('feed')}
-                  className={`flex-1 py-3 px-4 rounded-xl border text-sm font-extrabold transition-all duration-200 shadow-sm ${
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-lg transition-all ${
                     productTypeFilter === 'feed'
-                      ? 'text-white border-primary shadow-[0_4px_12px_rgba(20,103,159,0.18)]'
-                      : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100/70 hover:text-gray-700'
+                      ? '!bg-blue-600 !text-white shadow-md'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
                   }`}
-                  style={{
-                    ...(productTypeFilter === 'feed' ? {
-                      background: 'linear-gradient(135deg, #14679f 0%, #2a8dcb 100%)',
-                      borderColor: 'transparent'
-                    } : {})
-                  }}
                 >
                   Feed Bag
                 </button>
                 <button
                   type="button"
                   onClick={() => setProductTypeFilter('medicine')}
-                  className={`flex-1 py-3 px-4 rounded-xl border text-sm font-extrabold transition-all duration-200 shadow-sm ${
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-lg transition-all ${
                     productTypeFilter === 'medicine'
-                      ? 'text-white border-primary shadow-[0_4px_12px_rgba(20,103,159,0.18)]'
-                      : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100/70 hover:text-gray-700'
+                      ? '!bg-blue-600 !text-white shadow-md'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
                   }`}
-                  style={{
-                    ...(productTypeFilter === 'medicine' ? {
-                      background: 'linear-gradient(135deg, #14679f 0%, #2a8dcb 100%)',
-                      borderColor: 'transparent'
-                    } : {})
-                  }}
                 >
                   Medicine
                 </button>

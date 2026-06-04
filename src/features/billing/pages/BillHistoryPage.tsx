@@ -9,7 +9,7 @@ import { ListLoadMore } from '@/components/ui/ListLoadMore';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PageShell } from '@/components/layout/PageShell';
 import { SectionCard } from '@/components/layout/SectionCard';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { useBills } from '../hooks/useBilling';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
 import { billingService } from '../services/billingService';
@@ -136,7 +136,7 @@ const BillHistoryPage: React.FC = () => {
                           )}
                         </div>
                         <div className="mt-0.5 truncate text-[0.82rem] font-medium text-slate-500">
-                          {bill.bill_number} • {formatDate(bill.bill_date)}
+                          {bill.bill_number} • {formatDateTime(bill.created_at)}
                         </div>
                       </div>
                     </div>

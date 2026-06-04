@@ -15,6 +15,7 @@ export interface ReportColumn {
   key: string;
   label: string;
   align?: 'left' | 'right' | 'center';
+  type?: 'currency' | 'number' | 'text';
 }
 
 export type ReportCellValue = string | number | boolean | null;
@@ -26,7 +27,7 @@ export interface SalesRegisterRow {
   itemService: string;
   qty: number;
   taxableValue: number;
-  gstRate: number;
+  gstRate: number | string;
   gstAmount: number;
   paymentStatus: string;
   paymentMode: string;
@@ -123,6 +124,8 @@ export interface MonthlyFinancePack {
   };
   receivables: ReportTableModel<AgingRow>;
   payables: ReportTableModel<AgingRow>;
+  topProducts: ReportTableModel<TopProduct>;
+  rawTotals: DashboardMetrics;
 }
 
 export interface MonthlyFinancePackFilters {

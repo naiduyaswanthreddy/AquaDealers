@@ -271,8 +271,8 @@ a {
   .page-header__hero {
     margin-inline: calc(50% - 50vw);
     padding-inline: calc(50vw - 50% + var(--page-gutter));
-    padding-top: 2rem;
-    padding-bottom: 4rem;
+    padding-top: 1rem;
+    padding-bottom: 3rem;
   }
 
   .page-header__meta {
@@ -420,7 +420,7 @@ a {
   }
 
   .dashboard-hero__cards {
-    margin-top: 1rem;
+    margin-top: -3rem;
   }
 }
 

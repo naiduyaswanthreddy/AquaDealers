@@ -82,7 +82,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
   ];
 
   return (
-    <div className="billing-step-content">
+    <div className="billing-step-content lg:px-8 lg:pb-8">
       <section className="billing-payment-card">
         <div className="billing-payment-card__summary">
           <div>
@@ -175,24 +175,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
         </section>
       ) : null}
 
-      <section className="billing-collapsed-card">
-        <button
-          type="button"
-          onClick={() => setShowNotes(!showNotes)}
-          className="flex w-full items-center justify-between gap-3 text-left outline-none"
-        >
-          <h2 className="text-sm font-black text-slate-700">Notes / Reference (Optional)</h2>
-          <ChevronDown className={`h-5 w-5 text-slate-500 transition-transform duration-200 ${showNotes ? 'rotate-180' : ''}`} />
-        </button>
-        {showNotes && (
-          <textarea
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Add note or reference..."
-            className="mt-3 min-h-16 w-full resize-none rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-800 outline-none focus:border-primary animate-fade-in"
-          />
-        )}
-      </section>
+
 
       <footer className="billing-bottom-bar">
         <div className="min-w-0 flex-shrink-0">

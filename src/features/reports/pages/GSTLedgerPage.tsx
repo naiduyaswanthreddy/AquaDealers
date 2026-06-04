@@ -127,7 +127,7 @@ const GSTLedgerPage: React.FC = () => {
       <div className="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 shadow-sm">
         <p className="text-sm font-bold text-amber-800">{t('reports.netGstPayable', 'Net GST Payable')}</p>
         <h2 className="mt-2 text-4xl font-black text-amber-700">
-          {formatCurrency(Number(gst.summaries.find((summary) => summary.label === 'Net GST Payable')?.value || 0))}
+          {gst.summaries.find((summary) => summary.label === 'Net GST Payable')?.value || formatCurrency(0)}
         </h2>
         <p className="mt-2 text-xs text-amber-700/70">{t('reports.netGstFormula', 'Output GST - Input GST')}</p>
       </div>

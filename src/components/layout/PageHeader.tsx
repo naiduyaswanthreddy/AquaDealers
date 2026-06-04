@@ -20,7 +20,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ eyebrow, title, descript
 
   return (
     <div className={cn('page-header page-header--page', className)}>
-      <div className="page-header__hero flex flex-col gap-4 relative">
+      <div className="page-header__hero flex flex-col gap-4 md:gap-2 relative">
         {(onBack || topRightAction) && (
           <div className="flex w-full items-center justify-between z-10">
             {onBack ? (

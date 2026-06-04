@@ -10,20 +10,20 @@ export const reportKeys = {
     [...reportKeys.all, 'dashboard', { dealerId, branchId, dates }] as const,
   gst: (dealerId: string, branchId?: string | null, period?: { month: number, year: number }) =>
     [...reportKeys.all, 'gst', { dealerId, branchId, period }] as const,
-  financePack: (dealerId: string, branchId?: string | null, period?: MonthlyFinancePackFilters) =>
-    [...reportKeys.all, 'finance-pack', { dealerId, branchId, period }] as const,
+  financePack: (dealerId: string, branchId?: string | null, p1?: number | string, p2?: number | string) =>
+    [...reportKeys.all, 'finance-pack', { dealerId, branchId, p1, p2 }] as const,
 };
 
-export function useMonthlyFinancePack(month: number, year: number) {
+export function useMonthlyFinancePack(monthOrStartDate: number | string, yearOrEndDate: number | string) {
   const { user } = useAuthStore();
   const { activeBranch, isAllBranches } = useBranchStore();
   const branchId = isAllBranches ? null : (activeBranch?.id || null);
 
   return useQuery({
-    queryKey: reportKeys.financePack(user?.id || '', branchId, { month, year }),
+    queryKey: reportKeys.financePack(user?.id || '', branchId, monthOrStartDate, yearOrEndDate),
     queryFn: async () => {
       if (!user) throw new Error('User not found');
-      return reportsService.getMonthlyFinancePack(user.id, branchId, month, year);
+      return reportsService.getMonthlyFinancePack(user.id, branchId, monthOrStartDate, yearOrEndDate);
     },
     enabled: !!user?.id,
   });

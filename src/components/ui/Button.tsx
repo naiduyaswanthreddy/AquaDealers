@@ -10,11 +10,11 @@ const buttonVariants = {
   accent:
     'bg-[#ea8e1b] text-white shadow-lg hover:bg-[#d97706] hover:brightness-[1.03]',
   danger:
-    'bg-[#d64545] text-white shadow-lg shadow-danger/20 hover:brightness-[1.03]',
+    'bg-rose-600 text-white shadow-lg shadow-rose-500/20 hover:bg-rose-700 hover:brightness-[1.03]',
   ghost: 'bg-transparent text-[#0052cc] hover:bg-[#0052cc]/8',
   outline: 'bg-[#0052cc]/8 text-[#0052cc] border border-[#0052cc]/20 shadow-sm hover:bg-[#0052cc]/14 hover:border-[#0052cc]/30',
   success:
-    'bg-[#1fa971] text-white shadow-lg shadow-success/20 hover:brightness-[1.03]',
+    'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 hover:brightness-[1.03]',
   dark:
     'bg-[#173042] text-white shadow-lg shadow-[#173042]/20 hover:bg-[#0f212e]',
   darkOutline:
@@ -96,6 +96,18 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             backgroundColor: '#0052cc',
             color: '#ffffff',
             border: 'none',
+          } : variant === 'success' ? {
+            backgroundColor: '#059669',
+            color: '#ffffff',
+            border: 'none',
+          } : variant === 'danger' ? {
+            backgroundColor: '#e11d48',
+            color: '#ffffff',
+            border: 'none',
+          } : variant === 'outline' ? {
+            backgroundColor: 'transparent',
+            color: '#0052cc',
+            border: '1px solid rgba(0, 82, 204, 0.2)',
           } : {}),
           ...props.style
         }}

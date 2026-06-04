@@ -94,10 +94,18 @@ export const FarmerListPage: React.FC = () => {
               {totalFarmers}
             </span>
           </div>
-          <div className="bg-white/10 border border-white/14 rounded-2xl p-4 flex-1 backdrop-blur-md shadow-inner flex flex-col">
-            <span className="text-[10px] font-extrabold tracking-wider text-white/70 uppercase">
-              {t('farmers.totalDues', 'TOTAL DUES')}
-            </span>
+          <div 
+            onClick={() => navigate('/dues')}
+            className="bg-white/10 border border-white/14 rounded-2xl p-4 flex-1 backdrop-blur-md shadow-inner flex flex-col cursor-pointer hover:bg-white/20 transition-colors"
+          >
+            <div className="flex justify-between items-start">
+              <span className="text-[10px] font-extrabold tracking-wider text-white/70 uppercase">
+                {t('farmers.totalDues', 'TOTAL DUES')}
+              </span>
+              <span className="text-[10px] font-bold text-white/50 bg-white/10 px-1.5 py-0.5 rounded">
+                Report →
+              </span>
+            </div>
             <span className="text-2xl font-black text-white mt-1">
               {formatCompactDues(totalDues)}
             </span>

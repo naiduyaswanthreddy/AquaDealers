@@ -54,7 +54,6 @@ export const CashEntryModal: React.FC<CashEntryModalProps> = ({ type, onClose })
         { label: t('common.cancel'), onClick: onClose, variant: 'outline' },
         { 
           label: t('common.save'), 
-          onClick: () => {}, 
           type: 'submit', 
           form: 'cash-form', 
           variant: isIncome ? 'success' : 'danger',

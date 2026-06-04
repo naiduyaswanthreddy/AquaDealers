@@ -9,10 +9,12 @@ import {
   getDuesSummary,
   getLowStockSummary,
   getCashSummary,
-  getCollectTodayFarmers,
   getLowStockItems,
   getExpiringMedicines,
   getRecentTransactions,
+  getMonthlySalesTrend,
+  getTopSoldProducts,
+  getCollectTodayFarmers,
 } from '../services/dashboardService';
 import { supabase } from '@/lib/supabase';
 
@@ -154,6 +156,36 @@ export function useRecentTransactionsList(limit: number = 8) {
   return useQuery({
     queryKey: ['dashboard', 'recent-transactions', dealerId, activeBranchId, limit],
     queryFn: () => getRecentTransactions(dealerId, activeBranchId, limit),
+    enabled: !!dealerId,
+  });
+}
+
+/**
+ * Hook to retrieve monthly sales trend.
+ */
+export function useMonthlySalesTrend() {
+  const user = useAuthStore((state) => state.user);
+  const activeBranchId = useBranchStore((state) => state.getActiveBranchId());
+  const dealerId = user?.id || '';
+
+  return useQuery({
+    queryKey: ['dashboard', 'monthly-sales-trend', dealerId, activeBranchId],
+    queryFn: () => getMonthlySalesTrend(dealerId, activeBranchId),
+    enabled: !!dealerId,
+  });
+}
+
+/**
+ * Hook to retrieve top sold products.
+ */
+export function useTopSoldProducts() {
+  const user = useAuthStore((state) => state.user);
+  const activeBranchId = useBranchStore((state) => state.getActiveBranchId());
+  const dealerId = user?.id || '';
+
+  return useQuery({
+    queryKey: ['dashboard', 'top-sold-products', dealerId, activeBranchId],
+    queryFn: () => getTopSoldProducts(dealerId, activeBranchId),
     enabled: !!dealerId,
   });
 }

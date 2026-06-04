@@ -13,8 +13,10 @@ export const sharePdfViaWhatsApp = async (
   try {
     const file = new File([pdfBlob], filename, { type: 'application/pdf' });
     
-    // Check if Web Share API is available and can share files
-    if (canShareFiles() && navigator.canShare({ files: [file] })) {
+    // Check if Web Share API is available and can share files.
+    // If a specific phone number is provided, we bypass the generic Web Share API 
+    // to directly open the WhatsApp chat via wa.me (fallback method).
+    if (!phoneNumber && canShareFiles() && navigator.canShare({ files: [file] })) {
       await navigator.share({
         files: [file],
         title: filename,

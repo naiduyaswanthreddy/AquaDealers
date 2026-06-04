@@ -95,6 +95,11 @@ export const generateBillPdfBlob = async (bill: any, dealer: Dealer | null): Pro
        doc.text(splitAddress, pageWidth - margin, yPos, { align: 'right' });
        yPos += splitAddress.length * 4;
     }
+    
+    if (dealer.gstin) {
+       doc.text(`GSTIN: ${dealer.gstin}`, pageWidth - margin, yPos, { align: 'right' });
+       yPos += 5;
+    }
   } else {
     yPos += 6;
   }

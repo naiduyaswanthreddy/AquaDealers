@@ -6,7 +6,7 @@ import { useCartStore } from '../stores/cartStore';
 import { useCreateBill } from '../hooks/useBilling';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import SignaturePad from './SignaturePad';
 import { billingService } from '../services/billingService';
@@ -82,7 +82,11 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     const saved = localStorage.getItem('receipt_columns');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        return {
+          ...parsed,
+          signature: parsed.signature ?? true,
+        };
       } catch (e) {
         // Fallback if parsing fails
       }
@@ -94,6 +98,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       gst: gstEnabled,
       mrp: false,
       expiry: false,
+      signature: true,
     };
   });
 
@@ -145,12 +150,12 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     };
   }, [discountAmount, gstEnabled, items]);
 
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const displayDate = new Intl.DateTimeFormat('en-GB').format(new Date(todayIso));
+  const todayIso = new Date().toISOString();
+  const displayDate = formatDateTime(todayIso);
   const balanceDue = Math.max(0, totals.total - amountPaid);
   const projectedDue = Math.max(0, farmerTotalDue + totals.total - amountPaid);
   const exceedsCreditLimit = !!farmerId && farmerCreditLimit > 0 && projectedDue > farmerCreditLimit;
-  const signatureEnabled = user?.bill_signature_enabled ?? true;
+  const signatureEnabled = (user?.bill_signature_enabled ?? true) && columns.signature;
   const signatureRequired = signatureEnabled && (paymentType === 'credit' || balanceDue > 0);
 
   const handleCheckout = async (ignoreWarning = false) => {
@@ -265,7 +270,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   };
 
   return (
-    <div className="billing-step-content">
+    <div className="flex flex-col gap-6 lg:px-8 lg:pb-8 max-w-[64rem] mx-auto w-full">
       <section className="billing-collapsed-card">
         <button
           type="button"
@@ -333,6 +338,17 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               />
               Show MRP
             </label>
+            {(user?.bill_signature_enabled ?? true) && (
+              <label className="flex items-center gap-2 text-xs font-black text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={columns.signature}
+                  onChange={(e) => setColumns({ ...columns, signature: e.target.checked })}
+                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                />
+                Customer Signature
+              </label>
+            )}
           </div>
         )}
       </section>
@@ -397,7 +413,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
                   className="hidden md:grid billing-review-table-row"
                   style={{ gridTemplateColumns: columnConfig.gridTemplate }}
                 >
-                  <span className="truncate text-sm font-black text-slate-950">{item.product_name}</span>
+                  <span className="truncate text-sm font-black text-slate-950">{item.product_name || 'Unknown Item'}</span>
                   {columns.hsn && <span className="text-sm font-semibold text-slate-600">{item.hsn_code || '-'}</span>}
                   {columns.expiry && <span className="text-sm font-semibold text-slate-600">{item.expiry_date || '-'}</span>}
                   {columns.mrp && <span className="text-right text-sm font-semibold text-slate-600">{formatCurrency(item.mrp || 0)}</span>}
@@ -453,11 +469,6 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         </div>
       </section>
 
-      {notes ? (
-        <section className="billing-collapsed-card text-sm font-semibold text-slate-600">
-          <span className="font-black text-slate-950">Notes:</span> {notes}
-        </section>
-      ) : null}
 
       {signatureEnabled ? (
         <SignaturePad

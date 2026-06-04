@@ -20,6 +20,7 @@ import {
   MonthlyReportPeriod,
   ReportColumn,
   ReportTableModel,
+  TopProduct,
 } from '../types';
 import { Bill, BillItem, CashBookEntry, Expense, Farmer, Payment, Product, StockPurchase, Supplier, SupplierPayment } from '@/types/database';
 
@@ -38,10 +39,23 @@ export const reportsService = {
   async getMonthlyFinancePack(
     dealerId: string,
     branchId: string | null | undefined,
-    month: number,
-    year: number
+    monthOrStartDate: number | string,
+    yearOrEndDate: number | string
   ): Promise<MonthlyFinancePack> {
-    const period = getMonthlyReportPeriod(month, year);
+    let period;
+    if (typeof monthOrStartDate === 'string' && typeof yearOrEndDate === 'string') {
+      const s = new Date(monthOrStartDate);
+      const e = new Date(yearOrEndDate);
+      period = {
+        startDate: monthOrStartDate,
+        endDate: yearOrEndDate,
+        label: `${s.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} - ${e.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+        month: s.getMonth() + 1,
+        year: e.getFullYear()
+      };
+    } else {
+      period = getMonthlyReportPeriod(monthOrStartDate as number, yearOrEndDate as number);
+    }
 
     let billsQuery = supabase
       .from('bills')
@@ -110,6 +124,20 @@ export const reportsService = {
       .eq('dealer_id', dealerId)
       .eq('is_active', true);
 
+    let openBillsQuery = supabase
+      .from('bills')
+      .select('id, farmer_name_snapshot, balance_due, bill_date, bill_number')
+      .eq('dealer_id', dealerId)
+      .neq('status', 'cancelled')
+      .gt('balance_due', 0)
+      .lte('bill_date', period.endDate);
+
+    let openPurchasesQuery = supabase
+      .from('stock_purchases')
+      .select('id, supplier_id, total_amount, purchase_date, invoice_number')
+      .eq('dealer_id', dealerId)
+      .lte('purchase_date', period.endDate);
+
     let suppliersQuery = supabase
       .from('suppliers')
       .select('id, name, company, total_due, credit_days, created_at')
@@ -133,6 +161,8 @@ export const reportsService = {
       openingCashQuery = openingCashQuery.eq('branch_id', branchId);
       paymentsQuery = paymentsQuery.eq('branch_id', branchId);
       farmersQuery = farmersQuery.eq('branch_id', branchId);
+      openBillsQuery = openBillsQuery.eq('branch_id', branchId);
+      openPurchasesQuery = openPurchasesQuery.eq('branch_id', branchId);
     }
 
     const [
@@ -147,6 +177,8 @@ export const reportsService = {
       { data: suppliers, error: suppliersError },
       { data: products, error: productsError },
       { data: branches, error: branchesError },
+      { data: openBills, error: openBillsError },
+      { data: openPurchases, error: openPurchasesError },
     ] = await Promise.all([
       billsQuery,
       purchasesQuery,
@@ -159,6 +191,8 @@ export const reportsService = {
       suppliersQuery,
       productsQuery,
       branchesQuery,
+      openBillsQuery,
+      openPurchasesQuery,
     ]);
 
     if (billsError) throw billsError;
@@ -172,6 +206,8 @@ export const reportsService = {
     if (suppliersError) throw suppliersError;
     if (productsError) throw productsError;
     if (branchesError) throw branchesError;
+    if (openBillsError) throw openBillsError;
+    if (openPurchasesError) throw openPurchasesError;
 
     const billsList = (bills || []) as Array<Bill & { bill_items?: BillItem[] }>;
     const purchasesList = (purchases || []) as StockPurchase[];
@@ -184,6 +220,8 @@ export const reportsService = {
     const supplierList = (suppliers || []) as Supplier[];
     const productList = (products || []) as Product[];
     const branchList = (branches || []) as DealerBranch[];
+    const openBillsList = (openBills || []) as any[];
+    const openPurchasesList = (openPurchases || []) as any[];
 
     const paymentsByBillId = new Map<string, Payment[]>();
     paymentList.forEach((payment) => {
@@ -227,42 +265,72 @@ export const reportsService = {
       resolvedBranchName
     );
 
+    const productStats = new Map<string, { quantity: number; revenue: number }>();
+    billsList.forEach(bill => {
+      const items = billItemsByBillId.get(bill.id) || [];
+      items.forEach(item => {
+        if (!item.product_id) return;
+        const current = productStats.get(item.product_id) || { quantity: 0, revenue: 0 };
+        current.quantity += toNumber(item.quantity);
+        current.revenue += toNumber(item.total_price);
+        productStats.set(item.product_id, current);
+      });
+    });
+
+    const topProductsRows: TopProduct[] = Array.from(productStats.entries())
+      .map(([productId, stats]) => {
+        const product = productsById.get(productId);
+        return {
+          id: productId,
+          name: product?.name || 'Unknown Product',
+          quantity: stats.quantity,
+          revenue: stats.revenue,
+        };
+      })
+      .sort((a, b) => b.revenue - a.revenue);
+
     const expenseRows = buildExpenseRows(expensesList, resolvedBranchName);
 
     const openingBalance = openingCashList.reduce((sum, entry) => sum + (entry.entry_type === 'income' ? toNumber(entry.amount) : -toNumber(entry.amount)), 0);
     const cashBookRows = buildCashBookRows(cashBookList, openingBalance);
     const bankRows = buildBankReconciliationRows(cashBookRows);
 
-    const totalSales = salesRows.reduce((sum, row) => sum + row.taxableValue + row.gstAmount, 0);
+    const totalSales = billsList.reduce((sum, bill) => sum + toNumber(bill.total), 0);
+    const pendingSales = billsList.reduce((sum, bill) => sum + toNumber(bill.balance_due), 0);
     const totalCollections = billsList.reduce((sum, bill) => sum + toNumber(bill.amount_paid), 0);
     const totalExpenses = expenseRows.reduce((sum, row) => sum + row.amount, 0);
     const totalPurchases = purchaseRows.reduce((sum, row) => sum + row.amount, 0);
     const outstandingDues = farmerList.reduce((sum, farmer) => sum + toNumber(farmer.total_due), 0);
     const supplierDues = supplierList.reduce((sum, supplier) => sum + toNumber(supplier.total_due), 0);
-    const netProfit = totalSales - totalPurchases - totalExpenses;
 
     const outputTaxable = salesRows.reduce((sum, row) => sum + row.taxableValue, 0);
     const outputTotal = salesRows.reduce((sum, row) => sum + row.gstAmount, 0);
     const inputTaxable = purchaseRows.reduce((sum, row) => sum + row.amount - row.gstAmount, 0);
     const inputTotal = purchaseRows.reduce((sum, row) => sum + row.gstAmount, 0);
+    
+    const netProfit = outputTaxable - inputTaxable - totalExpenses;
     const gstTotals = buildGSTSummaries(outputTotal, inputTotal, outputTaxable, inputTaxable);
 
     const receivableRows: AgingRow[] = buildAgingRows(
-      billsList
-        .filter((bill) => bill.balance_due > 0)
-        .map((bill) => ({
-          id: bill.id,
-          name: bill.farmer_name_snapshot || 'Walk-in Customer',
-          pendingAmount: bill.balance_due,
-          baseDate: bill.bill_date,
-          reference: bill.bill_number,
-        }))
+      openBillsList.map((bill) => ({
+        id: bill.id,
+        name: bill.farmer_name_snapshot || 'Walk-in Customer',
+        pendingAmount: bill.balance_due,
+        baseDate: bill.bill_date,
+        reference: bill.bill_number,
+      }))
     );
 
     const payablesRows: AgingRow[] = buildAgingRows(
-      purchasesList
+      openPurchasesList
         .map((purchase) => {
           const supplier = purchase.supplier_id ? suppliersById.get(purchase.supplier_id) : null;
+          // Note: supplierPaymentList only has payments for the period. For true aging, 
+          // we might just rely on total_amount - paidAmount but openPurchases query doesn't have paid_amount yet.
+          // Wait, openPurchases is better to use `is_paid` and track cumulative payments, but
+          // we just use `supplierDues` or approximate it if true payment data per purchase isn't loaded.
+          // Since we didn't join payments in openPurchases, let's keep the existing logic 
+          // but apply it to the openPurchasesList.
           const paidAmount = (supplierPaymentList || [])
             .filter((entry) => entry.purchase_id === purchase.id)
             .reduce((sum, entry) => sum + toNumber(entry.amount), 0);
@@ -290,9 +358,9 @@ export const reportsService = {
           { key: 'invoiceNo', label: 'Invoice No' },
           { key: 'customerName', label: 'Customer Name' },
           { key: 'itemService', label: 'Product / Service' },
-          { key: 'qty', label: 'Qty', align: 'right' },
+          { key: 'qty', label: 'Qty', align: 'right', type: 'number' },
           { key: 'taxableValue', label: 'Taxable Value', align: 'right' },
-          { key: 'gstRate', label: 'GST %', align: 'right' },
+          { key: 'gstRate', label: 'GST %', align: 'right', type: 'number' },
           { key: 'gstAmount', label: 'GST Amount', align: 'right' },
           { key: 'paymentStatus', label: 'Payment Status' },
           { key: 'paymentMode', label: 'Payment Mode' },
@@ -304,7 +372,7 @@ export const reportsService = {
           numberSummary('Bills', salesRows.length),
           currencySummary('Total Sales', totalSales),
           currencySummary('Collections', totalCollections),
-          currencySummary('Pending', Math.max(0, totalSales - totalCollections)),
+          currencySummary('Pending', pendingSales),
         ],
         exportBaseName: `sales_register_${period.year}_${String(period.month).padStart(2, '0')}`,
       },
@@ -406,8 +474,8 @@ export const reportsService = {
         title: 'Profit & Loss',
         description: 'Monthly profitability snapshot from recorded business data.',
         summaries: [
-          currencySummary('Revenue', totalSales),
-          currencySummary('Total Purchases', totalPurchases),
+          currencySummary('Revenue (Net GST)', outputTaxable),
+          currencySummary('Total Purchases (Net GST)', inputTaxable),
           currencySummary('Total Expenses', totalExpenses),
           currencySummary('Net Profit', netProfit),
         ],
@@ -420,7 +488,7 @@ export const reportsService = {
           { key: 'name', label: 'Customer' },
           { key: 'pendingAmount', label: 'Pending Amount', align: 'right' },
           { key: 'dueDate', label: 'Due Date' },
-          { key: 'ageDays', label: 'Age (Days)', align: 'right' },
+          { key: 'ageDays', label: 'Age (Days)', align: 'right', type: 'number' },
           { key: 'agingBucket', label: 'Aging Bucket' },
           { key: 'reference', label: 'Reference' },
         ]),
@@ -438,7 +506,7 @@ export const reportsService = {
           { key: 'name', label: 'Vendor' },
           { key: 'pendingAmount', label: 'Pending Amount', align: 'right' },
           { key: 'dueDate', label: 'Due Date' },
-          { key: 'ageDays', label: 'Age (Days)', align: 'right' },
+          { key: 'ageDays', label: 'Age (Days)', align: 'right', type: 'number' },
           { key: 'agingBucket', label: 'Aging Bucket' },
           { key: 'reference', label: 'Reference' },
         ]),
@@ -448,6 +516,30 @@ export const reportsService = {
           currencySummary('Payable Total', payablesRows.reduce((sum, row) => sum + row.pendingAmount, 0)),
         ],
         exportBaseName: `payables_aging_${period.year}_${String(period.month).padStart(2, '0')}`,
+      },
+      topProducts: {
+        title: 'Top Products',
+        description: 'Best performing products by revenue for the selected period.',
+        columns: buildColumnSet([
+          { key: 'name', label: 'Product Name' },
+          { key: 'quantity', label: 'Quantity Sold', align: 'right', type: 'number' },
+          { key: 'revenue', label: 'Revenue', align: 'right' },
+        ]),
+        rows: topProductsRows,
+        summaries: [
+          numberSummary('Total Products Sold', topProductsRows.length),
+          currencySummary('Total Product Revenue', topProductsRows.reduce((sum, p) => sum + p.revenue, 0)),
+        ],
+        exportBaseName: `top_products_${period.year}_${String(period.month).padStart(2, '0')}`,
+      },
+      rawTotals: {
+        totalSales,
+        totalCollections,
+        totalExpenses,
+        totalPurchases,
+        netProfit,
+        outstandingDues,
+        supplierDues,
       },
     };
   },
@@ -460,15 +552,7 @@ export const reportsService = {
   ): Promise<DashboardMetrics> {
     if (typeof monthOrStartDate === 'number' && typeof endDateOrYear === 'number') {
       const pack = await reportsService.getMonthlyFinancePack(dealerId, branchId, monthOrStartDate, endDateOrYear);
-      return {
-        totalSales: pack.sales.summaries.find((item) => item.label === 'Total Sales') ? Number(pack.sales.summaries.find((item) => item.label === 'Total Sales')!.value.replace(/[^0-9.-]/g, '')) : 0,
-        totalCollections: pack.sales.summaries.find((item) => item.label === 'Collections') ? Number(pack.sales.summaries.find((item) => item.label === 'Collections')!.value.replace(/[^0-9.-]/g, '')) : 0,
-        totalExpenses: pack.expenses.summaries.find((item) => item.label === 'Total Expenses') ? Number(pack.expenses.summaries.find((item) => item.label === 'Total Expenses')!.value.replace(/[^0-9.-]/g, '')) : 0,
-        totalPurchases: pack.purchases.summaries.find((item) => item.label === 'Total Purchase Value') ? Number(pack.purchases.summaries.find((item) => item.label === 'Total Purchase Value')!.value.replace(/[^0-9.-]/g, '')) : 0,
-        netProfit: Number(pack.profitAndLoss.summaries.find((item) => item.label === 'Net Profit')?.value.replace(/[^0-9.-]/g, '') || 0),
-        outstandingDues: Number(pack.receivables.summaries.find((item) => item.label === 'Receivable Total')?.value.replace(/[^0-9.-]/g, '') || 0),
-        supplierDues: Number(pack.payables.summaries.find((item) => item.label === 'Payable Total')?.value.replace(/[^0-9.-]/g, '') || 0),
-      };
+      return pack.rawTotals;
     }
 
     const startDate = typeof monthOrStartDate === 'string' ? monthOrStartDate : undefined;

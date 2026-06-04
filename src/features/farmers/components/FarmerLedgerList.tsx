@@ -19,12 +19,14 @@ interface FarmerLedgerListProps {
   transactions: Transaction[];
   isLoading: boolean;
   backTo?: string;
+  headerComponent?: React.ReactNode;
 }
 
 export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
   transactions,
   isLoading,
   backTo,
+  headerComponent,
 }) => {
   const navigate = useNavigate();
   const pagedTransactions = useLoadMoreList(transactions, {
@@ -54,11 +56,23 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
     return groups;
   }, {} as Record<string, Transaction[]>);
 
+  const groupEntries = Object.entries(groupedTransactions);
+
   return (
-    <div className="mt-4 space-y-6">
-      {Object.entries(groupedTransactions).map(([monthYear, txs]) => (
-        <div key={monthYear}>
-          <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)]">
+    <div className="mt-4 overflow-hidden rounded-[24px] border border-slate-200/60 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)]">
+      {headerComponent && (
+        <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-6">
+          {headerComponent}
+        </div>
+      )}
+      <div className="flex flex-col">
+        {groupEntries.map(([monthYear, txs], groupIndex) => (
+          <div key={monthYear} className="flex flex-col">
+            {groupIndex > 0 && (
+              <div className="border-y border-slate-100 bg-slate-50 px-4 py-2 text-[0.7rem] font-bold uppercase tracking-wider text-slate-500">
+                {monthYear}
+              </div>
+            )}
             {txs.map((tx, index) => {
               const dateObj = new Date(tx.date);
               const day = dateObj.getDate();
@@ -66,7 +80,7 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
               const isPayment = tx.type === 'payment';
               const isAdjustment = tx.type === 'adjustment';
               const subLabel = isPayment ? (tx.paymentMethod || tx.refNumber || 'Payment') : tx.refNumber;
-              const isLast = index === txs.length - 1;
+              const isLast = index === txs.length - 1 && groupIndex === groupEntries.length - 1;
 
               return (
                 <React.Fragment key={tx.id}>
@@ -118,8 +132,8 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
               );
             })}
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
       {transactions.length === 0 && (
         <div className="rounded-[10px] border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-medium text-slate-500">

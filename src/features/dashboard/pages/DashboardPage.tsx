@@ -12,6 +12,8 @@ import LowStockAlert from '../components/LowStockAlert';
 import RecentTransactions from '../components/RecentTransactions';
 import StatCards from '../components/StatCards';
 import TodaySnapshot from '../components/TodaySnapshot';
+import SalesTrend from '../components/SalesTrend';
+import TopSoldProducts from '../components/TopSoldProducts';
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -143,7 +145,7 @@ export const DashboardPage: React.FC = () => {
       </section>
 
       {/* Desktop Redesign */}
-      <div className="hidden lg:flex flex-col gap-6 mt-4">
+      <div className="hidden lg:flex flex-col gap-6">
         {/* Top Stats */}
         <div className="dashboard-hero__cards">
           <StatCards />
@@ -151,51 +153,21 @@ export const DashboardPage: React.FC = () => {
         
         {/* Main Grid Content */}
         <div className="grid grid-cols-12 gap-6 items-start">
-          {/* Recent Bills */}
-          <div className="col-span-12 xl:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-h-[400px]">
-            <h3 className="text-lg font-bold text-slate-800 mb-6">Recent Bills</h3>
+          {/* Left Column - 2/3 width */}
+          <div className="col-span-12 xl:col-span-8 flex flex-col gap-6">
+            <SalesTrend />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CollectToday />
+              <TopSoldProducts />
+            </div>
+          </div>
+
+          {/* Right Column - 1/3 width */}
+          <div className="col-span-12 xl:col-span-4 flex flex-col gap-6">
             <RecentTransactions />
-          </div>
-
-          {/* Sales Trend */}
-          <div className="col-span-12 xl:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-h-[400px] flex flex-col">
-            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-lg font-bold text-slate-800">Sales Trend</h3>
-              <span className="text-sm text-slate-500 font-medium">This Month ▾</span>
-            </div>
-            {/* CSS Bar Chart mimicking the reference image */}
-            <div className="flex-1 flex items-end gap-3 justify-between pt-8 mt-auto h-48">
-              {[50, 70, 30, 80, 50, 90, 100, 60, 40].map((h, i) => (
-                <div key={i} className="w-full max-w-[2.5rem] bg-[#F4F7FB] rounded-t-lg h-full flex flex-col justify-end relative overflow-hidden">
-                  <div className="w-full bg-blue-500 rounded-t-lg transition-all duration-500" style={{ height: `${h}%` }}></div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Top Products */}
-          <div className="col-span-12 xl:col-span-3 bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-h-[400px]">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-bold text-slate-800">Top Products</h3>
-              <button type="button" className="text-sm font-semibold text-blue-600 hover:text-blue-700">View All</button>
-            </div>
-            <div className="space-y-5">
-              {[
-                { name: 'CP 9951 Starter', qty: '120 bags' },
-                { name: 'Growel Feed', qty: '85 bags' },
-                { name: 'Bayer Medicine', qty: '45 btls' }
-              ].map((product, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <div className="h-12 w-12 bg-slate-100 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden">
-                    <img src="/logo.png" alt="Product" className="h-8 w-8 object-contain opacity-50" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">{product.name}</p>
-                    <p className="text-xs text-slate-500 font-medium mt-0.5">{product.qty}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <LowStockAlert />
+            <ExpiringMedicines />
           </div>
         </div>
       </div>

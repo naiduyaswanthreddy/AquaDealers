@@ -30,14 +30,14 @@ interface SidebarItem {
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, featureKey: 'dashboard' },
-  { path: '/inventory', label: 'Inventory', icon: Package, featureKey: 'inventory' },
   { path: '/bills', label: 'Billing', icon: Receipt, featureKey: 'billHistory' },
-  { path: '/farmers', label: 'Customers', icon: Users, featureKey: 'farmerList' },
-  { path: '/suppliers', label: 'Suppliers', icon: Truck, featureKey: 'suppliers' },
+  { path: '/farmers', label: 'Farmers', icon: Users, featureKey: 'farmerList' },
   { path: '/dues', label: 'Dues', icon: WalletCards, featureKey: 'farmerList' },
+  { path: '/inventory', label: 'Stock', icon: Package, featureKey: 'inventory' },
+  { path: '/suppliers', label: 'Suppliers', icon: Truck, featureKey: 'suppliers' },
   { path: '/cashbook', label: 'Cashbook', icon: BookText, featureKey: 'cashbook' },
-  { path: '/reports', label: 'Reports', icon: FileBarChart, featureKey: 'reports' },
   { path: '/expenses', label: 'Expenses', icon: CircleDollarSign, featureKey: 'expenses' },
+  { path: '/reports', label: 'Reports', icon: FileBarChart, featureKey: 'reports' },
   { path: '/settings', label: 'Settings', icon: Settings, featureKey: 'settings' },
 ];
 
@@ -71,7 +71,7 @@ const DesktopSidebar: React.FC = () => {
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 h-dvh sticky top-0 z-50">
       <div className="flex items-center p-6 gap-3">
-        <div className="flex items-center justify-center bg-blue-600 rounded-xl p-2 w-10 h-10">
+        <div className="flex items-center justify-center bg-primary rounded-xl p-2 w-10 h-10">
           <img src="/logo.png" alt="AquaDealer Logo" className="h-6 w-6 object-contain filter brightness-0 invert" />
         </div>
         <div className="min-w-0">
@@ -110,7 +110,7 @@ const DesktopSidebar: React.FC = () => {
                 cn(
                   'flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-xl transition-colors',
                   isActive
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
+                    ? 'bg-primary !text-white shadow-sm shadow-primary/20'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 )
               }

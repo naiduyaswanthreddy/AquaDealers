@@ -56,7 +56,7 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
     if (!bill) return;
     try {
       setIsSharing(true);
-      await shareBillPdfViaWhatsApp(bill, dealer);
+      await shareBillPdfViaWhatsApp(bill, dealer, bill.farmer?.phone);
     } catch (error) {
       console.error('Failed to share PDF:', error);
     } finally {

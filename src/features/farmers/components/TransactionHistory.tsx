@@ -1,6 +1,6 @@
 import React from 'react';
 import { Skeleton, Button } from '@/components/ui';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { Receipt, ArrowDownLeft } from 'lucide-react';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
@@ -90,7 +90,7 @@ export const TransactionHistory: React.FC<TransactionHistoryProps> = ({
                   {tx.refNumber}
                 </div>
                 <div className="text-[11px] text-text-secondary mt-0.5">
-                  {formatDate(tx.date)}
+                  {formatDateTime(tx.date)}
                 </div>
               </div>
 

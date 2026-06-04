@@ -14,7 +14,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge, Button, EmptyState, SearchBar, Select, Skeleton } from '@/components/ui';
@@ -39,7 +39,8 @@ const InventoryPage: React.FC = () => {
   const { data: inventory = [], isLoading, error } = useInventory();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('all');
-  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [showLowStockOnly, setShowLowStockOnly] = useState(searchParams.get('filter') === 'low-stock');
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
 
   const productTypes = useMemo(

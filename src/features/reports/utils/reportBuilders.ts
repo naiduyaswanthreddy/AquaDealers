@@ -45,9 +45,9 @@ const formatDateValue = (value?: string | null) => (value ? format(parseISO(valu
 
 const inferPaymentStatus = (bill: Bill) => {
   if (bill.status === 'cancelled') return 'Cancelled';
-  if (bill.balance_due > 0) return 'Pending';
-  if (bill.amount_paid >= bill.total) return 'Paid';
-  return 'Part-paid';
+  if (bill.balance_due <= 0) return 'Paid';
+  if (bill.amount_paid > 0) return 'Part-paid';
+  return 'Pending';
 };
 
 const inferPaymentMode = (bill: Bill, paymentMap: Map<string, Payment[]>) => {
@@ -92,8 +92,10 @@ export function buildSalesRegisterRows(
 ): SalesRegisterRow[] {
   return bills.map((bill) => {
     const summary = summarizeBillItems(billItemsByBillId.get(bill.id), productsById);
-    const firstItem = (billItemsByBillId.get(bill.id) || [])[0];
-    const gstRate = firstItem?.gst_rate || (bill.subtotal > 0 ? Math.round((bill.gst_amount / bill.subtotal) * 100) : 0);
+    const items = billItemsByBillId.get(bill.id) || [];
+    const firstItem = items[0];
+    const uniqueGstRates = new Set(items.map(item => item.gst_rate));
+    const gstRate = uniqueGstRates.size > 1 ? 'Multiple' : (firstItem?.gst_rate || (bill.subtotal > 0 ? Math.round((bill.gst_amount / bill.subtotal) * 100) : 0));
 
     return {
       date: formatDateValue(bill.bill_date),

@@ -144,60 +144,91 @@ const NewBillPage: React.FC = () => {
   }
 
   return (
-    <div className="billing-wizard">
-      <header className="billing-wizard__header">
-        <div className="billing-wizard__nav">
-          <button
-            type="button"
-            onClick={handlePageBack}
-            className="billing-wizard__icon-button"
-            aria-label="Back"
-          >
-            <ArrowLeft className="h-6 w-6" />
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/bills')}
-            className="billing-wizard__icon-button"
-            aria-label="Close invoice"
-          >
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-        <div className="billing-wizard__header-content">
-          <div className="billing-wizard__eyebrow">STEP {stepIndex + 1} OF 3</div>
-          <h1 className="billing-wizard__title">{currentMeta.title}</h1>
+    <div className="billing-wizard lg:h-full lg:flex lg:flex-col lg:!bg-slate-50">
+      <header className="billing-wizard__header shrink-0 lg:!rounded-none lg:!pb-4 lg:after:hidden md:!px-6 lg:!px-12 xl:!px-24">
+        <div className="relative w-full pt-1 pb-4 flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-4">
+          
+          {/* Mobile Top Row */}
+          <div className="flex justify-between items-center md:hidden mb-2">
+            <button
+              type="button"
+              onClick={handlePageBack}
+              className="billing-wizard__icon-button"
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/bills')}
+              className="billing-wizard__icon-button"
+              aria-label="Close invoice"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Desktop Left Side */}
+          <div className="flex items-center gap-4 justify-start">
+            <button
+              type="button"
+              onClick={handlePageBack}
+              className="billing-wizard__icon-button hidden md:flex shrink-0"
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </button>
+            <div className="billing-wizard__header-content md:shrink-0 md:!pl-0">
+              <div className="billing-wizard__eyebrow">STEP {stepIndex + 1} OF 3</div>
+              <h1 className="billing-wizard__title">{currentMeta.title}</h1>
+            </div>
+          </div>
+          
+          {/* Center */}
+          <div className="flex justify-center w-full">
+            <section className="billing-stepper !mt-8 md:!mt-0 !mb-0 w-full md:w-auto" aria-label="Billing progress">
+            <div className="billing-stepper__track !bg-white/20" />
+            <div className="billing-stepper__progress !bg-[#0ba467]" style={{ width: `${stepIndex * 50}%` }} />
+
+            {STEP_META.map((meta, index) => {
+              const isActive = meta.key === step;
+              const isDone = stepIndex > index;
+
+              return (
+                <button
+                  key={meta.key}
+                  type="button"
+                  disabled={!isDone && !isActive}
+                  onClick={() => isDone && setStep(meta.key)}
+                  className="billing-stepper__item"
+                >
+                  <span className={isDone ? 'billing-stepper__dot billing-stepper__dot--done' : isActive ? 'billing-stepper__dot billing-stepper__dot--active' : 'billing-stepper__dot !bg-white/20 !text-white'}>
+                    {isDone ? <Check className="h-5 w-5" strokeWidth={3} /> : index + 1}
+                  </span>
+                  <span className={isDone ? 'billing-stepper__label billing-stepper__label--done' : isActive ? 'billing-stepper__label billing-stepper__label--active !text-white' : 'billing-stepper__label !text-white/70'}>
+                    {meta.label}
+                  </span>
+                </button>
+              );
+            })}
+            </section>
+          </div>
+
+          {/* Desktop Right Side */}
+          <div className="hidden md:flex justify-end items-center">
+            <button
+              type="button"
+              onClick={() => navigate('/bills')}
+              className="billing-wizard__icon-button shrink-0"
+              aria-label="Close invoice"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
         </div>
       </header>
 
-      <section className="billing-stepper" aria-label="Billing progress">
-        <div className="billing-stepper__track" />
-        <div className="billing-stepper__progress" style={{ width: `${stepIndex * 50}%` }} />
-
-        {STEP_META.map((meta, index) => {
-          const isActive = meta.key === step;
-          const isDone = stepIndex > index;
-
-          return (
-            <button
-              key={meta.key}
-              type="button"
-              disabled={!isDone && !isActive}
-              onClick={() => isDone && setStep(meta.key)}
-              className="billing-stepper__item"
-            >
-              <span className={isDone ? 'billing-stepper__dot billing-stepper__dot--done' : isActive ? 'billing-stepper__dot billing-stepper__dot--active' : 'billing-stepper__dot'}>
-                {isDone ? <Check className="h-5 w-5" strokeWidth={3} /> : index + 1}
-              </span>
-              <span className={isDone ? 'billing-stepper__label billing-stepper__label--done' : isActive ? 'billing-stepper__label billing-stepper__label--active' : 'billing-stepper__label'}>
-                {meta.label}
-              </span>
-            </button>
-          );
-        })}
-      </section>
-
-      <main className="billing-wizard__body animate-fade-in" key={step}>
+      <main className="billing-wizard__body animate-fade-in lg:!px-0 lg:flex-1 lg:flex lg:flex-col lg:overflow-hidden" key={step}>
         {step === 'items' && (
           <ProductSelector onNext={handleNext} />
         )}

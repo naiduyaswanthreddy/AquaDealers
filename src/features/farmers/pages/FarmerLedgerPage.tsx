@@ -8,7 +8,7 @@ import CollectPaymentModal from '../components/CollectPaymentModal';
 import BalanceStatementModal from '../components/BalanceStatementModal';
 import LedgerActions from '../components/LedgerActions';
 import { ArrowLeft, Edit2, Phone, FileText, User } from 'lucide-react';
-import { formatCurrency, formatDate, getInitials } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime, getInitials } from '@/lib/utils';
 import { CROP_STATUSES } from '@/lib/constants';
 import FarmerHeaderCard from '../components/FarmerHeaderCard';
 import FarmerSummaryRow from '../components/FarmerSummaryRow';
@@ -158,6 +158,21 @@ export const FarmerLedgerPage: React.FC = () => {
     },
   ];
 
+  const renderDateFilter = () => (
+    <div className="w-full sm:flex sm:justify-center">
+      <div className="w-full max-w-sm animate-fade-in">
+        <DateRangeFilter
+          startDate={startDate}
+          endDate={endDate}
+          onChange={(start, end) => {
+            setStartDate(start);
+            setEndDate(end);
+          }}
+        />
+      </div>
+    </div>
+  );
+
   const renderBills = () => {
     if (txLoading) {
       return <Skeleton className="h-36 w-full rounded-[24px]" />;
@@ -173,7 +188,11 @@ export const FarmerLedgerPage: React.FC = () => {
 
     return (
       <>
-      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)]">
+      <div className="mt-4 overflow-hidden rounded-[24px] border border-slate-200/60 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)]">
+        <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-6">
+          {renderDateFilter()}
+        </div>
+        <div className="flex flex-col">
         {pagedBills.visibleItems.map((bill, index) => {
           const billDate = new Date(bill.date);
           const day = billDate.getDate();
@@ -199,7 +218,7 @@ export const FarmerLedgerPage: React.FC = () => {
                       {bill.refNumber}
                     </div>
                     <div className="mt-0.5 truncate text-[0.82rem] font-medium text-slate-500">
-                      {formatDate(bill.date)}
+                      {formatDateTime(bill.date)}
                     </div>
                   </div>
                 </div>
@@ -222,6 +241,7 @@ export const FarmerLedgerPage: React.FC = () => {
             </React.Fragment>
           );
         })}
+        </div>
       </div>
       <ListLoadMore
         shown={pagedBills.visibleCount}
@@ -248,22 +268,30 @@ export const FarmerLedgerPage: React.FC = () => {
 
     return (
       <>
-      <div className="mt-4 space-y-3">
-        {pagedPayments.visibleItems.map((payment) => (
-          <div
-            key={payment.id}
-            className="flex items-center justify-between rounded-[22px] border border-emerald-100 bg-emerald-50/70 px-4 py-3.5 shadow-sm"
-          >
-            <div>
-              <div className="text-sm font-black text-slate-900">{payment.refNumber}</div>
-              <div className="mt-1 text-xs font-semibold text-slate-400">{formatDate(payment.date)}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-base font-black text-emerald-600">+{formatCurrency(payment.amount)}</div>
-              <div className="text-xs font-semibold text-slate-400">Received payment</div>
-            </div>
-          </div>
-        ))}
+      <div className="mt-4 overflow-hidden rounded-[24px] border border-slate-200/60 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)]">
+        <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-6">
+          {renderDateFilter()}
+        </div>
+        <div className="flex flex-col">
+          {pagedPayments.visibleItems.map((payment, index) => {
+            const isLast = index === pagedPayments.visibleItems.length - 1;
+            return (
+              <React.Fragment key={payment.id}>
+                <div className="flex items-center justify-between px-4 py-3.5 bg-emerald-50/20">
+                  <div>
+                    <div className="text-sm font-black text-slate-900">{payment.refNumber}</div>
+                    <div className="mt-1 text-xs font-semibold text-slate-400">{formatDate(payment.date)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-base font-black text-emerald-600">+{formatCurrency(payment.amount)}</div>
+                    <div className="text-xs font-semibold text-slate-400">Received payment</div>
+                  </div>
+                </div>
+                {!isLast && <div className="h-px w-full bg-slate-200/80" aria-hidden="true" />}
+              </React.Fragment>
+            );
+          })}
+        </div>
       </div>
       <ListLoadMore
         shown={pagedPayments.visibleCount}
@@ -353,7 +381,7 @@ export const FarmerLedgerPage: React.FC = () => {
               </span>
             </div>
             
-            <div className="grid grid-cols-3 gap-2 rounded-2xl bg-white/[0.04] p-3 border border-white/[0.08] backdrop-blur-md shadow-sm">
+            <div className="grid grid-cols-3 gap-2 rounded-2xl bg-black/15 p-3 border border-white/[0.06] backdrop-blur-md shadow-inner">
               <div className="text-left">
                 <span className="text-[10px] font-black uppercase tracking-wider text-white/40 block">Total Due</span>
                 <span className="mt-0.5 text-[1rem] font-black text-white">{formatCurrency(farmer.total_due)}</span>
@@ -398,23 +426,17 @@ export const FarmerLedgerPage: React.FC = () => {
         <div className="mt-5">
           <FarmerTabs activeTab={activeTab} onChange={setActiveTab} />
 
-          {activeTab !== 'details' && (
-            <div className="mt-3.5 mb-1.5 w-full max-w-sm ml-auto px-1 animate-fade-in">
-              <DateRangeFilter
-                startDate={startDate}
-                endDate={endDate}
-                onChange={(start, end) => {
-                  setStartDate(start);
-                  setEndDate(end);
-                }}
-              />
-            </div>
-          )}
+          {/* Date filter is now inside the lists */}
 
           <div className="py-2">
             {activeTab === 'ledger' ? (
               <>
-                <FarmerLedgerList transactions={filteredAndSortedTransactions} isLoading={txLoading} backTo={`/farmers/${farmer.id}`} />
+                <FarmerLedgerList 
+                  transactions={filteredAndSortedTransactions} 
+                  isLoading={txLoading} 
+                  backTo={`/farmers/${farmer.id}`} 
+                  headerComponent={renderDateFilter()}
+                />
                 <FarmerFooterSummary
                   openingBalance={farmer.opening_balance || 0}
                   totalDebit={totalDebit}
