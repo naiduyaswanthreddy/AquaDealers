@@ -6,12 +6,21 @@ import { BarChart3, BookOpen, Building2, CalendarDays, Download, FileSpreadsheet
 import { format } from 'date-fns';
 import { useMonthlyFinancePack } from '../hooks/useReports';
 import { exportRowsToCsv, exportRowsToExcelCompatibleHtml, exportSummaryPdf } from '../utils/reportExport';
-import { ReportTableModel } from '../types';
+import { ReportSummaryItem, ReportTableModel } from '../types';
 import { formatCurrency, cn } from '@/lib/utils';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
+import {
+  CartesianGrid,
+  Line,
+  LineChart as RechartsLineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 const currentDate = new Date();
 
@@ -21,6 +30,71 @@ function toMonthlySummaryValue(value: string | number) {
 }
 
 type SummaryRow = { section: string; metric: string; value: string };
+
+const parseSummaryCurrency = (value: string) => {
+  const normalized = value.replace(/[^\d.-]/g, '');
+  return Number(normalized) || 0;
+};
+
+const getNetProfitValue = (summaries?: ReportSummaryItem[]) =>
+  parseSummaryCurrency(summaries?.find((item) => item.label === 'Net Profit')?.value || '0');
+
+function ProfitLossAnalytics({
+  summaries,
+  previousSummaries,
+}: {
+  summaries: ReportSummaryItem[];
+  previousSummaries?: ReportSummaryItem[];
+}) {
+  const chartData = useMemo(() => [
+    { label: 'Previous', value: getNetProfitValue(previousSummaries) },
+    { label: 'Current', value: getNetProfitValue(summaries) },
+  ], [previousSummaries, summaries]);
+
+  return (
+    <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+      <p className="text-sm font-bold text-slate-500">Profit Line Graph</p>
+      <h2 className="mt-1 text-xl font-black text-slate-900">Net profit trend</h2>
+
+      <div className="mt-6 h-72 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <RechartsLineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+            <XAxis
+              dataKey="label"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: '#64748b', fontSize: 12 }}
+              tickFormatter={(value) => formatCurrency(Number(value)).replace('.00', '')}
+              width={86}
+            />
+            <Tooltip
+              formatter={(value) => [formatCurrency(Number(value)), 'Net Profit']}
+              contentStyle={{
+                border: '1px solid #e2e8f0',
+                borderRadius: 16,
+                boxShadow: '0 12px 30px rgba(15, 23, 42, 0.08)',
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="#059669"
+              strokeWidth={3}
+              dot={{ r: 5, fill: '#ffffff', stroke: '#059669', strokeWidth: 3 }}
+              activeDot={{ r: 7, fill: '#059669', stroke: '#ffffff', strokeWidth: 3 }}
+            />
+          </RechartsLineChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
+}
 
 function ReportSection<T extends Record<string, any>>({
   table,
@@ -345,20 +419,23 @@ const ReportsPage: React.FC = () => {
         </div>
         
         {isPnL ? (
-          <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm max-w-3xl">
-            <p className="text-sm font-bold text-emerald-800">Monthly Snapshot</p>
-            <h2 className="mt-2 text-4xl font-black text-emerald-700">
-              {selectedReport.summaries.find((item: any) => item.label === 'Net Profit')?.value || '0'}
-            </h2>
-            <p className="mt-2 text-xs text-emerald-700/70">Revenue − Purchases − Expenses</p>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              {selectedReport.summaries.map((item: any) => (
-                <div key={item.label} className="rounded-2xl bg-white/80 px-5 py-4 border border-emerald-50">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{item.label}</p>
-                  <p className="mt-1 text-xl font-black text-slate-900">{item.value}</p>
-                </div>
-              ))}
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm">
+              <p className="text-sm font-bold text-emerald-800">Monthly Snapshot</p>
+              <h2 className="mt-2 text-4xl font-black text-emerald-700">
+                {selectedReport.summaries.find((item: ReportSummaryItem) => item.label === 'Net Profit')?.value || '0'}
+              </h2>
+              <p className="mt-2 text-xs text-emerald-700/70">Revenue - Purchases - Expenses</p>
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                {selectedReport.summaries.map((item: ReportSummaryItem) => (
+                  <div key={item.label} className="rounded-2xl border border-emerald-50 bg-white/80 px-5 py-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{item.label}</p>
+                    <p className="mt-1 text-xl font-black text-slate-900">{item.value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
+            <ProfitLossAnalytics summaries={selectedReport.summaries} previousSummaries={prevPack?.profitAndLoss.summaries} />
           </div>
         ) : (
           <ReportSection table={selectedReport} />
