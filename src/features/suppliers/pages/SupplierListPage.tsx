@@ -57,6 +57,7 @@ const SupplierListPage: React.FC = () => {
       <PageHeader
         title={t('nav.suppliers', 'Suppliers')}
         description={t('suppliers.subtitle', 'Manage your suppliers and payables')}
+        onBack={() => navigate('/more')}
         action={
           <Button onClick={() => setIsAddModalOpen(true)} leftIcon={<Plus className="w-5 h-5" />}>
             {t('suppliers.addSupplier', 'Add Supplier')}
@@ -86,10 +87,14 @@ const SupplierListPage: React.FC = () => {
           >
             <div className="flex items-start justify-between w-full mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bold text-blue-700 text-lg">
-                    {(supplier.name || 'S').charAt(0).toUpperCase()}
-                  </span>
+                <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {supplier.photo_url ? (
+                    <img src={supplier.photo_url} alt={supplier.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="font-bold text-blue-700 text-lg">
+                      {(supplier.name || 'S').charAt(0).toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900 line-clamp-1">{supplier.name}</h3>

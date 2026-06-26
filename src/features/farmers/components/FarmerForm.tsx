@@ -6,6 +6,7 @@ import { useBranchStore } from '@/stores/branchStore';
 import { CROP_STATUSES, AP_DISTRICTS } from '@/lib/constants';
 import { estimateHarvestDate, formatDate } from '@/lib/utils';
 import { Button, Input, Select, Textarea } from '@/components/ui';
+import { DatePicker } from '@/components/ui/DatePicker';
 import RiskStatusPicker from './RiskStatusPicker';
 import { parseISO } from 'date-fns';
 import type { Farmer } from '@/types/database';
@@ -27,6 +28,7 @@ const farmerSchema = z.object({
   crop_status: z.string().default('growing'),
   risk_status: z.string().default('reliable'),
   credit_limit: z.string().optional().or(z.literal('')),
+  default_medicine_discount_percentage: z.string().optional().or(z.literal('')),
   branch_id: z.string().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
 });
@@ -48,11 +50,14 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
 }) => {
   const { branches } = useBranchStore();
   const hasFarmerPhotoFeature = useSubscriptionStore((state) => state.hasFeature('farmer_photo'));
+  const hasFarmerDiscountFeature = useSubscriptionStore((state) => state.hasFeature('farmer_product_discounts'));
   
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(defaultValues?.image_url || null);
   const [isCompressing, setIsCompressing] = React.useState(false);
+  const [showImageOptions, setShowImageOptions] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -61,11 +66,11 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
     try {
       setIsCompressing(true);
       const options = {
-        maxSizeMB: 0.03, // ~30KB target
-        maxWidthOrHeight: 160,
+        maxSizeMB: 0.05,
+        maxWidthOrHeight: 500,
         useWebWorker: true,
         fileType: "image/webp",
-        initialQuality: 0.7,
+        initialQuality: 0.6,
       };
       
       const compressedFile = await imageCompression(file, options);
@@ -75,6 +80,7 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
       console.error('Error compressing image:', error);
     } finally {
       setIsCompressing(false);
+      setShowImageOptions(false);
     }
   };
 
@@ -97,6 +103,7 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
       crop_status: defaultValues?.crop_status || 'growing',
       risk_status: defaultValues?.risk_status || 'reliable',
       credit_limit: defaultValues?.credit_limit?.toString() || '',
+      default_medicine_discount_percentage: defaultValues?.default_medicine_discount_percentage?.toString() || '',
       branch_id: defaultValues?.branch_id || branches.find((b) => b.is_main)?.id || '',
       notes: defaultValues?.notes || '',
     },
@@ -119,6 +126,9 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
       crop_status: data.crop_status,
       risk_status: data.risk_status,
       credit_limit: data.credit_limit ? Number(data.credit_limit) : 0,
+      default_medicine_discount_percentage: hasFarmerDiscountFeature
+        ? Math.min(Math.max(Number(data.default_medicine_discount_percentage) || 0, 0), 100)
+        : 0,
       branch_id: data.branch_id || null,
       notes: data.notes || null,
       imageFile, // Pass the File object to parent to handle upload
@@ -132,11 +142,11 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
       {hasFarmerPhotoFeature && (
-        <div className="flex justify-center mb-6">
+        <div className="flex flex-col items-center justify-center mb-6 relative">
           <div className="relative group">
             <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center cursor-pointer relative"
+              onClick={() => setShowImageOptions(!showImageOptions)}
+              className="w-24 h-24 rounded-full overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center cursor-pointer relative shadow-sm hover:border-slate-300 transition-colors"
             >
               {imagePreview ? (
                 <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" />
@@ -156,15 +166,44 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
                 </div>
               )}
             </div>
-            
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              onChange={handleImageChange}
-            />
           </div>
+          
+          {showImageOptions && (
+            <div className="absolute top-28 z-10 w-48 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden animate-fade-in">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 border-b border-slate-100"
+              >
+                <Camera className="w-4 h-4 text-slate-500" />
+                Take Photo
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <ImageIcon className="w-4 h-4 text-slate-500" />
+                Choose from Gallery
+              </button>
+            </div>
+          )}
+
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept="image/*" 
+            onChange={handleImageChange}
+          />
+          <input 
+            type="file" 
+            ref={cameraInputRef} 
+            className="hidden" 
+            accept="image/*" 
+            capture="environment"
+            onChange={handleImageChange}
+          />
         </div>
       )}
 
@@ -204,11 +243,20 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
       />
 
       <div>
-        <Input
-          {...register('stocking_date')}
-          label="Stocking Date"
-          type="date"
-        />
+        <div className="space-y-1">
+          <label className="text-sm font-semibold text-slate-700">Stocking Date</label>
+          <Controller
+            control={control}
+            name="stocking_date"
+            render={({ field }) => (
+              <DatePicker
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Stocking Date"
+              />
+            )}
+          />
+        </div>
         {estimatedHarvest && (
           <p className="mt-1 text-xs text-success font-semibold">
             🐟 Estimated harvest: {estimatedHarvest}
@@ -239,6 +287,18 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
         placeholder="e.g. 50000"
         type="number"
       />
+
+      {hasFarmerDiscountFeature ? (
+        <Input
+          {...register('default_medicine_discount_percentage')}
+          label="Default Medicine Discount (%)"
+          placeholder="e.g. 35"
+          type="number"
+          min={0}
+          max={100}
+          helperText="Used for medicines unless a product-specific discount is set."
+        />
+      ) : null}
 
       {branchOptions.length > 1 && (
         <Select

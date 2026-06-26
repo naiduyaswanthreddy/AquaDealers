@@ -62,6 +62,7 @@ const BillHistoryPage: React.FC = () => {
     <PageShell width="wide">
       <PageHeader
         title={t('nav.billHistory', 'Bill History')}
+        onBack={() => navigate('/more')}
         action={(
           <Button onClick={() => navigate('/bills/new')} leftIcon={<Plus className="h-4.5 w-4.5" />}>
             {t('nav.newBill', 'New Bill')}

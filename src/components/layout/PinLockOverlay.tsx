@@ -127,7 +127,7 @@ export const PinLockOverlay: React.FC = () => {
           <Lock className="w-8 h-8" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white mb-1">
-          {user?.shop_name || 'AquaDealer'}
+          {user?.shop_name || 'AquaDealers'}
         </h1>
         <p className="text-sm text-slate-400">
           Enter 4-digit PIN to unlock

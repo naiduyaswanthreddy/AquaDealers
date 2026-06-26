@@ -1,0 +1,1 @@
+UPDATE plan_definitions SET features = CASE WHEN features ? 'signature_proof' THEN features ELSE features || '["signature_proof"]'::jsonb END WHERE name IN ('pro', 'pro_plus');

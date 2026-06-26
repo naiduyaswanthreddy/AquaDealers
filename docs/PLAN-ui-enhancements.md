@@ -1,7 +1,7 @@
 # UI Enhancements & Reports Planner
 
 ## Overview
-The user requested enhancements across multiple areas of the AquaDealer web application:
+The user requested enhancements across multiple areas of the AquaDealers web application:
 1. Fix a schema cache error related to `medicine_discount_percentage` on the `inventory` table.
 2. Enhance the Reports Dashboard UI to include Daily Report, Monthly Report, Dues Ageing Report, GST Summary Report, and Stock Report.
 3. Ensure all reports are functional and downloadable.

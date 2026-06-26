@@ -2,6 +2,8 @@ import { Bill, BillItem, Farmer } from '@/types/database';
 
 export interface CartItem {
   inventory_id: string;
+  lot_id?: string | null;
+  batch_number?: string | null;
   product_id: string;
   product_name: string;
   hsn_code: string | null;
@@ -11,6 +13,10 @@ export interface CartItem {
   unit_price: number;
   gst_rate: number;
   discount_percentage: number;
+  default_discount_percentage?: number;
+  farmer_discount_percentage?: number | null;
+  discount_source?: 'product_default' | 'farmer_default' | 'farmer_product' | 'manual';
+  discount_label?: string | null;
   mrp?: number;
   expiry_date?: string | null;
   max_quantity: number; // from inventory
@@ -41,7 +47,7 @@ export interface BillingPayload {
   type?: 'sale' | 'adjustment';
   is_historical?: boolean;
   reduce_stock?: boolean;
-  items: Omit<CartItem, 'max_quantity' | 'unit' | 'product_type' | 'base_unit_price' | 'discount_percentage'>[];
+  items: Omit<CartItem, 'max_quantity' | 'unit' | 'product_type' | 'base_unit_price'>[];
 }
 
 export interface CreateBillResult {
@@ -49,4 +55,36 @@ export interface CreateBillResult {
   bill_number: string;
   payment_id?: string | null;
   balance_due: number;
+  subtotal?: number;
+  gst_amount?: number;
+  total?: number;
+}
+
+export interface FifoBillLine {
+  inventory_id: string;
+  product_id: string;
+  product_name: string;
+  hsn_code: string | null;
+  quantity: number;
+  unit_price: number;
+  base_unit_price: number;
+  discount_percentage: number;
+  discount_source?: 'product_default' | 'farmer_default' | 'farmer_product' | 'manual' | null;
+  discount_label?: string | null;
+  gst_rate: number;
+  gst_amount: number;
+  total_price: number;
+  mrp?: number | null;
+  lot_id?: string | null;
+  batch_number?: string | null;
+  expiry_date?: string | null;
+}
+
+export interface FifoBillPreview {
+  lines: FifoBillLine[];
+  subtotal: number;
+  gst_amount: number;
+  cgst_amount: number;
+  sgst_amount: number;
+  total: number;
 }

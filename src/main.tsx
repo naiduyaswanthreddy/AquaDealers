@@ -13,11 +13,8 @@ import './tailwind.css';
 // Initialize Enterprise Telemetry
 initTelemetry();
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' });
-  });
-}
+// Service Worker is now registered via ReloadPrompt component
+
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

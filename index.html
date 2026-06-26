@@ -2,19 +2,68 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="description" content="AquaDealer — Simple billing & stock management for aqua feed and medicine dealers" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="AquaDealers is the complete inventory, billing, and management software for aqua feed and medicine dealers. Simplify stock tracking, farmer dues, and daily accounting." />
+    <meta name="keywords" content="aquadealers, aqua, dealer, inventory, aqua feed, aqua medicine, billing software, aquaculture, farmer dues, stock management, aquadealers.in" />
+    <meta name="author" content="AquaDealers" />
+    <link rel="canonical" href="https://aquadealers.in/" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://aquadealers.in/" />
+    <meta property="og:title" content="AquaDealers | Aqua Feed & Medicine Inventory Management" />
+    <meta property="og:description" content="The complete software solution for aqua feed and medicine dealers to track inventory, generate bills, and manage farmer dues." />
+    <meta property="og:image" content="https://aquadealers.in/logo.png" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://aquadealers.in/" />
+    <meta property="twitter:title" content="AquaDealers | Aqua Feed & Medicine Inventory Management" />
+    <meta property="twitter:description" content="The complete software solution for aqua feed and medicine dealers to track inventory, generate bills, and manage farmer dues." />
+    <meta property="twitter:image" content="https://aquadealers.in/logo.png" />
+
     <meta name="theme-color" content="#1B6CA8" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="AquaDealers" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="AquaDealer" />
-    <link rel="apple-touch-icon" href="/logo.png" />
+    <meta name="apple-mobile-web-app-title" content="AquaDealers" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    <title>AquaDealer</title>
+    <title>AquaDealers | Aqua Feed & Medicine Inventory Management</title>
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "AquaDealers",
+      "operatingSystem": "Any",
+      "applicationCategory": "BusinessApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR"
+      },
+      "description": "AquaDealers is the complete inventory, billing, and management software for aqua feed and medicine dealers in India.",
+      "url": "https://aquadealers.in/"
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "AquaDealers",
+      "url": "https://aquadealers.in/",
+      "logo": "https://aquadealers.in/logo.png"
+    }
+    </script>
   </head>
   <body>
     <div id="root">
@@ -38,20 +87,11 @@
             <path d="M60 6 A54 54 0 0 1 114 60" stroke="url(#sg)" stroke-width="3.5" stroke-linecap="round"/>
             <defs><linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0052cc" stop-opacity="0.9"/><stop offset="100%" stop-color="#3385ff" stop-opacity="0.2"/></linearGradient></defs>
           </svg>
-          <img src="/logo.png" alt="AquaDealer" class="splash__logo"/>
+          <img src="/logo.png" alt="AquaDealers" class="splash__logo"/>
         </div>
-        <span class="splash__brand">AquaDealer</span>
+        <span class="splash__brand">AquaDealers</span>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((reg) => console.log('ServiceWorker registered successfully:', reg.scope))
-            .catch((err) => console.error('ServiceWorker registration failed:', err));
-        });
-      }
-    </script>
   </body>
 </html>

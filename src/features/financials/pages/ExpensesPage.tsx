@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Search, Plus, TrendingDown } from 'lucide-react';
 import { useExpenses } from '../hooks/useFinancials';
 import { ExpenseModal } from '../components/ExpenseModal';
@@ -18,6 +19,7 @@ import { ExpenseItem } from '../types';
 
 const ExpensesPage: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { data: expenses, isLoading, error } = useExpenses();
   const [search, setSearch] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -83,6 +85,7 @@ const ExpensesPage: React.FC = () => {
       <PageHeader
         eyebrow={t('nav.financials', 'Financials')}
         title={t('nav.expenses', 'Expenses')}
+        onBack={() => navigate('/more')}
         description={t('financials.expensesSubtitle', 'Track and manage your operational costs')}
         action={
           <Button onClick={() => setIsAddModalOpen(true)} leftIcon={<Plus className="w-5 h-5" />}>

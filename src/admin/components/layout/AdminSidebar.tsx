@@ -41,8 +41,8 @@ const AdminSidebar: React.FC = () => {
   return (
     <aside className="admin-sidebar">
       <div className="admin-sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <img src="/logo.png" alt="AquaDealer Logo" style={{ height: '24px', width: 'auto', objectFit: 'contain' }} />
-        <span style={{ fontSize: '16px', fontWeight: 800 }}>AquaDealer Admin</span>
+        <img src="/logo.png" alt="AquaDealers Logo" style={{ height: '24px', width: 'auto', objectFit: 'contain' }} />
+        <span style={{ fontSize: '16px', fontWeight: 800 }}>AquaDealers Admin</span>
       </div>
 
       <nav className="flex-1 py-2">

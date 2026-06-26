@@ -1,11 +1,12 @@
 {
-  "name": "aquadealer",
+  "name": "aquadealers",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/generate-version.js && tsc -b && vite build",
+    "build:force": "node scripts/generate-version.js --force && tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:ui": "vitest --ui",
@@ -21,6 +22,7 @@
     "@tanstack/react-virtual": "^3.13.25",
     "browser-image-compression": "^2.0.2",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.4.2",
     "framer-motion": "^12.40.0",
     "html2canvas": "^1.4.1",
     "i18next": "^24.2.2",
@@ -35,6 +37,7 @@
     "react-router-dom": "^6.30.4",
     "recharts": "^3.8.1",
     "sonner": "^1.7.3",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.1",
     "zustand": "^5.0.3"
   },

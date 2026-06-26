@@ -6,7 +6,7 @@ interface AquaLoaderProps {
 }
 
 /**
- * AquaLoader — A premium, professional loading screen for AquaDealer.
+ * AquaLoader — A premium, professional loading screen for AquaDealers.
  * Features an orbital arc spinner around the logo, shimmer bar, and clean typography.
  */
 export const AquaLoader: React.FC<AquaLoaderProps> = ({
@@ -40,14 +40,14 @@ export const AquaLoader: React.FC<AquaLoaderProps> = ({
         {/* Logo */}
         <img
           src="/logo.png"
-          alt="AquaDealer"
+          alt="AquaDealers"
           className="aqua-loader__logo"
         />
       </div>
 
       {/* Brand name + message */}
       <div className="aqua-loader__text">
-        <span className="aqua-loader__brand">AquaDealer</span>
+        <span className="aqua-loader__brand">AquaDealers</span>
         {message && <span className="aqua-loader__message">{message}</span>}
       </div>
     </div>

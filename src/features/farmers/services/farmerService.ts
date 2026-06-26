@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { Farmer, FarmerInsert } from '@/types/database';
+import type { Farmer, FarmerInsert, FarmerProductDiscount } from '@/types/database';
 import { differenceInDays, parseISO } from 'date-fns';
 import { getAgeingBucket } from '@/lib/utils';
 
@@ -12,6 +12,7 @@ export async function getFarmers(params: {
   cropStatus?: string;
   riskStatus?: string;
   village?: string;
+  isWalkIn?: boolean;
   page?: number;
   limit?: number;
 }): Promise<{ data: Farmer[]; total: number }> {
@@ -43,6 +44,9 @@ export async function getFarmers(params: {
     query = query.or(
       `name.ilike.%${params.search}%,phone.ilike.%${params.search}%,village.ilike.%${params.search}%`
     );
+  }
+  if (params.isWalkIn !== undefined) {
+    query = query.eq('is_walk_in', params.isWalkIn);
   }
 
   const sortBy = params.sortBy || 'total_due';
@@ -96,6 +100,57 @@ export async function updateFarmer(
   return farmer as Farmer;
 }
 
+export async function getFarmerProductDiscounts(
+  dealerId: string,
+  farmerId: string
+): Promise<FarmerProductDiscount[]> {
+  const { data, error } = await supabase
+    .from('farmer_product_discounts')
+    .select('*, product:products(*)')
+    .eq('dealer_id', dealerId)
+    .eq('farmer_id', farmerId)
+    .order('updated_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as FarmerProductDiscount[];
+}
+
+export async function upsertFarmerProductDiscount(params: {
+  dealerId: string;
+  farmerId: string;
+  productId: string;
+  discountPercentage: number;
+}): Promise<FarmerProductDiscount> {
+  const discount = Math.min(Math.max(Number(params.discountPercentage) || 0, 0), 100);
+  const { data, error } = await supabase
+    .from('farmer_product_discounts')
+    .upsert({
+      dealer_id: params.dealerId,
+      farmer_id: params.farmerId,
+      product_id: params.productId,
+      discount_percentage: discount,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'dealer_id,farmer_id,product_id' })
+    .select('*, product:products(*)')
+    .single();
+
+  if (error) throw error;
+  return data as FarmerProductDiscount;
+}
+
+export async function deleteFarmerProductDiscount(params: {
+  dealerId: string;
+  discountId: string;
+}): Promise<void> {
+  const { error } = await supabase
+    .from('farmer_product_discounts')
+    .delete()
+    .eq('dealer_id', params.dealerId)
+    .eq('id', params.discountId);
+
+  if (error) throw error;
+}
+
 export async function uploadFarmerImage(
   file: File,
   dealerId: string,
@@ -117,7 +172,7 @@ export async function uploadFarmerImage(
     .from('farmer-profiles')
     .getPublicUrl(filePath);
 
-  return data.publicUrl;
+  return `${data.publicUrl}?t=${Date.now()}`;
 }
 
 export async function getFarmerTransactions(
@@ -136,7 +191,7 @@ export async function getFarmerTransactions(
 > {
   const { data: bills, error: billsErr } = await supabase
     .from('bills')
-    .select('id, bill_number, bill_date, total, created_at, type')
+    .select('id, bill_number, bill_date, total, created_at, type, is_edited')
     .eq('dealer_id', dealerId)
     .eq('farmer_id', farmerId)
     .neq('status', 'cancelled');
@@ -179,6 +234,7 @@ export async function getFarmerTransactions(
       date: bill.bill_date,
       amount: Number(bill.total),
       createdAt: bill.created_at,
+      is_edited: bill.is_edited,
     })),
     ...(payments ?? []).map((payment) => ({
       id: payment.id,
@@ -210,7 +266,7 @@ export async function getFarmerStatement(
   // 1. Get all bills and payments
   const { data: bills, error: billsErr } = await supabase
     .from('bills')
-    .select('id, bill_number, bill_date, total, created_at, bill_items(product_name_snapshot, quantity, unit_price)')
+    .select('id, bill_number, bill_date, total, created_at, is_edited, bill_items(product_name_snapshot, quantity, unit_price)')
     .eq('dealer_id', dealerId)
     .eq('farmer_id', farmerId)
     .neq('status', 'cancelled');
@@ -265,6 +321,7 @@ export async function getFarmerStatement(
         date: bill.bill_date,
         amount: Number(bill.total),
         createdAt: bill.created_at,
+        is_edited: bill.is_edited,
         items: bill.bill_items
       });
       totalDebit += Number(bill.total);

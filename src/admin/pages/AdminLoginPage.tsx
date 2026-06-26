@@ -53,7 +53,7 @@ const AdminLoginPage: React.FC = () => {
       <div style={{ width: '100%', maxWidth: 420, padding: 24 }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src="/logo.png" alt="AquaDealer Logo" style={{ height: '64px', width: 'auto', marginBottom: 12, objectFit: 'contain' }} />
+          <img src="/logo.png" alt="AquaDealers Logo" style={{ height: '64px', width: 'auto', marginBottom: 12, objectFit: 'contain' }} />
           <div style={{
             fontSize: 28,
             fontWeight: 800,
@@ -63,7 +63,7 @@ const AdminLoginPage: React.FC = () => {
             WebkitTextFillColor: 'transparent',
             marginBottom: 4
           }}>
-            AquaDealer
+            AquaDealers
           </div>
           <p style={{ color: 'var(--admin-text-muted)', fontSize: 14, fontWeight: 500 }}>
             Admin Portal
@@ -106,7 +106,7 @@ const AdminLoginPage: React.FC = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@aquadealer.in"
+                  placeholder="admin@aquadealers.in"
                   className="admin-input"
                   style={{ paddingLeft: 40 }}
                   required
@@ -182,7 +182,7 @@ const AdminLoginPage: React.FC = () => {
           fontSize: 11,
           color: 'var(--admin-text-dim)',
         }}>
-          AquaDealer Internal Operations Portal — Not for dealer use
+          AquaDealers Internal Operations Portal — Not for dealer use
         </p>
       </div>
     </div>

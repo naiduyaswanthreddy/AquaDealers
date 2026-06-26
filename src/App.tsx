@@ -10,6 +10,7 @@ import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import PinLockOverlay from '@/components/layout/PinLockOverlay';
 import FeatureGate from '@/components/layout/FeatureGate';
 import { PlanGate } from '@/components/auth/PlanGate';
+import { ReloadPrompt, AquaLoader } from '@/components/ui';
 
 // Auth Pages
 import LoginPage from '@/features/auth/pages/LoginPage';
@@ -24,6 +25,7 @@ import DashboardPage from '@/features/dashboard/pages/DashboardPage';
 
 // Public Pages
 import LandingPage from '@/features/landing/pages/LandingPage';
+import SeoLandingPage from '@/features/landing/pages/SeoLandingPage';
 import ShopHomePage from '@/features/shop/pages/ShopHomePage';
 
 // Farmers
@@ -58,6 +60,7 @@ import CashBookPage from '@/features/financials/pages/CashBookPage';
 // Reports & Settings
 import ReportsPage from '@/features/reports/pages/ReportsPage';
 import GSTLedgerPage from '@/features/reports/pages/GSTLedgerPage';
+import { BillingTemplatesPage } from '@/features/settings/pages/BillingTemplatesPage';
 import SettingsPage from '@/features/settings/pages/SettingsPage';
 import MorePage from '@/features/placeholder/MorePage';
 
@@ -83,12 +86,14 @@ import StaffHomePage from '@/features/staff/pages/StaffHomePage';
 import StaffPage from '@/features/staff/pages/StaffPage';
 import StaffPortalPage from '@/features/staff/pages/StaffPortalPage';
 import { useStaffStore } from '@/stores/staffStore';
+import { useVersionCheck } from '@/hooks/useVersionCheck';
 
 const App: React.FC = () => {
-  const { session, user, initialize } = useAuthStore();
+  const { session, user, initialize, isLoading } = useAuthStore();
   const fetchPlanDefinitions = useSubscriptionStore(state => state.fetchPlanDefinitions);
   const currentStaff = useStaffStore((state) => state.currentStaff);
   const { i18n } = useTranslation();
+  useVersionCheck();
 
   React.useEffect(() => {
     initialize();
@@ -100,6 +105,10 @@ const App: React.FC = () => {
       i18n.changeLanguage(user.language);
     }
   }, [user?.language, i18n]);
+
+  if (isLoading) {
+    return <AquaLoader fullScreen message="Loading AquaDealers..." />;
+  }
 
   return (
     <>
@@ -135,6 +144,13 @@ const App: React.FC = () => {
 
         {/* Public Auth & Landing Routes */}
         <Route path="/" element={!session ? <LandingPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="/features" element={<SeoLandingPage pageKey="features" />} />
+        <Route path="/pricing" element={<SeoLandingPage pageKey="pricing" />} />
+        <Route path="/contact" element={<SeoLandingPage pageKey="contact" />} />
+        <Route path="/aqua-feed-billing-software" element={<SeoLandingPage pageKey="feedBilling" />} />
+        <Route path="/aqua-medicine-inventory-software" element={<SeoLandingPage pageKey="medicineInventory" />} />
+        <Route path="/aquaculture-dealer-management-software" element={<SeoLandingPage pageKey="dealerManagement" />} />
+        <Route path="/stock-management-for-aqua-dealers" element={<SeoLandingPage pageKey="stockManagement" />} />
         <Route path="/login" element={!session ? <LoginPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="/register" element={!session ? <RegisterPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="/forgot-password" element={!session ? <ForgotPasswordPage /> : <Navigate to="/dashboard" replace />} />
@@ -203,6 +219,7 @@ const App: React.FC = () => {
           <Route path="/reports" element={<FeatureGate allowed={['reports']} title="Reports" description="You do not have access to reports."><ReportsPage /></FeatureGate>} />
           <Route path="/gst" element={<FeatureGate allowed={['reports']} title="GST Ledger" description="You do not have access to reports."><GSTLedgerPage /></FeatureGate>} />
           <Route path="/settings" element={<FeatureGate allowed={['settings']} title="Settings" description="You do not have access to settings."><SettingsPage /></FeatureGate>} />
+          <Route path="/settings/templates" element={<FeatureGate allowed={['settings']} title="Billing Templates" description="You do not have access to settings."><BillingTemplatesPage /></FeatureGate>} />
           <Route path="/settings/:section" element={<FeatureGate allowed={['settings']} title="Settings" description="You do not have access to settings."><SettingsPage /></FeatureGate>} />
           <Route path="/more" element={<MorePage />} />
           <Route path="/staff" element={<PlanGate feature="staff" fallback={<div className="p-8 text-center mt-12 max-w-md mx-auto"><h2 className="text-xl font-bold text-slate-900">Upgrade to Pro+</h2><p className="mt-2 text-slate-600">Staff management and access control is available on the Pro+ plan. Please contact sales to upgrade.</p></div>}><FeatureGate allowed={['staffManagement']} title="Staff" description="You do not have access to staff management."><StaffPage /></FeatureGate></PlanGate>} />
@@ -223,6 +240,9 @@ const App: React.FC = () => {
 
       {/* Global PIN Lock Overlay */}
       <PinLockOverlay />
+      
+      {/* PWA Update Prompt */}
+      <ReloadPrompt />
     </>
   );
 };

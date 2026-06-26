@@ -9,6 +9,11 @@ const ADDON_FEATURES = [
     id: 'advance_accounting', 
     name: 'Advance Accounting', 
     description: 'Access to advanced export and detailed ledger tools.' 
+  },
+  { 
+    id: 'product_image', 
+    name: 'Product Images', 
+    description: 'Enable custom images for inventory medicines and generic branch feeds.' 
   }
 ];
 

@@ -15,6 +15,7 @@ import {
   getMonthlySalesTrend,
   getTopSoldProducts,
   getCollectTodayFarmers,
+  getTodaySoldItems,
 } from '../services/dashboardService';
 import { supabase } from '@/lib/supabase';
 
@@ -156,6 +157,21 @@ export function useRecentTransactionsList(limit: number = 8) {
   return useQuery({
     queryKey: ['dashboard', 'recent-transactions', dealerId, activeBranchId, limit],
     queryFn: () => getRecentTransactions(dealerId, activeBranchId, limit),
+    enabled: !!dealerId,
+  });
+}
+
+/**
+ * Hook to retrieve items sold today.
+ */
+export function useTodaySoldItems() {
+  const user = useAuthStore((state) => state.user);
+  const activeBranchId = useBranchStore((state) => state.getActiveBranchId());
+  const dealerId = user?.id || '';
+
+  return useQuery({
+    queryKey: ['dashboard', 'today-sold-items', dealerId, activeBranchId],
+    queryFn: () => getTodaySoldItems(dealerId, activeBranchId),
     enabled: !!dealerId,
   });
 }

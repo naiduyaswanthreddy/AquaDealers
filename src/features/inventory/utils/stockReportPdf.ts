@@ -125,7 +125,7 @@ export const shareStockReportViaWhatsApp = async (
   const { sharePdfViaWhatsApp } = await import('@/lib/shareUtils');
   const blob = await generateStockReportPdfBlob(items, dealer, startDate, endDate);
   
-  const fallbackText = `*${dealer?.shop_name || 'AquaDealer'}*\n-------------------\n*Stock Movement Report*\n*Period:* ${formatDate(startDate)} to ${formatDate(endDate)}\n*Items Sold:* ${items.length}\n-------------------\nPlease find the detailed report PDF attached.`;
+  const fallbackText = `*${dealer?.shop_name || 'AquaDealers'}*\n-------------------\n*Stock Movement Report*\n*Period:* ${formatDate(startDate)} to ${formatDate(endDate)}\n*Items Sold:* ${items.length}\n-------------------\nPlease find the detailed report PDF attached.`;
   
   await sharePdfViaWhatsApp(blob, `Stock_Report_${startDate}_to_${endDate}.pdf`, fallbackText);
 };

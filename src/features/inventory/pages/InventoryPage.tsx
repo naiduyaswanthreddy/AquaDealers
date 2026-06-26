@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { formatCurrency } from '@/lib/utils';
 import { useBranchStore } from '@/stores/branchStore';
 import {
   AlertTriangle,
@@ -9,9 +10,15 @@ import {
   Plus,
   SearchSlash,
   ShieldAlert,
-  Check,
   FileText,
   TrendingUp,
+  Package,
+  PackageX,
+  IndianRupee,
+  ChevronDown,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -41,6 +48,7 @@ const InventoryPage: React.FC = () => {
   const [selectedType, setSelectedType] = useState('all');
   const [searchParams] = useSearchParams();
   const [showLowStockOnly, setShowLowStockOnly] = useState(searchParams.get('filter') === 'low-stock');
+  const [showOutOfStockOnly, setShowOutOfStockOnly] = useState(searchParams.get('filter') === 'out-of-stock');
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
 
   const productTypes = useMemo(
@@ -78,9 +86,10 @@ const InventoryPage: React.FC = () => {
       limit,
       searchQuery,
       productType: selectedType,
-      lowStockOnly: showLowStockOnly,
+      lowStockOnly: showLowStockOnly && !showOutOfStockOnly,
+      outOfStockOnly: showOutOfStockOnly,
     });
-  }, [user?.id, branchId, searchQuery, selectedType, showLowStockOnly]);
+  }, [user?.id, branchId, searchQuery, selectedType, showLowStockOnly, showOutOfStockOnly]);
 
   const pagedInventory = useLoadMoreList<InventoryItem>({
     initialLimit: 9,
@@ -93,11 +102,14 @@ const InventoryPage: React.FC = () => {
     setSearchQuery('');
     setSelectedType('all');
     setShowLowStockOnly(false);
+    setShowOutOfStockOnly(false);
   };
 
   const summaryCards: Array<{
     label: string;
     value: React.ReactNode;
+    icon: React.ReactNode;
+    colorClass: string;
     interactive: boolean;
     active?: boolean;
     onClick?: () => void;
@@ -105,25 +117,44 @@ const InventoryPage: React.FC = () => {
     {
       label: 'Total Products',
       value: summary.totalSkus,
-      onClick: () => setShowLowStockOnly(false),
+      icon: <Package className="h-6 w-6" />,
+      colorClass: 'bg-blue-50 text-blue-600 border-blue-100',
+      onClick: () => {
+        setShowLowStockOnly(false);
+        setShowOutOfStockOnly(false);
+      },
       interactive: true,
-      active: !showLowStockOnly,
+      active: !showLowStockOnly && !showOutOfStockOnly,
     },
     {
       label: t('inventory.lowStock', 'Low stock'),
       value: summary.lowStockCount,
-      onClick: () => setShowLowStockOnly(true),
+      icon: <AlertTriangle className="h-6 w-6" />,
+      colorClass: 'bg-amber-50 text-amber-500 border-amber-100',
+      onClick: () => {
+        setShowLowStockOnly(true);
+        setShowOutOfStockOnly(false);
+      },
       interactive: true,
-      active: showLowStockOnly,
+      active: showLowStockOnly && !showOutOfStockOnly,
     },
     {
       label: 'Out of Stock',
       value: summary.outOfStockCount,
-      interactive: false,
+      icon: <PackageX className="h-6 w-6" />,
+      colorClass: 'bg-rose-50 text-rose-500 border-rose-100',
+      onClick: () => {
+        setShowOutOfStockOnly(true);
+        setShowLowStockOnly(false);
+      },
+      interactive: true,
+      active: showOutOfStockOnly,
     },
     {
       label: 'Stock Value',
-      value: formatCompactCurrency(summary.estimatedStockValue),
+      value: formatCurrency(summary.estimatedStockValue),
+      icon: <IndianRupee className="h-6 w-6" />,
+      colorClass: 'bg-emerald-50 text-emerald-600 border-emerald-100',
       interactive: false,
     },
   ];
@@ -152,47 +183,26 @@ const InventoryPage: React.FC = () => {
         title="Stock Control"
         action={
           <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:flex-row">
-            <Button
-              size="sm"
-              variant="outline"
-              fullWidth
-              onClick={() => navigate('/inventory/report')}
-              leftIcon={<FileText className="h-4 w-4 sm:h-5 sm:w-5" />}
-            >
-              Stock Report
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              fullWidth
-              onClick={() => navigate('/inventory/rate-adjustment')}
-              leftIcon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
-            >
-              Rate Diff Tool
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              fullWidth
+
+            <button
               onClick={() => setIsAddProductModalOpen(true)}
-              leftIcon={<PackagePlus className="h-4 w-4 sm:h-5 sm:w-5" />}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 min-h-10 text-xs sm:text-sm font-semibold text-white bg-white/15 border border-white/20 rounded-[14px] hover:bg-white/25 transition-colors sm:text-left sm:min-w-[110px]"
             >
-              {t('inventory.newProduct', 'New Product')}
-            </Button>
-            <Button
-              size="sm"
-              variant="primary"
-              fullWidth
+              <PackagePlus className="h-4 w-4 sm:h-[18px] sm:w-[18px] shrink-0" />
+              <span className="leading-tight">New<br className="hidden sm:block" />Product</span>
+            </button>
+            <button
               onClick={() => navigate('/purchases/new')}
-              leftIcon={<Plus className="h-4 w-4 sm:h-5 sm:w-5" />}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 min-h-10 text-xs sm:text-sm font-semibold text-white bg-white/15 border border-white/20 rounded-[14px] hover:bg-white/25 transition-colors sm:text-left sm:min-w-[110px]"
             >
-              {t('inventory.addStock', 'Add Stock')}
-            </Button>
+              <Plus className="h-4 w-4 sm:h-[18px] sm:w-[18px] shrink-0" />
+              <span className="leading-tight whitespace-nowrap whitespace-normal sm:whitespace-nowrap">Add Stock</span>
+            </button>
           </div>
         }
       />
 
-      {isLoading ? (
+      {(isLoading || pagedInventory.isLoading) && !inventory.length && !pagedInventory.visibleItems.length ? (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -206,7 +216,7 @@ const InventoryPage: React.FC = () => {
             ))}
           </div>
         </>
-      ) : !inventory.length ? (
+      ) : !inventory.length && !pagedInventory.totalCount && !pagedInventory.isLoading ? (
         <EmptyState
           icon={Boxes}
           title={t('inventory.noItems', 'No stock items')}
@@ -231,9 +241,8 @@ const InventoryPage: React.FC = () => {
         />
       ) : (
         <>
-          <div className="col-span-full rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_12px_32px_rgba(148,163,184,0.12)] sm:p-6">
-            <p className="text-sm font-black uppercase tracking-[0.18em] text-slate-400 mb-4">{t('inventory.stockSummary', 'Stock Summary')}</p>
-            <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="col-span-full pt-4">
+            <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               {summaryCards.map((card) => {
                 return (
                   <div
@@ -252,23 +261,23 @@ const InventoryPage: React.FC = () => {
                         : undefined
                     }
                     aria-pressed={card.interactive ? card.active : undefined}
-                    className={`group relative overflow-hidden rounded-[24px] border bg-slate-50/50 px-4 py-4 text-left border-slate-200 shadow-sm transition-all duration-200 sm:px-5 sm:py-5 ${
+                    className={`group relative overflow-hidden rounded-[16px] border bg-white p-3 sm:p-5 text-left transition-all duration-200 flex flex-col sm:flex-row items-start gap-2 sm:gap-4 ${
                       card.interactive ? 'cursor-pointer' : 'cursor-default'
                     } ${
                       card.active
-                        ? 'border-slate-200 ring-1 ring-slate-200 shadow-[0_10px_24px_rgba(148,163,184,0.09)] bg-slate-100'
-                        : 'hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_14px_28px_rgba(148,163,184,0.12)]'
+                        ? 'border-blue-300 ring-1 ring-blue-300 shadow-[0_4px_12px_rgba(59,130,246,0.12)]'
+                        : 'border-slate-200 hover:border-slate-300 hover:shadow-sm shadow-sm'
                     }`}
                   >
-                    <div className="absolute inset-x-0 top-0 h-0.5 bg-slate-100" />
-                    <div className="relative flex flex-col justify-start gap-2">
-                      <div className="text-[0.65rem] font-black uppercase tracking-[0.16em] leading-normal text-slate-400 whitespace-normal">
+                    <div className={`flex shrink-0 items-center justify-center h-10 w-10 sm:h-14 sm:w-14 rounded-2xl border ${card.colorClass}`}>
+                      {React.cloneElement(card.icon as React.ReactElement, { className: 'h-5 w-5 sm:h-6 sm:w-6' })}
+                    </div>
+                    <div className="flex flex-col justify-start gap-0.5 sm:gap-1 mt-1 sm:mt-0">
+                      <div className="text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-[0.1em] text-slate-500 truncate w-full">
                         {card.label}
                       </div>
-                      <div>
-                        <div className="text-[1.95rem] font-black tracking-[-0.07em] leading-none text-slate-950 sm:text-[2.1rem]">
-                          {card.value}
-                        </div>
+                      <div className="text-xl sm:text-2xl font-black tracking-[-0.03em] text-slate-900 leading-none mt-0.5">
+                        {card.value}
                       </div>
                     </div>
                   </div>
@@ -277,19 +286,20 @@ const InventoryPage: React.FC = () => {
             </section>
           </div>
 
-          <section className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-2.5">
-              <div className="w-full">
+          <section className="mt-4 rounded-[16px] border border-slate-200 bg-white p-4 shadow-sm flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <div className="w-full md:w-[400px]">
                 <SearchBar
                   value={searchQuery}
                   onChange={setSearchQuery}
-                  placeholder={t('inventory.searchPlaceholder', 'Search products')}
+                  placeholder="Search products by name, brand, category..."
                   showVoicePlaceholder
                 />
               </div>
-              
-              <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1.5 pt-1 sm:flex-wrap sm:gap-3">
-                {/* All */}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-4">
+              <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 sm:flex-wrap sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setSelectedType('all')}
@@ -298,7 +308,6 @@ const InventoryPage: React.FC = () => {
                   {t('common.all', 'All')}
                 </button>
 
-                {/* Types */}
                 {productTypes.map((type) => (
                   <button
                     key={type}
@@ -310,48 +319,33 @@ const InventoryPage: React.FC = () => {
                   </button>
                 ))}
 
-                {/* Low Stock */}
                 <button
                   type="button"
-                  onClick={() => setShowLowStockOnly((value) => !value)}
+                  onClick={() => {
+                    setShowLowStockOnly((value) => !value);
+                    setShowOutOfStockOnly(false);
+                  }}
                   className={showLowStockOnly ? 'stock-filter-capsule stock-filter-capsule--warning-active gap-1.5' : 'stock-filter-capsule stock-filter-capsule--warning gap-1.5'}
                 >
                   <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2.5} />
                   {t('inventory.lowStock', 'Low stock')}
                 </button>
               </div>
-            </div>
 
-            <div className="mt-2.5 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm font-semibold text-slate-500">
-                <span className="font-black text-slate-900">{pagedInventory.totalCount}</span>{' '}
-                {pagedInventory.totalCount === 1 ? 'product' : 'products'}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {showLowStockOnly ? (
-                  <Badge variant="warning" className="normal-case tracking-[0.02em]">
-                    Low stock only
-                  </Badge>
-                ) : null}
-                {selectedType !== 'all' ? (
-                  <Badge variant="info" className="normal-case tracking-[0.02em]">
-                    {selectedType}
-                  </Badge>
-                ) : null}
-                {(searchQuery || selectedType !== 'all' || showLowStockOnly) ? (
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="text-sm font-bold text-sky-700 transition-colors hover:text-sky-800"
-                  >
-                    Clear filters
-                  </button>
-                ) : null}
+              <div className="flex items-center gap-4 ml-auto">
+                <div className="text-sm font-bold text-slate-700">
+                  {pagedInventory.totalCount} products
+                </div>
               </div>
             </div>
           </section>
 
-          {!pagedInventory.totalCount ? (
+          {pagedInventory.isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <p className="mt-4 text-sm text-slate-500 font-medium animate-pulse">Loading stock...</p>
+            </div>
+          ) : !pagedInventory.totalCount ? (
             <EmptyState
               icon={SearchSlash}
               title={t('common.noResults', 'No results found')}
@@ -363,14 +357,16 @@ const InventoryPage: React.FC = () => {
               }
             />
           ) : (
-            <InventoryList items={pagedInventory.visibleItems} />
+            <>
+              <InventoryList items={pagedInventory.visibleItems} />
+              <ListLoadMore
+                shown={pagedInventory.visibleCount}
+                total={pagedInventory.totalCount}
+                onLoadMore={pagedInventory.loadMore}
+                label={t('common.loadMore', 'Load more')}
+              />
+            </>
           )}
-          <ListLoadMore
-            shown={pagedInventory.visibleCount}
-            total={pagedInventory.totalCount}
-            onLoadMore={pagedInventory.loadMore}
-            label={t('common.loadMore', 'Load more')}
-          />
         </>
       )}
 

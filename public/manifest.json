@@ -1,24 +1,37 @@
 {
-  "short_name": "AquaDealer",
-  "name": "AquaDealer — Billing & Stock Management",
-  "description": "Simple billing and stock management for aqua feed and medicine dealers",
+  "id": "/",
+  "short_name": "AquaDealers",
+  "name": "AquaDealers - Billing & Stock Management",
+  "description": "Billing, stock, purchase and farmer dues management for aqua feed and medicine dealers.",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#1B6CA8",
+  "prefer_related_applications": false,
+  "categories": ["business", "productivity", "finance"],
   "icons": [
     {
-      "src": "/logo.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/logo.png",
+      "src": "/icon-192x192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
-  ],
-  "start_url": "/",
-  "background_color": "#1B6CA8",
-  "theme_color": "#1B6CA8",
-  "display": "standalone",
-  "orientation": "portrait"
+  ]
 }

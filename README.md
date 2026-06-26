@@ -1,6 +1,6 @@
-# AquaDealer
+# AquaDealers
 
-AquaDealer is a mobile-first dealer management app for aqua feed and medicine shops. It helps dealers create bills quickly, track farmer credit, manage stock movement, understand daily cash/UPI collections, and keep legally useful proof such as customer signatures on credit bills.
+AquaDealers is a mobile-first dealer management app for aqua feed and medicine shops. It helps dealers create bills quickly, track farmer credit, manage stock movement, understand daily cash/UPI collections, and keep legally useful proof such as customer signatures on credit bills.
 
 ## The 15-Module Architecture
 

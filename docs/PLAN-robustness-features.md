@@ -1,6 +1,6 @@
 # Robustness Features Implementation Plan
 
-This plan addresses the 13 robustness features requested to make the AquaDealer application more resilient, user-friendly, and enterprise-ready.
+This plan addresses the 13 robustness features requested to make the AquaDealers application more resilient, user-friendly, and enterprise-ready.
 
 ## Current State Assessment
 

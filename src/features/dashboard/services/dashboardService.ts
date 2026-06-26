@@ -418,12 +418,16 @@ export async function getExpiringMedicines(dealerId: string, branchId?: string |
   thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
   const thirtyDaysStr = thirtyDaysFromNow.toISOString().split('T')[0];
 
+  // Query inventory_lots instead of inventory to get per-lot expiries
   let query = supabase
-    .from('inventory')
-    .select('*, products(*)')
+    .from('inventory_lots')
+    .select('*, inventory(*, products(*))')
     .eq('dealer_id', dealerId)
+    .gt('remaining_quantity', 0)
+    .eq('is_expired', false)
     .not('expiry_date', 'is', null)
-    .lte('expiry_date', thirtyDaysStr);
+    .lte('expiry_date', thirtyDaysStr)
+    .order('expiry_date', { ascending: true });
 
   if (branchId) {
     query = query.eq('branch_id', branchId);
@@ -435,10 +439,16 @@ export async function getExpiringMedicines(dealerId: string, branchId?: string |
   // Filter in memory to ensure they are medicines
   return (
     data
-      ?.filter((item: any) => item.products?.type === 'medicine')
-      .map((item) => ({
-        ...item,
-        product: item.products,
+      ?.filter((lot: any) => lot.inventory?.products?.type === 'medicine')
+      .map((lot: any) => ({
+        ...lot.inventory,
+        id: lot.id, // Use lot ID as the unique key to prevent React key conflicts if multiple lots expire for same product
+        inventory_id: lot.inventory.id,
+        product: lot.inventory.products,
+        // Override legacy expiry_date with the specific lot's expiry
+        expiry_date: lot.expiry_date,
+        batch_number: lot.batch_number,
+        remaining_quantity: lot.remaining_quantity,
       })) ?? []
   );
 }
@@ -608,4 +618,52 @@ export async function getTopSoldProducts(dealerId: string, branchId?: string | n
   return Array.from(productMap.values())
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 5); // top 5
+}
+
+export async function getTodaySoldItems(dealerId: string, branchId?: string | null) {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayStr = todayStart.toISOString().split('T')[0];
+
+  let query = supabase
+    .from('bill_items')
+    .select(`
+      quantity,
+      product_id,
+      products(name, type, unit),
+      bills!inner(bill_date, status, dealer_id, branch_id)
+    `)
+    .eq('bills.dealer_id', dealerId)
+    .eq('bills.status', 'active')
+    .gte('bills.bill_date', todayStr);
+
+  if (branchId) {
+    query = query.eq('bills.branch_id', branchId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const productMap = new Map<string, any>();
+
+  for (const item of data ?? []) {
+    const pId = item.product_id;
+    if (!pId || !item.products) continue;
+
+    if (!productMap.has(pId)) {
+      const prod = Array.isArray(item.products) ? item.products[0] : item.products;
+      if (!prod) continue;
+      productMap.set(pId, {
+        id: pId,
+        name: prod.name,
+        type: prod.type,
+        unit: prod.unit || 'units',
+        quantity: 0
+      });
+    }
+
+    productMap.get(pId)!.quantity += Number(item.quantity || 0);
+  }
+
+  return Array.from(productMap.values()).sort((a, b) => b.quantity - a.quantity);
 }

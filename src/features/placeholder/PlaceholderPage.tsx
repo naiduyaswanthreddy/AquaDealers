@@ -102,7 +102,7 @@ export const PlaceholderPage: React.FC = () => {
   // Find configuration for the current route, fallback to default
   const config = ROUTE_MAPS[location.pathname] || {
     title: 'Feature Coming Soon',
-    description: 'We are working hard to bring this feature to your AquaDealer app in the next auto-update.',
+    description: 'We are working hard to bring this feature to your AquaDealers app in the next auto-update.',
     icon: Sparkles,
     color: 'from-primary to-primary-light',
   };

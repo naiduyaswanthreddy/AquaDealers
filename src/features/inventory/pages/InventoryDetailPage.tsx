@@ -8,7 +8,6 @@ import {
   ChevronRight,
   CircleDollarSign,
   Link2,
-  MoreVertical,
   Package2,
   PackagePlus,
   Pencil,
@@ -23,23 +22,42 @@ import {
   Clock,
   SlidersHorizontal,
   Plus,
+  Minus,
   ArrowDownCircle,
-  ArrowUpCircle
+  ArrowUpCircle,
+  Trash2
 } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Badge, Button, EmptyState, Skeleton, Modal, Input } from '@/components/ui';
+import { Badge, Button, EmptyState, Skeleton, Modal, Input, DatePicker, DateRangeFilter } from '@/components/ui';
 import { ListLoadMore } from '@/components/ui/ListLoadMore';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
-import { useInventoryDetail } from '../hooks/useInventory';
+import { formatCurrency, formatDate, formatDateTime, cn } from '@/lib/utils';
+import { useInventoryDetail, useUpdateInventoryLotPricing } from '../hooks/useInventory';
 import StockAdjustmentModal from '../components/StockAdjustmentModal';
 import EditInventoryModal from '../components/EditInventoryModal';
+import { DeleteProductModal } from '../components/DeleteProductModal';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
+import type { InventoryLot } from '@/types/database';
 
 /* ────────────────────────────────────────────── */
 /*  Helpers                                       */
 /* ────────────────────────────────────────────── */
+
+const getBadgeForLot = (lot: any, allLots: any[]) => {
+  if (!allLots || allLots.length < 2) return null;
+  const sortedLots = [...allLots].sort((a, b) => {
+    if (a.expiry_date && b.expiry_date) {
+      return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
+    }
+    return new Date(a.received_at).getTime() - new Date(b.received_at).getTime();
+  });
+  const index = sortedLots.findIndex((l: any) => l.id === lot.id);
+  if (index === sortedLots.length - 1) return 'New';
+  if (index === 0) return sortedLots.length > 2 ? 'Very Old' : 'Old';
+  return 'Old';
+};
 
 const getHealthTone = (quantity: number, minStockAlert: number) => {
   if (quantity <= 0) {
@@ -139,6 +157,18 @@ const InventoryDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'lots' | 'history'>('overview');
   const [historyStartDate, setHistoryStartDate] = useState('');
   const [historyEndDate, setHistoryEndDate] = useState('');
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [editingLot, setEditingLot] = useState<InventoryLot | null>(null);
+  const [lotDraft, setLotDraft] = useState({
+    batch_number: '',
+    expiry_date: '',
+    mrp: '',
+    selling_price: '',
+    medicine_discount_percentage: '',
+    cost_price: '',
+    cost_percentage: '',
+  });
+  const updateLotPricing = useUpdateInventoryLotPricing();
 
   const [isQuickStatsPaused, setIsQuickStatsPaused] = useState(false);
   const quickStatsRef = useRef<HTMLDivElement>(null);
@@ -180,6 +210,56 @@ const InventoryDetailPage: React.FC = () => {
 
   const inventory = data?.inventory;
 
+  const calculateCostPercentage = (mrp?: number | null, costPrice?: number | null) => {
+    const numericMrp = Number(mrp) || 0;
+    const numericCostPrice = Number(costPrice) || 0;
+    if (numericMrp <= 0 || numericCostPrice < 0) return 0;
+    return Number((((numericMrp - numericCostPrice) / numericMrp) * 100).toFixed(2));
+  };
+
+  const calculateCostPrice = (mrp?: number | null, costPercentage?: number | null) => {
+    const numericMrp = Number(mrp) || 0;
+    const numericCostPercentage = Number(costPercentage) || 0;
+    if (numericMrp <= 0 || numericCostPercentage < 0) return 0;
+    return Number((numericMrp * (1 - numericCostPercentage / 100)).toFixed(2));
+  };
+
+  const openLotEditor = (lot: InventoryLot) => {
+    const mrp = Number(lot.mrp || inventory?.mrp || 0);
+    const costPrice = Number(lot.cost_price || 0);
+    setEditingLot(lot);
+    setLotDraft({
+      batch_number: lot.batch_number || '',
+      expiry_date: lot.expiry_date || '',
+      mrp: mrp ? String(mrp) : '',
+      selling_price: lot.selling_price != null ? String(lot.selling_price) : '',
+      medicine_discount_percentage: lot.medicine_discount_percentage != null ? String(lot.medicine_discount_percentage) : '',
+      cost_price: costPrice ? String(costPrice) : '',
+      cost_percentage: String(calculateCostPercentage(mrp, costPrice)),
+    });
+  };
+
+  const saveLotEditor = async () => {
+    if (!editingLot) return;
+    const mrp = Number(lotDraft.mrp) || 0;
+    const sellingPrice = Number(lotDraft.selling_price) || 0;
+    const farmerDiscount = Number(lotDraft.medicine_discount_percentage) || 0;
+    await updateLotPricing.mutateAsync({
+      lotId: editingLot.id,
+      updates: {
+        batch_number: lotDraft.batch_number || null,
+        expiry_date: lotDraft.expiry_date || null,
+        mrp: mrp || null,
+        selling_price: sellingPrice,
+        medicine_discount_percentage: farmerDiscount,
+        final_unit_price: Number((sellingPrice * (1 - farmerDiscount / 100)).toFixed(2)),
+        cost_price: Number(lotDraft.cost_price) || null,
+      },
+    });
+    toast.success('Lot updated successfully');
+    setEditingLot(null);
+  };
+
   const health = useMemo(() => {
     if (!inventory) return null;
     return getHealthTone(Number(inventory.quantity_in_stock || 0), Number(inventory.min_stock_alert || 0));
@@ -198,6 +278,9 @@ const InventoryDetailPage: React.FC = () => {
     });
     if (foundIdx !== undefined && foundIdx !== -1) {
       setSelectedMonthIndex(foundIdx);
+    } else {
+      // If the month doesn't exist in our series, we don't crash, we just let it fail gracefully or show toast
+      toast.error('No analytics data recorded for this month');
     }
   };
 
@@ -230,7 +313,9 @@ const InventoryDetailPage: React.FC = () => {
   const recentAdjustments = useMemo(() => {
     if (!data) return [];
     return historyFilteredMovements
-      .filter((movement) => movement.reference_type === 'ADJUSTMENT' || movement.reference_type === 'INITIAL_STOCK')
+      .filter((movement) =>
+        ['manual_adjustment', 'initial_stock', 'INITIAL_STOCK', 'ADJUSTMENT'].includes(movement.reference_type)
+      )
       .slice(0, 4);
   }, [data, historyFilteredMovements]);
 
@@ -313,6 +398,38 @@ const InventoryDetailPage: React.FC = () => {
     };
   }, [dailyMovementDate, data, inventory]);
 
+  const calendarDays = useMemo(() => {
+    if (!selectedMonthData || !data || !inventory) return [];
+    
+    const [monthName, year] = selectedMonthData.month.split(' ');
+    const startDate = new Date(`${monthName} 1, ${year}`);
+    if (isNaN(startDate.getTime())) return [];
+    
+    const yearNum = startDate.getFullYear();
+    const monthNum = startDate.getMonth();
+    const daysInMonth = new Date(yearNum, monthNum + 1, 0).getDate();
+    const firstDayIndex = startDate.getDay();
+    
+    const days: ({ dateStr: string; dayNum: number; remaining: number } | null)[] = Array(firstDayIndex).fill(null);
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+       const dateStr = `${yearNum}-${String(monthNum + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+       
+       const movementAfterDay = data.movements
+         .filter((m) => m.created_at.slice(0, 10) > dateStr)
+         .reduce((sum, m) => sum + Number(m.quantity_change || 0), 0);
+         
+       const remaining = Number(inventory.quantity_in_stock || 0) - movementAfterDay;
+       
+       days.push({
+         dateStr,
+         dayNum: i,
+         remaining
+       });
+    }
+    return days;
+  }, [selectedMonthData, data, inventory]);
+
   const productArt = inventory ? getProductArt(inventory.product.type) : null;
 
   /* ── Loading skeleton ── */
@@ -358,6 +475,17 @@ const InventoryDetailPage: React.FC = () => {
       <PageHeader
         title={inventory.product.name}
         eyebrow={`${inventory.product.type}${inventory.product.category ? ` · ${inventory.product.category}` : ''}`}
+        avatar={
+          inventory.image_url ? (
+            <div className="h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-white p-2 shadow-sm flex items-center justify-center shrink-0 border border-white/20">
+              <img src={inventory.image_url} alt={inventory.product.name} className="h-full w-full object-contain" />
+            </div>
+          ) : (
+            <div className="h-16 w-16 md:h-20 md:w-20 rounded-2xl bg-white/10 p-2 shadow-sm flex items-center justify-center shrink-0 border border-white/20 backdrop-blur-md">
+              <Package2 className="h-8 w-8 text-white/80" />
+            </div>
+          )
+        }
         onBack={() => navigate('/inventory')}
         topRightAction={
           <button
@@ -434,7 +562,7 @@ const InventoryDetailPage: React.FC = () => {
              </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-100">
+          <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-100">
              <div className="flex flex-col gap-1 items-center justify-center text-center">
                 <div className="flex items-center gap-1.5">
                    <CircleDollarSign className="w-3.5 h-3.5 text-slate-400" />
@@ -450,6 +578,13 @@ const InventoryDetailPage: React.FC = () => {
                    <span className="text-[10px] font-medium text-slate-500">Unit</span>
                 </div>
                 <span className="text-sm font-bold text-slate-800 capitalize">{inventory.product.unit}</span>
+             </div>
+             <div className="flex flex-col gap-1 items-center justify-center text-center border-l border-slate-100">
+                <div className="flex items-center gap-1.5">
+                   <TrendingDown className="w-3.5 h-3.5 text-emerald-400" />
+                   <span className="text-[10px] font-medium text-slate-500">Discount</span>
+                </div>
+                <span className="text-sm font-bold text-emerald-600">{Number(inventory.medicine_discount_percentage || 0)}%</span>
              </div>
              <div className="flex flex-col gap-1 items-center justify-center text-center border-l border-slate-100">
                 <div className="flex items-center gap-1.5">
@@ -501,21 +636,12 @@ const InventoryDetailPage: React.FC = () => {
                   <CalendarRange className="w-4 h-4 text-slate-400" />
                   Today's Movement
                 </div>
-                <div className="relative">
-                  <div className="relative h-[30px] bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md transition-colors shadow-sm focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:border-sky-500 cursor-pointer flex items-center min-w-[130px]">
-                    <div className="absolute right-2.5 pointer-events-none text-slate-400">
-                      <CalendarRange className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="absolute left-2.5 pointer-events-none text-xs font-semibold text-slate-600">
-                      {formatDate(dailyMovementDate)}
-                    </div>
-                    <input
-                      type="date"
-                      value={dailyMovementDate}
-                      onChange={(e) => setDailyMovementDate(e.target.value)}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                    />
-                  </div>
+                <div className="w-[160px]">
+                  <DatePicker 
+                    value={dailyMovementDate} 
+                    onChange={setDailyMovementDate} 
+                    className="h-[30px]" 
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-2 border border-slate-100 rounded-[14px] p-3">
@@ -540,6 +666,52 @@ const InventoryDetailPage: React.FC = () => {
                     <span className="text-[9px] font-bold text-[#0070F3] mt-1">units</span>
                  </div>
               </div>
+
+              {dailyMovement.rows.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Transactions</h4>
+                  <div className="space-y-2">
+                    {dailyMovement.rows.map((row) => {
+                      const isBill = row.reference_type === 'bill' && row.reference_id;
+                      const isPurchase = row.reference_type === 'purchase' && row.reference_id;
+                      
+                      return (
+                      <div 
+                        key={row.id} 
+                        className={`flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 transition-colors ${(isBill || isPurchase) ? 'hover:bg-slate-50 cursor-pointer hover:border-slate-300' : ''}`}
+                        onClick={() => {
+                          if (isBill) navigate(`/bills/${row.reference_id}`);
+                          else if (isPurchase) navigate(`/purchases/${row.reference_id}`);
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${row.quantity_change > 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                            {row.quantity_change > 0 ? <Plus className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                              {row.reference_type === 'bill' && row.bill ? (
+                                <span>Bill #{row.bill.bill_number} • {row.bill.farmer_name_snapshot}</span>
+                              ) : row.reference_type === 'purchase' && row.purchase ? (
+                                <span>Purchase • {row.purchase.supplier_name || 'Supplier'}</span>
+                              ) : (
+                                <span className="capitalize">{row.reference_type}</span>
+                              )}
+                            </div>
+                            <div className="text-[10px] font-medium text-slate-500">
+                              {new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {row.notes && <span className="ml-1 text-slate-400">• {row.notes}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <div className={`text-sm font-black ${row.quantity_change > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {row.quantity_change > 0 ? '+' : ''}{row.quantity_change}
+                        </div>
+                      </div>
+                    )})}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Quick Stats */}
@@ -693,7 +865,36 @@ const InventoryDetailPage: React.FC = () => {
 
               {selectedMonthData ? (
                 <>
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="mt-4">
+                    <div className="grid grid-cols-7 gap-1.5">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                        <div key={day} className="text-center text-[10px] font-bold text-slate-400 uppercase pb-1">
+                          {day}
+                        </div>
+                      ))}
+                      {calendarDays.map((day, idx) => {
+                        if (!day) return <div key={`empty-${idx}`} className="h-14 bg-transparent" />;
+                        
+                        return (
+                          <div 
+                            key={day.dateStr}
+                            onClick={() => {
+                              setDailyMovementDate(day.dateStr);
+                              setActiveTab('overview');
+                            }}
+                            className="h-14 border border-slate-100 rounded-[10px] flex flex-col p-1.5 cursor-pointer hover:bg-sky-50 hover:border-sky-200 transition-colors bg-white shadow-sm"
+                          >
+                            <span className="text-[10px] font-semibold text-slate-400">{day.dayNum}</span>
+                            <div className="mt-auto flex items-center justify-center">
+                              <span className="text-xs font-black text-sky-700">{day.remaining}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
                     <div 
                       onClick={() => setTransactionModalType('in')}
                       className="relative overflow-hidden rounded-[20px] bg-emerald-50 border border-emerald-100 p-4 transition-all hover:-translate-y-0.5 group cursor-pointer"
@@ -729,23 +930,23 @@ const InventoryDetailPage: React.FC = () => {
                         Sold {selectedMonthData.sold} • Adj {selectedMonthData.adjustedOut}
                       </div>
                     </div>
+                  </div>
 
-                    <div 
-                      onClick={() => setTransactionModalType('net')}
-                      className="relative overflow-hidden rounded-[20px] bg-sky-50 border border-sky-100 p-4 transition-all hover:-translate-y-0.5 group cursor-pointer"
-                    >
-                      <div className="flex items-center justify-between relative z-10">
-                        <div className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-sky-600">
-                          Net Movement
-                        </div>
-                        <Layers className="h-4 w-4 text-sky-500" />
+                  <div 
+                    onClick={() => setTransactionModalType('net')}
+                    className="mt-3 relative overflow-hidden rounded-[20px] bg-sky-50 border border-sky-100 p-4 transition-all hover:-translate-y-0.5 group cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between relative z-10">
+                      <div className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-sky-600">
+                        Net Movement
                       </div>
-                      <div className="mt-2 text-2xl font-extrabold text-sky-700">
-                        {(selectedMonthData.received + selectedMonthData.cancelledBack + selectedMonthData.adjustedIn) - (selectedMonthData.sold + selectedMonthData.adjustedOut)}
-                      </div>
-                      <div className="mt-1 text-xs font-medium text-sky-600/70">
-                        Total In - Total Out
-                      </div>
+                      <Layers className="h-4 w-4 text-sky-500" />
+                    </div>
+                    <div className="mt-2 text-2xl font-extrabold text-sky-700">
+                      {(selectedMonthData.received + selectedMonthData.cancelledBack + selectedMonthData.adjustedIn) - (selectedMonthData.sold + selectedMonthData.adjustedOut)}
+                    </div>
+                    <div className="mt-1 text-xs font-medium text-sky-600/70">
+                      Total In - Total Out
                     </div>
                   </div>
 
@@ -806,26 +1007,77 @@ const InventoryDetailPage: React.FC = () => {
               <div className="flex items-center gap-2 text-base font-extrabold tracking-[-0.02em] text-slate-900 mb-4">
                 <ReceiptText className="h-5 w-5 text-sky-600" />
                 Lot Breakdown
+                {data.summary.expiredLots > 0 && (
+                  <span className="ml-auto text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
+                    {data.summary.expiredLots} expired
+                  </span>
+                )}
               </div>
               {data.lots.length ? (
                 <div className="space-y-3">
-                  {data.lots.map((lot) => (
-                    <div key={lot.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  {[...data.lots]
+                    .sort((a, b) => {
+                      // Active lots first, expired lots at bottom
+                      if (a.is_expired && !b.is_expired) return 1;
+                      if (!a.is_expired && b.is_expired) return -1;
+                      return 0;
+                    })
+                    .map((lot) => (
+                    <div key={lot.id} className={cn(
+                      "rounded-2xl border p-4 transition-colors",
+                      lot.is_expired
+                        ? "border-red-100 bg-red-50/50 opacity-75"
+                        : "border-slate-100 bg-slate-50"
+                    )}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="text-sm font-bold text-slate-900">
-                            {lot.batch_number || 'Unlabelled Batch'}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className={cn(
+                              "text-sm font-bold",
+                              lot.is_expired ? "text-red-700 line-through" : "text-slate-900"
+                            )}>
+                              {lot.batch_number || 'Unlabelled Batch'}
+                            </div>
+                            {lot.is_expired ? (
+                              <Badge variant="danger">Expired</Badge>
+                            ) : getBadgeForLot(lot, data.lots) && (
+                              <Badge 
+                                variant={getBadgeForLot(lot, data.lots) === 'New' ? 'success' : getBadgeForLot(lot, data.lots) === 'Very Old' ? 'danger' : 'warning'}
+                              >
+                                {getBadgeForLot(lot, data.lots)}
+                              </Badge>
+                            )}
                           </div>
                           <div className="mt-1 text-xs font-semibold text-slate-500">
                             Received {formatDate(lot.received_at)}
                             {lot.expiry_date ? ` · Exp ${formatDate(lot.expiry_date)}` : ''}
                           </div>
+                          {lot.is_expired && (
+                            <div className="mt-1 text-[11px] font-bold text-red-500">
+                              {lot.quantity_received} {stockUnit} received → all expired
+                            </div>
+                          )}
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-extrabold text-slate-900">
+                          <div className={cn(
+                            "text-sm font-extrabold",
+                            lot.is_expired ? "text-red-600" : "text-slate-900"
+                          )}>
                             {lot.remaining_quantity} {stockUnit}
                           </div>
-                          <div className="text-[0.68rem] font-semibold text-slate-400">remaining</div>
+                          <div className="text-[0.68rem] font-semibold text-slate-400">
+                            {lot.is_expired ? 'written off' : 'remaining'}
+                          </div>
+                          {!lot.is_expired && (
+                            <button
+                              type="button"
+                              onClick={() => openLotEditor(lot as InventoryLot)}
+                              className="mt-2 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600 transition-colors hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                            >
+                              <Pencil className="h-3 w-3" />
+                              Edit Lot
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -847,34 +1099,14 @@ const InventoryDetailPage: React.FC = () => {
                 <CalendarRange className="h-5 w-5 text-sky-500" /> Filter History
               </div>
               <div className="flex flex-row items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
-                <div className="flex flex-col gap-1.5 flex-1 sm:w-[150px]">
-                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest pl-1">From</span>
-                  <div className="relative h-11 bg-white border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:border-sky-500 transition-all">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600">
-                      <CalendarRange className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="date"
-                      value={historyStartDate}
-                      onChange={(e) => setHistoryStartDate(e.target.value)}
-                      className="absolute inset-0 w-full h-full pl-9 pr-3 bg-transparent text-[13px] sm:text-sm font-extrabold text-slate-800 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1.5 flex-1 sm:w-[150px]">
-                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest pl-1">To</span>
-                  <div className="relative h-11 bg-white border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:border-sky-500 transition-all">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600">
-                      <CalendarRange className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="date"
-                      value={historyEndDate}
-                      onChange={(e) => setHistoryEndDate(e.target.value)}
-                      className="absolute inset-0 w-full h-full pl-9 pr-3 bg-transparent text-[13px] sm:text-sm font-extrabold text-slate-800 outline-none appearance-none [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                    />
-                  </div>
-                </div>
+                <DateRangeFilter
+                  startDate={historyStartDate}
+                  endDate={historyEndDate}
+                  onChange={(start, end) => {
+                    setHistoryStartDate(start);
+                    setHistoryEndDate(end);
+                  }}
+                />
               </div>
             </div>
 
@@ -1043,6 +1275,23 @@ const InventoryDetailPage: React.FC = () => {
 
 
       {/* ── Modals ── */}
+      <section className="mt-6 rounded-2xl border border-rose-200 bg-rose-50/60 p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-base font-extrabold text-rose-700">
+              <Trash2 className="h-5 w-5" />
+              Delete Product
+            </div>
+            <p className="mt-1 max-w-2xl text-sm font-medium text-rose-600">
+              Remove this product from active stock. If sales or purchase history exists, it will be archived to keep records intact.
+            </p>
+          </div>
+          <Button variant="outline" className="border-rose-200 bg-white text-rose-700 hover:bg-rose-100" onClick={() => setIsDeleteOpen(true)}>
+            Delete Product
+          </Button>
+        </div>
+      </section>
+
       {isAdjustOpen && (
         <StockAdjustmentModal
           item={inventory as any}
@@ -1059,9 +1308,101 @@ const InventoryDetailPage: React.FC = () => {
           selling_price: inventory.selling_price,
           cost_price: inventory.cost_price,
           min_stock_alert: inventory.min_stock_alert,
-          medicine_discount_percentage: inventory.medicine_discount_percentage
+          medicine_discount_percentage: inventory.medicine_discount_percentage,
+          product_name: inventory.product.name,
+          image_url: inventory.image_url,
         }}
       />
+      {isDeleteOpen && (
+        <DeleteProductModal
+          item={inventory as any}
+          onClose={() => setIsDeleteOpen(false)}
+          onSuccess={() => navigate('/inventory')}
+        />
+      )}
+      <Modal
+        isOpen={!!editingLot}
+        onClose={() => setEditingLot(null)}
+        title="Edit Lot"
+        footerButtons={[
+          { label: 'Cancel', variant: 'outline', onClick: () => setEditingLot(null) },
+          { label: 'Save Lot', variant: 'primary', onClick: saveLotEditor, loading: updateLotPricing.isPending },
+        ]}
+      >
+        <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
+          <Input
+            label="Batch Number"
+            value={lotDraft.batch_number}
+            onChange={(e) => setLotDraft((draft) => ({ ...draft, batch_number: e.target.value }))}
+          />
+          <Input
+            label="Expiry Date"
+            type="date"
+            value={lotDraft.expiry_date}
+            onChange={(e) => setLotDraft((draft) => ({ ...draft, expiry_date: e.target.value }))}
+          />
+          <Input
+            label="MRP"
+            type="number"
+            step="0.01"
+            value={lotDraft.mrp}
+            onChange={(e) => {
+              const mrp = e.target.valueAsNumber || 0;
+              setLotDraft((draft) => ({
+                ...draft,
+                mrp: e.target.value,
+                cost_price: String(calculateCostPrice(mrp, Number(draft.cost_percentage) || 0)),
+              }));
+            }}
+          />
+          <Input
+            label="Selling Price"
+            type="number"
+            step="0.01"
+            value={lotDraft.selling_price}
+            leftIcon={<ArrowUpCircle className="h-4 w-4 text-emerald-600" />}
+            onChange={(e) => setLotDraft((draft) => ({ ...draft, selling_price: e.target.value }))}
+          />
+          <Input
+            label="Discount % (Farmer Discount %)"
+            type="number"
+            step="0.01"
+            value={lotDraft.medicine_discount_percentage}
+            leftIcon={<ArrowUpCircle className="h-4 w-4 text-emerald-600" />}
+            onChange={(e) => setLotDraft((draft) => ({ ...draft, medicine_discount_percentage: e.target.value }))}
+          />
+          <Input
+            label="Cost Discount % (Dealer Discount %)"
+            type="number"
+            step="0.01"
+            value={lotDraft.cost_percentage}
+            leftIcon={<ArrowDownCircle className="h-4 w-4 text-sky-600" />}
+            onChange={(e) => {
+              const dealerDiscount = e.target.valueAsNumber || 0;
+              setLotDraft((draft) => ({
+                ...draft,
+                cost_percentage: e.target.value,
+                cost_price: String(calculateCostPrice(Number(draft.mrp) || 0, dealerDiscount)),
+              }));
+            }}
+          />
+          <Input
+            label="Cost Price"
+            type="number"
+            step="0.01"
+            value={lotDraft.cost_price}
+            leftIcon={<ArrowDownCircle className="h-4 w-4 text-sky-600" />}
+            onChange={(e) => {
+              const costPrice = e.target.valueAsNumber || 0;
+              setLotDraft((draft) => ({
+                ...draft,
+                cost_price: e.target.value,
+                cost_percentage: String(calculateCostPercentage(Number(draft.mrp) || 0, costPrice)),
+              }));
+            }}
+          />
+        </div>
+      </Modal>
     </PageShell>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { Calendar } from 'lucide-react';
+import { DatePicker } from './DatePicker';
 
 interface DateRangeFilterProps {
   startDate: string; // ISO date string (YYYY-MM-DD)
@@ -57,36 +58,20 @@ export const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
         <div className="date-range-filter__group">
           <div className="date-range-filter__field">
             <span className="date-range-filter__label">From</span>
-            <div 
-              className="date-range-filter__input-wrapper"
-              onClick={() => handleWrapperClick(startInputRef)}
-            >
-              <Calendar className="h-4.5 w-4.5 date-range-filter__icon" />
-              <input
-                ref={startInputRef}
-                type="date"
-                value={startDate}
-                onChange={(e) => onChange(e.target.value, endDate)}
-                className="date-range-filter__input"
-              />
-            </div>
+            <DatePicker
+              value={startDate}
+              onChange={(val) => onChange(val, endDate)}
+              placeholder="From Date"
+            />
           </div>
 
           <div className="date-range-filter__field">
             <span className="date-range-filter__label">To</span>
-            <div 
-              className="date-range-filter__input-wrapper"
-              onClick={() => handleWrapperClick(endInputRef)}
-            >
-              <Calendar className="h-4.5 w-4.5 date-range-filter__icon" />
-              <input
-                ref={endInputRef}
-                type="date"
-                value={endDate}
-                onChange={(e) => onChange(startDate, e.target.value)}
-                className="date-range-filter__input"
-              />
-            </div>
+            <DatePicker
+              value={endDate}
+              onChange={(val) => onChange(startDate, val)}
+              placeholder="To Date"
+            />
           </div>
         </div>
       </div>

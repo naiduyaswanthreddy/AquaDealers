@@ -12,6 +12,7 @@ import SignaturePad from './SignaturePad';
 import { billingService } from '../services/billingService';
 import { SignatureStroke } from '@/types/database';
 import { Modal, Button } from '@/components/ui';
+import { BillingPayload, FifoBillPreview } from '../types';
 
 interface ReviewStepProps {
   onBack: () => void;
@@ -65,6 +66,8 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   const [signatureStrokes, setSignatureStrokes] = React.useState<SignatureStroke[]>([]);
   const [isSavingSignature, setIsSavingSignature] = React.useState(false);
   const [duplicateWarning, setDuplicateWarning] = React.useState<{ show: boolean; farmerName: string; amount: number } | null>(null);
+  const [fifoPreview, setFifoPreview] = React.useState<FifoBillPreview | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = React.useState(false);
   const {
     items,
     farmerId,
@@ -122,7 +125,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     return { cols, gridTemplate };
   }, [columns, gstEnabled]);
 
-  const totals = useMemo(() => {
+  const clientTotals = useMemo(() => {
     let subtotal = 0;
     let gstAmount = 0;
     const breakdown: Record<number, { taxableValue: number; cgst: number; sgst: number }> = {};
@@ -150,13 +153,106 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     };
   }, [discountAmount, gstEnabled, items]);
 
-  const todayIso = new Date().toISOString();
+  const todayIso = React.useMemo(() => new Date().toISOString(), []);
   const displayDate = formatDateTime(todayIso);
+  const totals = useMemo(() => {
+    if (!fifoPreview) return clientTotals;
+    return {
+      subtotal: Number(fifoPreview.subtotal || 0),
+      gstAmount: Number(fifoPreview.gst_amount || 0),
+      total: Math.max(0, Number(fifoPreview.subtotal || 0) + Number(fifoPreview.gst_amount || 0) - discountAmount),
+      gstBreakdown: clientTotals.gstBreakdown,
+    };
+  }, [clientTotals, discountAmount, fifoPreview]);
   const balanceDue = Math.max(0, totals.total - amountPaid);
   const projectedDue = Math.max(0, farmerTotalDue + totals.total - amountPaid);
   const exceedsCreditLimit = !!farmerId && farmerCreditLimit > 0 && projectedDue > farmerCreditLimit;
   const signatureEnabled = (user?.bill_signature_enabled ?? true) && columns.signature;
   const signatureRequired = signatureEnabled && (paymentType === 'credit' || balanceDue > 0);
+  const previewLines = fifoPreview?.lines?.length ? fifoPreview.lines : null;
+
+  const buildPayload = React.useCallback((overrideTotals?: {
+    subtotal: number;
+    gstAmount: number;
+    total: number;
+  }): BillingPayload | null => {
+    if (!user?.id) return null;
+
+    const subtotal = overrideTotals?.subtotal ?? 0;
+    const gstAmount = overrideTotals?.gstAmount ?? 0;
+    const total = overrideTotals?.total ?? 0;
+
+    return {
+      dealer_id: user.id,
+      branch_id: activeBranch?.id,
+      farmer_id: farmerId,
+      farmer_name_snapshot: farmerName,
+      bill_date: todayIso,
+      subtotal,
+      gst_amount: gstAmount,
+      cgst_amount: gstAmount / 2,
+      sgst_amount: gstAmount / 2,
+      igst_amount: 0,
+      discount_amount: discountAmount,
+      total,
+      amount_paid: amountPaid,
+      payment_type: amountPaid > 0 ? paymentType : null,
+      credit_override_used: exceedsCreditLimit,
+      credit_override_reason: exceedsCreditLimit ? 'Dealer override from checkout' : null,
+      upi_ref: paymentType === 'upi' ? upiRef : null,
+      cheque_number: paymentType === 'other' ? chequeNumber : null,
+      notes: notes || null,
+      items: items.map(
+        ({ inventory_id, product_id, product_name, hsn_code, quantity, base_unit_price, discount_percentage, gst_rate, mrp, discount_source, discount_label, default_discount_percentage, farmer_discount_percentage }) => ({
+          inventory_id,
+          product_id,
+          product_name,
+          hsn_code,
+          quantity,
+          mrp,
+          unit_price: Number((base_unit_price * (1 - discount_percentage / 100)).toFixed(2)),
+          discount_percentage,
+          discount_source,
+          discount_label,
+          default_discount_percentage,
+          farmer_discount_percentage,
+          gst_rate: gstEnabled ? gst_rate : 0,
+        })
+      ),
+    };
+  }, [activeBranch?.id, amountPaid, chequeNumber, discountAmount, exceedsCreditLimit, farmerId, farmerName, gstEnabled, items, notes, paymentType, todayIso, upiRef, user?.id]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const loadPreview = async () => {
+      const payload = buildPayload({
+        subtotal: clientTotals.subtotal,
+        gstAmount: clientTotals.gstAmount,
+        total: clientTotals.total,
+      });
+      if (!payload || payload.items.length === 0) {
+        setFifoPreview(null);
+        return;
+      }
+
+      setIsPreviewLoading(true);
+      try {
+        const preview = await billingService.previewFifoBill(payload);
+        if (!cancelled) setFifoPreview(preview);
+      } catch (error) {
+        console.error('Failed to preview FIFO bill:', error);
+        if (!cancelled) setFifoPreview(null);
+      } finally {
+        if (!cancelled) setIsPreviewLoading(false);
+      }
+    };
+
+    loadPreview();
+    return () => {
+      cancelled = true;
+    };
+  }, [buildPayload, clientTotals.subtotal, clientTotals.gstAmount, clientTotals.total]);
 
   const handleCheckout = async (ignoreWarning = false) => {
     if (!items.length || !user?.id) return;
@@ -207,39 +303,14 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     try {
       if (navigator.vibrate) navigator.vibrate(50);
 
-      const result = await createBill({
-        dealer_id: user.id,
-        branch_id: activeBranch?.id,
-        farmer_id: farmerId,
-        farmer_name_snapshot: farmerName,
-        bill_date: todayIso,
+      const payload = buildPayload({
         subtotal: totals.subtotal,
-        gst_amount: totals.gstAmount,
-        cgst_amount: totals.gstAmount / 2,
-        sgst_amount: totals.gstAmount / 2,
-        igst_amount: 0,
-        discount_amount: discountAmount,
+        gstAmount: totals.gstAmount,
         total: totals.total,
-        amount_paid: amountPaid,
-        payment_type: amountPaid > 0 ? paymentType : null,
-        credit_override_used: exceedsCreditLimit,
-        credit_override_reason: exceedsCreditLimit ? 'Dealer override from checkout' : null,
-        upi_ref: paymentType === 'upi' ? upiRef : null,
-        cheque_number: paymentType === 'other' ? chequeNumber : null,
-        notes: notes || null,
-        items: items.map(
-          ({ inventory_id, product_id, product_name, hsn_code, quantity, base_unit_price, discount_percentage, gst_rate, mrp }) => ({
-            inventory_id,
-            product_id,
-            product_name,
-            hsn_code,
-            quantity,
-            mrp,
-            unit_price: Number((base_unit_price * (1 - discount_percentage / 100)).toFixed(2)),
-            gst_rate: gstEnabled ? gst_rate : 0,
-          })
-        ),
       });
+      if (!payload) return;
+
+      const result = await createBill(payload);
 
       if (signatureEnabled && signatureStrokes.length > 0) {
         setIsSavingSignature(true);
@@ -270,7 +341,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-6 lg:px-8 lg:pb-8 max-w-[64rem] mx-auto w-full">
+    <div className="flex flex-col gap-6 pb-32 lg:px-8 lg:pb-8 max-w-[64rem] mx-auto w-full">
       <section className="billing-collapsed-card">
         <button
           type="button"
@@ -387,16 +458,21 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             ))}
           </div>
 
-          {items.map((item) => {
+          {(previewLines || items).map((item: any, index) => {
             const line = getLine(item, gstEnabled);
+            const unit = item.unit || items.find((cartItem) => cartItem.inventory_id === item.inventory_id)?.unit || 'unit';
+            const productName = item.product_name || item.product_name_snapshot || 'Unknown Item';
+            const rowKey = item.lot_id || `${item.inventory_id}-${index}`;
             return (
-              <React.Fragment key={item.inventory_id}>
+              <React.Fragment key={rowKey}>
                 {/* Mobile View Item Row */}
                 <div className="grid grid-cols-[1fr_4rem_5.5rem] billing-review-table-row md:hidden">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-black text-slate-950">{item.product_name}</div>
+                    <div className="truncate text-sm font-black text-slate-950">{productName}</div>
                     <div className="truncate text-xs font-semibold text-slate-500 mt-0.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
-                      {columns.rate && <span>{formatCurrency(line.unitPrice)}/{item.unit || 'unit'}</span>}
+                      {columns.rate && <span>{formatCurrency(line.unitPrice)}/{unit}</span>}
+                      {item.batch_number && <span>Batch {item.batch_number}</span>}
+                      {item.discount_label && <span>{item.discount_label}</span>}
                       {columns.mrp && <span>MRP {formatCurrency(item.mrp || 0)}</span>}
                       {columns.discount && item.discount_percentage > 0 && <span>(Disc. {item.discount_percentage}%)</span>}
                       {columns.gst && gstEnabled && <span>GST {item.gst_rate}%</span>}
@@ -413,11 +489,11 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
                   className="hidden md:grid billing-review-table-row"
                   style={{ gridTemplateColumns: columnConfig.gridTemplate }}
                 >
-                  <span className="truncate text-sm font-black text-slate-950">{item.product_name || 'Unknown Item'}</span>
+                  <span className="truncate text-sm font-black text-slate-950">{productName}</span>
                   {columns.hsn && <span className="text-sm font-semibold text-slate-600">{item.hsn_code || '-'}</span>}
                   {columns.expiry && <span className="text-sm font-semibold text-slate-600">{item.expiry_date || '-'}</span>}
                   {columns.mrp && <span className="text-right text-sm font-semibold text-slate-600">{formatCurrency(item.mrp || 0)}</span>}
-                  {columns.rate && <span className="text-right text-sm font-semibold text-slate-600">{formatCurrency(line.unitPrice)}/{item.unit || 'unit'}</span>}
+                  {columns.rate && <span className="text-right text-sm font-semibold text-slate-600">{formatCurrency(line.unitPrice)}/{unit}</span>}
                   {columns.discount && <span className="text-right text-sm font-semibold text-slate-600">{item.discount_percentage}%</span>}
                   {columns.gst && gstEnabled && <span className="text-right text-sm font-semibold text-slate-600">{item.gst_rate}%</span>}
                   <span className="text-center text-sm font-black text-slate-700">{item.quantity}</span>
@@ -429,6 +505,12 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         </div>
 
         <div className="billing-review-totals">
+          {isPreviewLoading ? (
+            <div className="billing-review-tax-line text-sky-600">
+              <span>Checking FIFO prices</span>
+              <span>...</span>
+            </div>
+          ) : null}
           <div className="billing-review-total-line">
             <span>Subtotal</span>
             <strong>{formatCurrency(totals.subtotal)}</strong>

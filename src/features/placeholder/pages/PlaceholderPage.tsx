@@ -682,7 +682,7 @@ export const PlaceholderPage: React.FC = () => {
         </div>
         <h1 className="text-3xl font-extrabold tracking-[-0.03em] text-text-primary">{title}</h1>
         <p className="mt-3 max-w-lg text-sm leading-6 text-text-secondary">
-          This section is still being completed, but the layout now follows the new AquaDealer design system so future features can drop in cleanly.
+          This section is still being completed, but the layout now follows the new AquaDealers design system so future features can drop in cleanly.
         </p>
         <Button className="mt-8" onClick={() => navigate(-1)} leftIcon={<ArrowLeft className="h-4.5 w-4.5" />}>
           Go Back

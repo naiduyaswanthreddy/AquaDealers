@@ -130,6 +130,8 @@ export function buildPurchaseRegisterRows(
       date: formatDateValue(purchase.purchase_date),
       vendor: supplier?.company || supplier?.name || 'Unknown supplier',
       billNo: purchase.invoice_number || purchase.id.slice(0, 8).toUpperCase(),
+      medicineName: product?.name || 'Unknown Product',
+      stockCount: purchase.quantity,
       category: product?.category || product?.type || 'Purchase',
       amount: toMoney(purchase.total_amount),
       gstAmount: toMoney(purchase.gst_amount),

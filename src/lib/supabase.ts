@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// External Supabase project (user-provided AquaDealer backend).
+// External Supabase project (user-provided AquaDealers backend).
 // Anon/publishable keys are safe to ship in client code.
 
 const SUPABASE_URL = 'https://xttuxtyjtqegjvirtpbr.supabase.co';

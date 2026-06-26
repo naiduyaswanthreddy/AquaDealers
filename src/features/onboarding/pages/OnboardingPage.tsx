@@ -95,7 +95,7 @@ export const OnboardingPage: React.FC = () => {
             Dealer Onboarding
           </div>
           <h1 className="text-[28px] font-extrabold tracking-[-0.03em] text-slate-900">
-            AquaDealer Setup
+            AquaDealers Setup
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-500">
             Set up your shop in a few focused steps and start billing with confidence.

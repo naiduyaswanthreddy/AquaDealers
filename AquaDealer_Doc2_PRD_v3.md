@@ -6,7 +6,7 @@ AQUADEALER — PRODUCT REQUIREMENTS DOCUMENT (PRD) v3.0
 1. PRODUCT OVERVIEW
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Product:      AquaDealer
+Product:      AquaDealers
 Type:         Web SaaS, mobile-first, browser-only (PWA)
 Target users: Aqua feed & medicine dealers — AP, Telangana,
               Odisha, West Bengal
@@ -36,7 +36,7 @@ GST confusion             | Medicines attract GST, feed doesn't
 Key research finding: Credit recovery (28%) and stock
 management (39%) are the two biggest risks in aqua
 dealership business. No existing tool addresses these
-specifically for aqua dealers.
+specifically for aquadealers.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 3. GST REALITY FOR AQUA DEALERS
@@ -115,7 +115,7 @@ PERSONA 3 — Suresh, Multi-branch Dealer
   Pain: stock discrepancies, can't track both shops
   Need: combined dashboard, per-branch visibility
 
-PERSONA 4 — Admin (AquaDealer team)
+PERSONA 4 — Admin (AquaDealers team)
   Manages all dealer accounts
   Need: platform health, revenue, stuck dealers, catalog
 
@@ -237,6 +237,16 @@ FARMER STATEMENT PDF:
   Footer: Total Due as of today
   Professional, dispute-proof
   Shareable directly on WhatsApp
+
+SMART RATE DIFFERENCE (RATE DIFF) TOOL:
+  Industry reality: Farmers buy feed on credit. Months later, feed companies increase the price. Dealers legally apply the price hike retroactively to the unpaid stock.
+  When a dealer updates an item's selling price in Inventory:
+  - System detects the price increase.
+  - Prompts: "Would you like to apply this Rate Diff to unpaid credit bills?"
+  - System finds all farmers who took this item on credit and haven't fully paid.
+  - Automatically calculates: Unpaid Quantity × Rate Difference (₹).
+  - Generates debit notes adding the difference to each farmer's outstanding due.
+  - Saves hours of manual recalculation and prevents margin loss.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 8. NON-FUNCTIONAL REQUIREMENTS

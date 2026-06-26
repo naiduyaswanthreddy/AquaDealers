@@ -202,7 +202,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'aquadealer-auth',
+      name: 'aquadealers-auth',
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,

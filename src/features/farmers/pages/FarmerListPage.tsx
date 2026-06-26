@@ -18,6 +18,7 @@ export const FarmerListPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'farmers' | 'walkIn'>('farmers');
   const user = useAuthStore((s) => s.user);
   const activeBranchId = useBranchStore((s) => s.getActiveBranchId());
 
@@ -25,6 +26,7 @@ export const FarmerListPage: React.FC = () => {
   // For now, we rely on useFarmers fetching top 1000 for total stats, while paged uses infinite scroll.
   const { data: allFarmersForStats = [], isLoading: statsLoading } = useFarmers({
     search: search || undefined,
+    isWalkIn: activeTab === 'walkIn',
   });
 
   const hasFilters = useMemo(() => !!search, [search]);
@@ -43,9 +45,10 @@ export const FarmerListPage: React.FC = () => {
       page,
       limit,
       search: search || undefined,
+      isWalkIn: activeTab === 'walkIn',
       sortBy: 'total_due',
     });
-  }, [user?.id, activeBranchId, search]);
+  }, [user?.id, activeBranchId, search, activeTab]);
 
   const pagedFarmers = useLoadMoreList<Farmer>({
     initialLimit: 10,
@@ -55,13 +58,6 @@ export const FarmerListPage: React.FC = () => {
   });
 
   const isLoading = statsLoading || pagedFarmers.isLoading;
-
-  const formatCompactDues = (value: number) => {
-    if (value >= 1000) {
-      return `₹${(value / 1000).toFixed(1)}k`;
-    }
-    return formatCurrency(value);
-  };
 
   return (
     <PageShell width="full">
@@ -95,19 +91,23 @@ export const FarmerListPage: React.FC = () => {
             </span>
           </div>
           <div 
-            onClick={() => navigate('/dues')}
-            className="bg-white/10 border border-white/14 rounded-2xl p-4 flex-1 backdrop-blur-md shadow-inner flex flex-col cursor-pointer hover:bg-white/20 transition-colors"
+            className="rounded-2xl p-4 flex-1 backdrop-blur-md shadow-inner flex flex-col relative overflow-hidden group cursor-pointer"
+            onClick={() => navigate('/farmers/dues')}
           >
-            <div className="flex justify-between items-start">
-              <span className="text-[10px] font-extrabold tracking-wider text-white/70 uppercase">
+            <div className="absolute inset-0 bg-white/20 transition-colors group-hover:bg-white/25 z-0" />
+            <div className="absolute inset-0 border border-white/30 rounded-2xl z-0" />
+            
+            <div className="relative z-10 flex items-center justify-between">
+              <span className="text-[10px] font-extrabold tracking-wider text-white/90 uppercase">
                 {t('farmers.totalDues', 'TOTAL DUES')}
               </span>
-              <span className="text-[10px] font-bold text-white/50 bg-white/10 px-1.5 py-0.5 rounded">
-                Report →
+              <span className="flex items-center gap-0.5 text-[10px] font-bold text-white/80 uppercase tracking-wide group-hover:translate-x-0.5 transition-transform">
+                View All
+                <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" /></svg>
               </span>
             </div>
-            <span className="text-2xl font-black text-white mt-1">
-              {formatCompactDues(totalDues)}
+            <span className="relative z-10 text-2xl font-black text-white mt-1">
+              {formatCurrency(totalDues)}
             </span>
           </div>
         </div>
@@ -121,6 +121,31 @@ export const FarmerListPage: React.FC = () => {
           placeholder={t('farmers.searchPlaceholder', 'Search by name, village or phone')}
           showVoicePlaceholder={true}
         />
+      </div>
+
+      <div className="mb-2 mx-1 flex rounded-[14px] bg-slate-100/80 p-1 border border-slate-200/50 shadow-inner">
+        <button
+          onClick={() => setActiveTab('farmers')}
+          className={`flex-1 rounded-[10px] py-2 text-[0.85rem] font-bold transition-all duration-200 ${
+            activeTab === 'farmers'
+              ? 'shadow-md'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+          }`}
+          style={activeTab === 'farmers' ? { backgroundColor: 'var(--color-primary)', color: '#ffffff' } : {}}
+        >
+          Regular Farmers
+        </button>
+        <button
+          onClick={() => setActiveTab('walkIn')}
+          className={`flex-1 rounded-[10px] py-2 text-[0.85rem] font-bold transition-all duration-200 ${
+            activeTab === 'walkIn'
+              ? 'shadow-md'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+          }`}
+          style={activeTab === 'walkIn' ? { backgroundColor: 'var(--color-primary)', color: '#ffffff' } : {}}
+        >
+          Walk-in Customers
+        </button>
       </div>
 
       {isLoading ? (

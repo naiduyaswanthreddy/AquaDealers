@@ -35,7 +35,7 @@ export const TopBar: React.FC = () => {
             <Store className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-primary/75">AquaDealer</div>
+            <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-primary/75">AquaDealers</div>
             <div className="truncate text-base font-extrabold tracking-[-0.03em] text-text-primary">
               {activeBranch?.name || currentStaff?.name || user?.name || 'Dealer Workspace'}
             </div>

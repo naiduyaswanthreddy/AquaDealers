@@ -125,7 +125,7 @@ export const Step5SetPin: React.FC<Step5Props> = ({ onFinish, onBack }) => {
           Secure Your Shop
         </h2>
         <p className="text-sm text-text-secondary mt-1">
-          Configure a 4-digit PIN to lock AquaDealer when your phone goes idle.
+          Configure a 4-digit PIN to lock AquaDealers when your phone goes idle.
         </p>
       </div>
 

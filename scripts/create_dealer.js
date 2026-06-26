@@ -12,7 +12,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 async function main() {
   console.log("Creating Test Dealer...");
   
-  const email = "testdealer@aquadealer.in";
+  const email = "testdealer@aquadealers.in";
   const password = "password123";
   
   const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -22,7 +22,7 @@ async function main() {
 
   if (authError) {
     if (authError.message.includes('already registered')) {
-        console.log("Dealer already exists! You can log in with testdealer@aquadealer.in / password123");
+        console.log("Dealer already exists! You can log in with testdealer@aquadealers.in / password123");
         process.exit(0);
     }
     console.error("Auth Error:", authError);
@@ -65,7 +65,7 @@ async function main() {
 
   console.log("\n=================================");
   console.log("✅ TEST DEALER CREATED SUCCESSFULLY");
-  console.log("Email: testdealer@aquadealer.in");
+  console.log("Email: testdealer@aquadealers.in");
   console.log("Password: password123");
   console.log("=================================\n");
 }

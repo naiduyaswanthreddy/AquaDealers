@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /features
+Allow: /contact
+
+Disallow: /dashboard
+Disallow: /inventory
+Disallow: /bills
+Disallow: /farmers
+Disallow: /purchases
+Disallow: /expenses
+Disallow: /cashbook
+Disallow: /settings
+Disallow: /admin
+Disallow: /reports
+Disallow: /dues
+Disallow: /staff
+
+Sitemap: https://aquadealers.in/sitemap.xml

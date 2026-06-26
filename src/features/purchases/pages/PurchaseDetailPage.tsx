@@ -99,7 +99,7 @@ const PurchaseDetailPage: React.FC = () => {
           },
           {
             label: 'Quantity',
-            value: `${purchase.quantity} ${product?.unit || 'units'}`,
+            value: `${purchase.quantity} x ${product?.unit || 'units'}`,
             icon: PackageCheck,
             tone: 'bg-emerald-100 text-emerald-600',
           },
@@ -144,57 +144,57 @@ const PurchaseDetailPage: React.FC = () => {
             Product and supplier information
           </h2>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <div className="rounded-[24px] bg-slate-50 p-4">
+          <div className="mt-4 grid gap-2.5 sm:gap-3 md:grid-cols-2">
+            <div className="rounded-[18px] bg-slate-50/80 p-3.5 sm:p-4 border border-slate-100">
               <div className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-400">
                 Product
               </div>
-              <div className="mt-2 text-lg font-black tracking-[-0.03em] text-slate-900">
+              <div className="mt-1.5 text-lg font-black tracking-[-0.03em] text-slate-900">
                 {product?.name || 'Unknown Product'}
               </div>
-              <div className="mt-1 text-sm font-semibold text-slate-500">
+              <div className="mt-0.5 text-[0.8rem] font-semibold text-slate-500">
                 {product?.company || 'No company'} {product?.type ? `· ${product.type}` : ''}
               </div>
             </div>
 
-            <div className="rounded-[24px] bg-slate-50 p-4">
+            <div className="rounded-[18px] bg-slate-50/80 p-3.5 sm:p-4 border border-slate-100">
               <div className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-400">
                 Supplier
               </div>
-              <div className="mt-2 text-lg font-black tracking-[-0.03em] text-slate-900">
+              <div className="mt-1.5 text-lg font-black tracking-[-0.03em] text-slate-900">
                 {supplier?.name || 'Supplier not linked'}
               </div>
-              <div className="mt-1 text-sm font-semibold text-slate-500">
+              <div className="mt-0.5 text-[0.8rem] font-semibold text-slate-500">
                 {supplier?.company || supplier?.phone || 'No extra supplier details'}
               </div>
             </div>
 
-            <div className="rounded-[24px] bg-slate-50 p-4">
+            <div className="rounded-[18px] bg-slate-50/80 p-3.5 sm:p-4 border border-slate-100">
               <div className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-400">
                 MRP
               </div>
-              <div className="mt-2 text-lg font-black tracking-[-0.03em] text-slate-900">
+              <div className="mt-1.5 text-lg font-black tracking-[-0.03em] text-slate-900">
                 {purchase.mrp ? formatCurrency(purchase.mrp) : 'N/A'}
               </div>
             </div>
 
-            <div className="rounded-[24px] bg-slate-50 p-4">
+            <div className="rounded-[18px] bg-slate-50/80 p-3.5 sm:p-4 border border-slate-100">
               <div className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-400">
                 Batch
               </div>
-              <div className="mt-2 text-lg font-black tracking-[-0.03em] text-slate-900">
+              <div className="mt-1.5 text-lg font-black tracking-[-0.03em] text-slate-900">
                 {purchase.batch_number || 'Not specified'}
               </div>
-              <div className="mt-1 text-sm font-semibold text-slate-500">
+              <div className="mt-0.5 text-[0.8rem] font-semibold text-slate-500">
                 Expiry {purchase.expiry_date ? formatDate(purchase.expiry_date) : 'not tracked'}
               </div>
             </div>
 
-            <div className="rounded-[24px] bg-slate-50 p-4">
+            <div className="rounded-[18px] bg-slate-50/80 p-3.5 sm:p-4 border border-slate-100 md:col-span-2">
               <div className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-400">
                 Notes
               </div>
-              <div className="mt-2 text-sm font-semibold leading-6 text-slate-700">
+              <div className="mt-1.5 text-sm font-semibold leading-relaxed text-slate-700">
                 {purchase.notes || 'No purchase notes recorded.'}
               </div>
             </div>

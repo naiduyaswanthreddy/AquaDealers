@@ -1,5 +1,5 @@
 import React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useRecordExpense } from '../hooks/useFinancials';
@@ -9,6 +9,7 @@ import { ExpenseInsert } from '../types';
 import { EXPENSE_CATEGORIES } from '@/lib/constants';
 import { Modal } from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { toast } from 'sonner';
 
 interface ExpenseModalProps {
@@ -21,7 +22,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({ onClose }) => {
   const { activeBranch } = useBranchStore();
   const { mutateAsync: recordExpense, isPending } = useRecordExpense();
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<ExpenseInsert>({
+  const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<ExpenseInsert>({
     defaultValues: {
       dealer_id: user?.id || '',
       branch_id: activeBranch?.id || null,
@@ -79,12 +80,22 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({ onClose }) => {
           error={errors.amount?.message}
         />
 
-        <Input
-          label={t('financials.date', 'Date')}
-          type="date"
-          {...register('expense_date', { required: t('common.required') })}
-          error={errors.expense_date?.message}
-        />
+        <div className="space-y-1">
+          <label className="text-sm font-semibold text-slate-700">{t('financials.date', 'Date')}</label>
+          <Controller
+            control={control}
+            name="expense_date"
+            rules={{ required: t('common.required') }}
+            render={({ field }) => (
+              <DatePicker
+                value={field.value}
+                onChange={field.onChange}
+                placeholder={t('financials.date', 'Date')}
+              />
+            )}
+          />
+          {errors.expense_date && <p className="text-xs text-red-500 mt-1">{errors.expense_date.message}</p>}
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t('financials.paidVia', 'Paid Via')}</label>

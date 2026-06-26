@@ -19,6 +19,7 @@ interface ModalProps {
     form?: string;
   }[];
   className?: string;
+  contentClassName?: string;
   hideCloseButton?: boolean;
 }
 
@@ -29,6 +30,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   footerButtons,
   className,
+  contentClassName,
   hideCloseButton,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -127,7 +129,7 @@ export const Modal: React.FC<ModalProps> = ({
             </button>
           )}
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
+        <div className={cn("flex-1 overflow-y-auto px-5 py-5 sm:px-6", contentClassName)}>{children}</div>
         {footerButtons?.length ? (
           <div className="flex flex-col-reverse gap-3 px-5 pb-5 pt-2 sm:flex-row sm:justify-end sm:px-6 sm:pb-6">
             {footerButtons.map((button, index) => (

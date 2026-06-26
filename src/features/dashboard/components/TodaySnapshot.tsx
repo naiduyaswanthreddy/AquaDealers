@@ -60,7 +60,7 @@ export const TodaySnapshot: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="mt-6 sm:mt-0 space-y-1.5 sm:space-y-3">
       <div className="flex justify-between items-center px-1">
         <h2 className="text-lg font-bold text-slate-800 tracking-tight">Today's Snapshot</h2>
         <Button 

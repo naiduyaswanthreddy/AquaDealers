@@ -76,6 +76,8 @@ export function useCollectPayment() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['bills'] });
       queryClient.invalidateQueries({ queryKey: ['financials'] });
+      queryClient.invalidateQueries({ queryKey: ['farmer-items'] });
+      queryClient.invalidateQueries({ queryKey: ['farmer-item-bills'] });
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to record payment.');

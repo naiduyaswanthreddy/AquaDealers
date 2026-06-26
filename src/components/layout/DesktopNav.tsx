@@ -41,7 +41,7 @@ const DesktopNav: React.FC = () => {
       <div className="desktop-nav__inner">
         <div className="desktop-nav__brand">
           <div className="desktop-nav__logo flex items-center justify-center p-1 bg-white" style={{ borderRadius: '1rem' }}>
-            <img src="/logo.png" alt="AquaDealer Logo" className="h-8 w-8 object-contain" />
+            <img src="/logo.png" alt="AquaDealers Logo" className="h-8 w-8 object-contain" />
           </div>
           <div className="min-w-0">
             <div className="desktop-nav__eyebrow truncate">{user?.shop_name || user?.name || 'Dealer'}</div>

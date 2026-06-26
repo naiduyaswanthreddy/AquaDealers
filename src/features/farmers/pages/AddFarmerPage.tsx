@@ -35,6 +35,7 @@ export const AddFarmerPage: React.FC = () => {
         crop_status: data.crop_status,
         risk_status: data.risk_status,
         credit_limit: data.credit_limit,
+        default_medicine_discount_percentage: data.default_medicine_discount_percentage,
         branch_id: data.branch_id,
         notes: data.notes,
         dealer_id: user!.id,

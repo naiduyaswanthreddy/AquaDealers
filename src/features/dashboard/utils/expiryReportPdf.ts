@@ -154,7 +154,7 @@ export const shareExpiryReportViaWhatsApp = async (
     return daysLeft < 0;
   }).length;
   
-  const fallbackText = `*${dealer?.shop_name || 'AquaDealer'}*\n-------------------\n*Expiring Medicines Report*\n*Total Items:* ${items.length}\n*Already Expired:* ${expiredCount}\n-------------------\nPlease find the detailed report PDF attached.`;
+  const fallbackText = `*${dealer?.shop_name || 'AquaDealers'}*\n-------------------\n*Expiring Medicines Report*\n*Total Items:* ${items.length}\n*Already Expired:* ${expiredCount}\n-------------------\nPlease find the detailed report PDF attached.`;
   
   await sharePdfViaWhatsApp(blob, `Expiry_Report_${new Date().toISOString().split('T')[0]}.pdf`, fallbackText);
 };

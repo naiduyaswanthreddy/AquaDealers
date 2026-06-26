@@ -66,7 +66,7 @@ const ShopHomePage: React.FC = () => {
       </main>
 
       <footer className="bg-slate-900 text-slate-400 py-12 text-center">
-        <p>Powered by <Link to="/" className="text-white font-bold hover:underline">AquaDealer</Link></p>
+        <p>Powered by <Link to="/" className="text-white font-bold hover:underline">AquaDealers</Link></p>
       </footer>
     </div>
   );

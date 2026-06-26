@@ -45,7 +45,7 @@ export const LoginPage: React.FC = () => {
       {/* Left Panel - Branding */}
       <div className="relative flex flex-col justify-center items-start px-8 py-12 lg:px-16 xl:px-28 z-10 hidden md:flex">
         <div className="z-20 w-full max-w-[500px]">
-          <img src="/full_logo.png" alt="AquaDealer" className="h-[5.5rem] w-auto mb-16" />
+          <img src="/full_logo.png" alt="AquaDealers" className="h-[5.5rem] w-auto mb-16" />
           
           <h1 className="text-[2.75rem] leading-[1.15] font-extrabold text-[#1e293b] mb-6 tracking-tight">
             Smart aqua <br/>
@@ -101,7 +101,7 @@ export const LoginPage: React.FC = () => {
           >
              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
           </button>
-          <img src="/full logo white.png" alt="AquaDealer Logo" className="h-[7rem] w-auto mt-2" />
+          <img src="/full logo white.png" alt="AquaDealers Logo" className="h-[7rem] w-auto mt-2" />
         </div>
 
         {/* Form Container (White Card) */}

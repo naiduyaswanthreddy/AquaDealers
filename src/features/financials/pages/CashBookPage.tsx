@@ -1,13 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ArrowDownRight, ArrowUpRight, BookOpen, Plus, Minus, Wallet, TrendingUp, Scale, Smartphone, Landmark, Save } from 'lucide-react';
 import { useCashBook, useCloseCashDay, useDailyCashClarity } from '../hooks/useFinancials';
 import { CashEntryModal } from '../components/CashEntryModal';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { Button } from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { ListLoadMore } from '@/components/ui/ListLoadMore';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
 import { useAuthStore } from '@/stores/authStore';
@@ -17,6 +19,7 @@ import { toast } from 'sonner';
 
 const CashBookPage: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const { activeBranch, isAllBranches } = useBranchStore();
   
@@ -106,6 +109,7 @@ const CashBookPage: React.FC = () => {
       <PageHeader
         title={t('nav.cashbook', 'Cash Book')}
         description={t('financials.cashbookSubtitle', 'Track all cash inflows and outflows')}
+        onBack={() => navigate('/more')}
         action={
           <div className="grid grid-cols-2 gap-2 sm:flex">
             <Button 
@@ -138,10 +142,9 @@ const CashBookPage: React.FC = () => {
               </p>
             </div>
             <div className="grid gap-2.5 sm:grid-cols-2 xl:flex xl:items-end">
-              <Input
-                type="date"
+              <DatePicker
                 value={cashDate}
-                onChange={(event) => setCashDate(event.target.value)}
+                onChange={setCashDate}
                 className="w-full sm:w-48"
               />
               <Input

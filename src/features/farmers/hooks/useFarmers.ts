@@ -5,6 +5,9 @@ import {
   getFarmers,
   createFarmer,
   updateFarmer,
+  getFarmerProductDiscounts,
+  upsertFarmerProductDiscount,
+  deleteFarmerProductDiscount,
   getUniqueVillages,
 } from '../services/farmerService';
 import type { FarmerInsert } from '@/types/database';
@@ -17,6 +20,7 @@ export function useFarmers(params?: {
   cropStatus?: string;
   riskStatus?: string;
   village?: string;
+  isWalkIn?: boolean;
 }) {
   const user = useAuthStore((s) => s.user);
   const activeBranchId = useBranchStore((s) => s.getActiveBranchId());
@@ -77,5 +81,57 @@ export function useVillages() {
     queryKey: ['farmers', 'villages', dealerId],
     queryFn: () => getUniqueVillages(dealerId),
     enabled: !!dealerId,
+  });
+}
+
+export function useFarmerProductDiscounts(farmerId?: string | null) {
+  const user = useAuthStore((s) => s.user);
+  const dealerId = user?.id || '';
+
+  return useQuery({
+    queryKey: ['farmer-product-discounts', dealerId, farmerId],
+    queryFn: () => getFarmerProductDiscounts(dealerId, farmerId!),
+    enabled: !!dealerId && !!farmerId,
+  });
+}
+
+export function useUpsertFarmerProductDiscount() {
+  const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+
+  return useMutation({
+    mutationFn: (params: { farmerId: string; productId: string; discountPercentage: number }) => {
+      if (!user?.id) throw new Error('No dealer ID');
+      return upsertFarmerProductDiscount({
+        dealerId: user.id,
+        farmerId: params.farmerId,
+        productId: params.productId,
+        discountPercentage: params.discountPercentage,
+      });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['farmer-product-discounts', user?.id, variables.farmerId] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to save product discount.');
+    },
+  });
+}
+
+export function useDeleteFarmerProductDiscount() {
+  const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+
+  return useMutation({
+    mutationFn: (params: { farmerId: string; discountId: string }) => {
+      if (!user?.id) throw new Error('No dealer ID');
+      return deleteFarmerProductDiscount({ dealerId: user.id, discountId: params.discountId });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['farmer-product-discounts', user?.id, variables.farmerId] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete product discount.');
+    },
   });
 }

@@ -48,6 +48,7 @@ export function useCreateBill() {
       queryClient.invalidateQueries({ queryKey: ['farmers'] });
       queryClient.invalidateQueries({ queryKey: ['financials'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['farmer-items'] });
     },
   });
 }

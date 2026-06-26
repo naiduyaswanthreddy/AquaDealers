@@ -1,16 +1,21 @@
 import React, { useMemo, useState } from 'react';
-import { Check, User, Users } from 'lucide-react';
+import { Check, User, Users, UserPlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { SearchBar, FarmerAvatar } from '@/components/ui';
+import { SearchBar, FarmerAvatar, Button } from '@/components/ui';
 import { useFarmers } from '@/features/farmers/hooks/useFarmers';
 import { useCartStore } from '../stores/cartStore';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
+import { QuickAddFarmerModal } from './QuickAddFarmerModal';
+import { QuickAddWalkInModal } from './QuickAddWalkInModal';
+import { CROP_STATUSES } from '@/lib/constants';
 
 export const FarmerSelector: React.FC<{ onSelect?: () => void }> = ({ onSelect }) => {
   const { t } = useTranslation();
   const { data: farmers = [], isLoading } = useFarmers();
   const { farmerId, setFarmer } = useCartStore();
   const [search, setSearch] = useState('');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
 
   const filteredFarmers = useMemo(
     () =>
@@ -34,18 +39,17 @@ export const FarmerSelector: React.FC<{ onSelect?: () => void }> = ({ onSelect }
     <div className="space-y-3 rounded-[22px] bg-slate-50/80 p-2">
       <SearchBar value={search} onChange={setSearch} placeholder={t('billing.searchCustomer', 'Search customer')} showVoicePlaceholder />
 
-      <div className="grid gap-2.5 md:grid-cols-2">
+      <div className="grid gap-2.5 grid-cols-2">
         <button
           type="button"
           onClick={() => {
-            setFarmer(null, 'Walk-in Customer', 0, 0);
-            onSelect?.();
+            setIsWalkInModalOpen(true);
           }}
           className={cn(
-            'focus-ring rounded-2xl border p-3 text-left shadow-[0_10px_26px_rgba(15,23,42,0.10)] transition-all duration-200',
+            'focus-ring rounded-2xl border p-3 text-left shadow-sm transition-all duration-200',
             farmerId === null
               ? 'border-primary bg-white ring-2 ring-primary/15'
-              : 'border-white bg-white hover:border-slate-200 hover:bg-sky-50/30 active:scale-[0.985]'
+              : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50/50 active:scale-[0.985]'
           )}
         >
           <div className="flex items-start gap-3">
@@ -66,89 +70,156 @@ export const FarmerSelector: React.FC<{ onSelect?: () => void }> = ({ onSelect }
           </div>
         </button>
 
-        {isLoading ? (
-          Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className="rounded-2xl border border-white bg-white p-3 shadow-[0_10px_26px_rgba(15,23,42,0.10)]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-11 w-11 animate-pulse rounded-2xl bg-slate-100" />
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="h-4 w-28 animate-pulse rounded bg-slate-100" />
-                  <div className="h-3 w-40 animate-pulse rounded bg-slate-100" />
-                </div>
-              </div>
+        <button
+          type="button"
+          onClick={() => setIsAddModalOpen(true)}
+          className="focus-ring rounded-2xl border border-dashed border-slate-300 bg-white hover:border-primary/50 hover:bg-sky-50/10 p-3 text-left shadow-sm transition-all duration-200 active:scale-[0.985]"
+        >
+          <div className="flex items-start gap-3">
+            <div className="rounded-2xl bg-sky-50 p-3 text-primary">
+              <UserPlus className="h-5 w-5" />
             </div>
-          ))
-        ) : filteredFarmers.map((farmer) => (
-          <button
-            key={farmer.id}
-            type="button"
-            onClick={() => {
-              setFarmer(farmer.id, farmer.name, farmer.total_due, farmer.credit_limit);
-              onSelect?.();
-            }}
-            className={cn(
-            'focus-ring rounded-2xl border p-3 text-left shadow-[0_10px_26px_rgba(15,23,42,0.10)] transition-all duration-200',
-            farmerId === farmer.id
-                ? 'border-primary bg-white ring-2 ring-primary/15'
-                : 'border-white bg-white hover:border-slate-200 hover:bg-sky-50/30 active:scale-[0.985]'
-            )}
-          >
-            <div className="flex items-start gap-3">
-              <div className={cn(
-                'flex shrink-0 transition-all duration-200',
-                farmerId === farmer.id ? 'ring-2 ring-primary ring-offset-1 rounded-full' : ''
-              )}>
-                <FarmerAvatar 
-                  imageUrl={farmer.image_url} 
-                  name={farmer.name} 
-                  size="lg" 
-                  className={cn(
-                    "shadow-sm",
-                    farmerId === farmer.id ? 'bg-primary text-white border-2 border-white' : 'bg-primary/10 text-primary border border-primary/20'
-                  )}
-                />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-bold text-slate-800">Add New Farmer</h3>
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="truncate text-sm font-bold text-slate-800">{farmer.name}</h3>
-                  {farmerId === farmer.id ? (
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white">
-                      <Check className="h-3 w-3" strokeWidth={3} />
-                    </span>
-                  ) : null}
-                </div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {farmer.village && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200/60 uppercase tracking-wide">
-                      {farmer.village}
-                    </span>
-                  )}
-                  {farmer.phone && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-100/70">
-                      {farmer.phone}
-                    </span>
-                  )}
-                  {!farmer.village && !farmer.phone && (
-                    <span className="text-[11px] font-semibold text-slate-400">
-                      {t('billing.noCustomerMeta', 'No details')}
-                    </span>
-                  )}
-                </div>
-              </div>
+              <p className="mt-1 text-xs font-medium text-slate-400 leading-snug">Quickly register a new farmer.</p>
             </div>
-          </button>
-        ))}
+          </div>
+        </button>
       </div>
 
-      {!isLoading && !filteredFarmers.length ? (
-        <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-text-secondary">
-          <Users className="mx-auto mb-3 h-6 w-6 text-text-muted" />
-          {t('billing.noCustomerMatches', 'No farmers match your search.')}
+      {isLoading ? (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-3 p-3 border-b border-slate-100 last:border-0 animate-pulse"
+            >
+              <div className="h-11 w-11 rounded-full bg-slate-100 shrink-0" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-4 w-28 rounded bg-slate-100" />
+                <div className="h-3 w-40 rounded bg-slate-100" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredFarmers.length > 0 ? (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col">
+          {filteredFarmers.map((farmer, index) => {
+            const crop = CROP_STATUSES.find((c) => c.value === farmer.crop_status);
+            const statusColor = crop?.color || '#10B981';
+            const listStatusLabel = crop?.label || 'Growing';
+            const details = [
+              farmer.village,
+              farmer.phone,
+            ]
+              .filter(Boolean)
+              .join(' • ');
+
+            return (
+              <React.Fragment key={farmer.id}>
+                {index > 0 && <div className="h-px w-full bg-slate-100" aria-hidden="true" />}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFarmer(farmer.id, farmer.name, farmer.total_due, farmer.credit_limit);
+                    onSelect?.();
+                  }}
+                  className={cn(
+                    'w-full cursor-pointer text-left transition-all active:scale-[0.99] focus-ring group flex min-h-[70px] items-center justify-between px-3 py-3 sm:px-4 hover:bg-slate-50/70',
+                    farmerId === farmer.id ? 'bg-sky-50/20' : ''
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <FarmerAvatar imageUrl={farmer.image_url} name={farmer.name} size="md" />
+
+                    <div className="min-w-0">
+                      <div className="truncate text-[0.95rem] font-bold tracking-tight text-slate-900">
+                        {farmer.name}
+                      </div>
+                      {details && (
+                        <div className="mt-0.5 truncate text-[0.75rem] font-medium text-slate-500 uppercase">
+                          {details}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-1">
+                        <span
+                          className={`text-[0.95rem] font-bold tabular-nums ${
+                            farmer.total_due > 0 ? 'text-orange-500' : 'text-slate-400'
+                          }`}
+                        >
+                          {formatCurrency(farmer.total_due)}
+                        </span>
+                        <div className="h-2.5 w-2.5 flex-shrink-0 rounded-full shadow-sm" style={{ backgroundColor: statusColor }} />
+                      </div>
+                      <div className="mt-0">
+                        <span className="text-[0.75rem] font-semibold text-slate-400">
+                          {listStatusLabel}
+                        </span>
+                      </div>
+                    </div>
+                    {farmerId === farmer.id ? (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white shrink-0 ml-1">
+                        <Check className="h-3 w-3" strokeWidth={3} />
+                      </span>
+                    ) : (
+                      <svg
+                        className="h-4.5 w-4.5 text-slate-200 transition-colors group-hover:text-slate-300 shrink-0 ml-1"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <path d="M7 5l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+              </React.Fragment>
+            );
+          })}
         </div>
       ) : null}
+
+      {!isLoading && !filteredFarmers.length ? (
+        <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-text-secondary flex flex-col items-center">
+          <Users className="mx-auto mb-3 h-6 w-6 text-text-muted" />
+          <p className="mb-3">{t('billing.noCustomerMatches', 'No farmers match your search.')}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsAddModalOpen(true)}
+            className="font-bold"
+          >
+            <UserPlus className="mr-1.5 h-4 w-4" />
+            Add "{search}" as Farmer
+          </Button>
+        </div>
+      ) : null}
+
+      <QuickAddFarmerModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        initialName={search}
+        onSuccess={(farmer) => {
+          setFarmer(farmer.id, farmer.name, farmer.total_due, farmer.credit_limit);
+          onSelect?.();
+        }}
+      />
+      <QuickAddWalkInModal
+        isOpen={isWalkInModalOpen}
+        onClose={() => setIsWalkInModalOpen(false)}
+        onSuccess={(farmer) => {
+          setFarmer(farmer.id, farmer.name, farmer.total_due, farmer.credit_limit);
+          onSelect?.();
+        }}
+      />
     </div>
   );
 };

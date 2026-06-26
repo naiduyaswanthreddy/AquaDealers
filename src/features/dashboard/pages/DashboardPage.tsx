@@ -14,6 +14,7 @@ import StatCards from '../components/StatCards';
 import TodaySnapshot from '../components/TodaySnapshot';
 import SalesTrend from '../components/SalesTrend';
 import TopSoldProducts from '../components/TopSoldProducts';
+import ItemsSoldToday from '../components/ItemsSoldToday';
 
 export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
@@ -47,9 +48,9 @@ export const DashboardPage: React.FC = () => {
         {/* Mobile View: Logo, Shop Name, Branch Dropdown */}
         <div className="dashboard-hero__content flex-1 min-w-0 lg:hidden">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="AquaDealer" className="h-11 w-11 shrink-0 rounded-xl bg-white p-1.5 shadow-sm" />
+            <img src="/logo.png" alt="AquaDealers" className="h-11 w-11 shrink-0 rounded-xl bg-white p-1.5 shadow-sm" />
             <div className="min-w-0">
-              <div className="dashboard-hero__eyebrow !mb-0.5 truncate">{user?.shop_name || 'AquaDealer'}</div>
+              <div className="dashboard-hero__eyebrow !mb-0.5 truncate">{user?.shop_name || 'AquaDealers'}</div>
               <div className="dashboard-hero__branch-row relative inline-block" ref={dropdownRef}>
               {branches.length > 1 ? (
                 <button
@@ -173,14 +174,15 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Mobile Original View */}
-      <div className="lg:hidden block">
-        <div className="dashboard-hero__cards">
+      <div className="lg:hidden flex flex-col w-full">
+        <div className="w-[100vw] relative left-1/2 -translate-x-1/2 px-4 -mt-7 z-10">
           <StatCards />
         </div>
         <TodaySnapshot />
 
-        <div className="grid gap-5 mt-5">
+        <div className="flex flex-col gap-5 mt-5">
           <div className="space-y-5">
+            <ItemsSoldToday />
             <CollectToday />
             <RecentTransactions />
           </div>

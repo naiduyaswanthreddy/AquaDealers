@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────
-   AquaDealer Admin Portal — Type Definitions
+   AquaDealers Admin Portal — Type Definitions
    Mirrors admin-specific Supabase/PostgreSQL schema.
    ────────────────────────────────────────────── */
 

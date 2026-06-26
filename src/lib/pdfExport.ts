@@ -63,7 +63,7 @@ export const generateGenericReportPDF = (config: ReportConfig) => {
   // Footer
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
-  doc.text('AquaDealer Management System - Internal Document', margin, 290);
+  doc.text('AquaDealers Management System - Internal Document', margin, 290);
 
   // Save the PDF
   const filename = `${config.title.replace(/\s+/g, '_').toLowerCase()}_${format(new Date(), 'yyyyMMdd')}.pdf`;

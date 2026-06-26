@@ -1,5 +1,4 @@
 import React from 'react';
-import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import type { FeatureKey } from '@/stores/subscriptionStore';
 import { Lock } from 'lucide-react';
@@ -17,21 +16,9 @@ export const PlanGate: React.FC<PlanGateProps> = ({
   fallback, 
   showOverlay = false 
 }) => {
-  const { user } = useAuthStore();
-  const planDefinitions = useSubscriptionStore(state => state.planDefinitions);
+  const hasFeature = useSubscriptionStore(state => state.hasFeature);
   
-  let canAccess = false;
-  
-  if (user) {
-    if (user.custom_features && user.custom_features.includes(feature)) {
-      canAccess = true;
-    } else {
-      const planDef = planDefinitions[user.plan];
-      if (planDef && planDef.features.includes(feature)) {
-        canAccess = true;
-      }
-    }
-  }
+  const canAccess = hasFeature(feature);
 
   if (canAccess) {
     return <>{children}</>;

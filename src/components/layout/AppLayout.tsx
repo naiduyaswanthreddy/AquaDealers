@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import ImpersonationBanner from './ImpersonationBanner';
 import StaffModeBanner from './StaffModeBanner';
@@ -10,6 +10,8 @@ import { useStaffStore } from '@/stores/staffStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { inventoryService } from '@/features/inventory/services/inventoryService';
+import { toast } from 'sonner';
 
 export const AppLayout: React.FC = () => {
   const user = useAuthStore((state) => state.user);
@@ -20,6 +22,7 @@ export const AppLayout: React.FC = () => {
   const isExpired = useSubscriptionStore((state) => state.isExpired());
   const dealerId = user?.id || currentStaff?.dealerId || null;
   const navigate = useNavigate();
+  const hasProcessedExpiry = useRef(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -81,9 +84,32 @@ export const AppLayout: React.FC = () => {
     loadBranches();
   }, [dealerId, currentStaff, setBranches, setActiveBranch, setAllBranches]);
 
+  // Auto-process expired inventory lots on app load (once per session)
+  useEffect(() => {
+    if (!dealerId || hasProcessedExpiry.current) return;
+    hasProcessedExpiry.current = true;
+
+    const processExpiry = async () => {
+      try {
+        const count = await inventoryService.processExpiredLots(dealerId);
+        if (count > 0) {
+          toast(`${count} expired lot${count > 1 ? 's' : ''} removed from stock`, {
+            icon: '⚠️',
+            duration: 5000,
+          });
+        }
+      } catch (err) {
+        // Silent fail — don't block app usage for expiry processing
+        console.error('Failed to process expired lots:', err);
+      }
+    };
+
+    processExpiry();
+  }, [dealerId]);
+
   const { pathname } = useLocation();
   const isFullScreenRoute = false; // We don't have any full screen routes that hide the sidebar anymore? Wait, let's keep it just in case.
-  const isNoPaddingRoute = pathname.startsWith('/purchases/new') || pathname.startsWith('/bills/new');
+  const isNoPaddingRoute = pathname.startsWith('/bills/new');
 
   return (
     <div className="min-h-dvh bg-transparent text-text-primary overflow-x-clip lg:flex">

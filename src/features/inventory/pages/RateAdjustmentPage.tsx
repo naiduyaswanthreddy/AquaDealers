@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, TrendingUp, Search, CheckCircle2, Calculator } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { Button, Select, Input } from '@/components/ui';
+import { Button, Input, Select } from '@/components/ui';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { inventoryService } from '../services/inventoryService';
 import { useInventory } from '../hooks/useInventory';
@@ -26,7 +27,13 @@ export default function RateAdjustmentPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const state = location.state as { productId?: string; rateDifference?: number } | null;
+  const state = location.state as {
+    productId?: string;
+    rateDifference?: number;
+    oldUnitPrice?: number;
+    newUnitPrice?: number;
+    source?: 'purchase' | 'manual';
+  } | null;
   const { user } = useAuthStore();
   const { activeBranch, isAllBranches } = useBranchStore();
   const branchId = isAllBranches ? null : activeBranch?.id;
@@ -62,7 +69,11 @@ export default function RateAdjustmentPage() {
         user.id,
         selectedProductId,
         startDate,
-        endDate
+        endDate,
+        {
+          oldUnitPrice: state?.productId === selectedProductId ? state.oldUnitPrice : null,
+          newUnitPrice: state?.productId === selectedProductId ? state.newUnitPrice : null,
+        }
       );
       setTargets(results.map(r => ({ ...r, selected: true })));
       setHasSearched(true);
@@ -103,6 +114,8 @@ export default function RateAdjustmentPage() {
         totalBags: t.total_quantity,
         rateDifference: Number(rateDifference),
         totalAdjustment: t.total_quantity * Number(rateDifference),
+        oldUnitPrice: state?.oldUnitPrice ?? t.avg_unit_price,
+        newUnitPrice: state?.newUnitPrice ?? t.avg_unit_price + Number(rateDifference),
       }));
 
       await inventoryService.applyRateAdjustments(user.id, branchId ?? null, adjustments);
@@ -128,7 +141,7 @@ export default function RateAdjustmentPage() {
     <PageShell>
       <PageHeader
         title="Rate Difference Adjustment"
-        eyebrow="Pro Feature"
+        eyebrow={state?.source === 'purchase' ? 'Automatic Prompt' : 'Pro Feature'}
         onBack={() => navigate('/inventory')}
       />
 
@@ -151,18 +164,18 @@ export default function RateAdjustmentPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">From Date</label>
-              <Input
-                type="date"
+              <DatePicker
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={setStartDate}
+                placeholder="From Date"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">To Date</label>
-              <Input
-                type="date"
+              <DatePicker
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={setEndDate}
+                placeholder="To Date"
               />
             </div>
           </div>
@@ -225,7 +238,7 @@ export default function RateAdjustmentPage() {
                   </div>
                 </div>
 
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="border border-slate-200 rounded-xl overflow-x-auto">
                   <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
                       <tr>

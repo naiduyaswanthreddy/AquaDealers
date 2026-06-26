@@ -46,7 +46,7 @@ export const usePinStore = create<PinState>()(
       },
     }),
     {
-      name: 'aquadealer-pin',
+      name: 'aquadealers-pin',
       partialize: (state) => ({
         isPinSet: state.isPinSet,
         timeoutMinutes: state.timeoutMinutes,

@@ -2,6 +2,7 @@ import { Bill, Inventory, InventoryLot, InventoryMovement, Product, StockPurchas
 
 export interface InventoryItem extends Inventory {
   product: Product;
+  inventory_lots?: InventoryLot[];
 }
 
 export interface InventoryMovementDetail extends InventoryMovement {
@@ -31,6 +32,7 @@ export interface InventoryMonthlySeriesItem {
   adjustedIn: number;
   adjustedOut: number;
   cancelledBack: number;
+  expired: number;
   net: number;
 }
 
@@ -42,8 +44,10 @@ export interface InventoryDetailData {
     currentStock: number;
     lowStockThreshold: number | null;
     availableLots: number;
+    expiredLots: number;
     totalReceived: number;
     totalIssued: number;
+    totalExpired: number;
     totalAdjustedIn: number;
     totalAdjustedOut: number;
     estimatedStockValue: number | null;
@@ -63,5 +67,6 @@ export interface PurchaseDetailData {
 export interface StockAdjustmentData {
   inventory_id: string;
   adjustment_qty: number; // positive for addition, negative for reduction
+  lot_id?: string | null;
   reason: string;
 }

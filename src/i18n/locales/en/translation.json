@@ -228,7 +228,7 @@
   "pages": {
     "login": {
       "title": "Login",
-      "subtitle": "Welcome back to AquaDealer"
+      "subtitle": "Welcome back to AquaDealers"
     }
   },
   "status": {
@@ -291,6 +291,62 @@
     "farmerWithDues": "farmer with dues",
     "rankedDues": "Farmers ranked by highest outstanding balance",
     "noDues": "No outstanding dues!",
-    "allCleared": "All your farmers have cleared their balances."
+    "allCleared": "All your farmers have cleared their balances.",
+    "tabs": {
+      "ledger": "Ledger",
+      "items": "Items",
+      "bills": "Bills",
+      "payments": "Payments",
+      "details": "Details"
+    },
+    "itemsTab": {
+      "selectPeriod": "Select time period",
+      "export": "Export",
+      "filterAll": "All",
+      "filterFeed": "Feed",
+      "filterMedicine": "Medicines",
+      "couldNotLoad": "Could not load items",
+      "retry": "Retry",
+      "totalProducts": "Total Products",
+      "totalQty": "Total Qty",
+      "totalValue": "Total Value",
+      "unpaidAmount": "Unpaid Amount",
+      "allPaid": "All purchases in this period are fully paid",
+      "topProduct": "Top product",
+      "nextPurchase": "Next purchase",
+      "overdue": "Overdue 30+ days",
+      "notEnoughData": "Not enough data",
+      "notEnoughHistory": "Not enough history",
+      "none": "None",
+      "noPurchases": "No purchases in this period",
+      "tryLongerRange": "Try selecting a longer time range",
+      "changePeriod": "Change Period",
+      "loadMore": "Load more products",
+      "fullyPaid": "Fully paid",
+      "unpaidStatus": "Unpaid",
+      "unpaid": "{{amount}} unpaid",
+      "last": "Last",
+      "bills": "Bills",
+      "date": "Date",
+      "qty": "Qty",
+      "amount": "Amount",
+      "status": "Status",
+      "actions": "Actions",
+      "paid": "Paid",
+      "partial": "Partial",
+      "viewBill": "View Bill",
+      "collect": "Collect",
+      "retryBillDetails": "Retry bill details",
+      "periods": {
+        "thisWeek": "This Week",
+        "thisMonth": "This Month",
+        "lastMonth": "Last Month",
+        "thisSeason": "This Season",
+        "last3Months": "Last 3 Months",
+        "last6Months": "Last 6 Months",
+        "thisYear": "This Year",
+        "custom": "Custom Range"
+      }
+    }
   }
 }

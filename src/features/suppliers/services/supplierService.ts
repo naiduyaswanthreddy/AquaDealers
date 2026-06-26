@@ -27,7 +27,7 @@ export const supplierService = {
       .order('name');
     
     if (search) {
-      query = query.or(`name.ilike.%${search}%,company.ilike.%${search}%,phone.ilike.%${search}%`);
+      query = query.or(`name.ilike.%${search}%,company.ilike.%${search}%,phone.ilike.%${search}%,alternate_phone.ilike.%${search}%`);
     }
 
     query = query.range(from, to);
@@ -129,5 +129,24 @@ export const supplierService = {
 
     if (error) throw error;
     return data as PurchaseResult;
+  },
+
+  async recordSupplierCharge(
+    dealerId: string,
+    supplierId: string,
+    amount: number,
+    notes?: string
+  ): Promise<{ success: boolean }> {
+    const { data, error } = await supabase.rpc('record_supplier_charge', {
+      p_payload: {
+        dealer_id: dealerId,
+        supplier_id: supplierId,
+        amount,
+        notes: notes || null,
+      },
+    });
+
+    if (error) throw error;
+    return data as { success: boolean };
   }
 };

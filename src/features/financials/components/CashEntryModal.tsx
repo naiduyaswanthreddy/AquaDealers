@@ -1,5 +1,5 @@
 import React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAddCashEntry } from '../hooks/useFinancials';
@@ -8,6 +8,7 @@ import { useBranchStore } from '@/stores/branchStore';
 import { CashBookInsert } from '../types';
 import { Modal } from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { toast } from 'sonner';
 
 interface CashEntryModalProps {
@@ -21,7 +22,7 @@ export const CashEntryModal: React.FC<CashEntryModalProps> = ({ type, onClose })
   const { activeBranch } = useBranchStore();
   const { mutateAsync: addEntry, isPending } = useAddCashEntry();
 
-  const { register, handleSubmit, formState: { errors } } = useForm<CashBookInsert>({
+  const { register, control, handleSubmit, formState: { errors } } = useForm<CashBookInsert>({
     defaultValues: {
       dealer_id: user?.id || '',
       branch_id: activeBranch?.id || null,
@@ -71,12 +72,22 @@ export const CashEntryModal: React.FC<CashEntryModalProps> = ({ type, onClose })
           error={errors.amount?.message}
         />
 
-        <Input
-          label={t('financials.date', 'Date')}
-          type="date"
-          {...register('entry_date', { required: t('common.required') })}
-          error={errors.entry_date?.message}
-        />
+        <div className="space-y-1">
+          <label className="text-sm font-semibold text-slate-700">{t('financials.date', 'Date')}</label>
+          <Controller
+            control={control}
+            name="entry_date"
+            rules={{ required: t('common.required') }}
+            render={({ field }) => (
+              <DatePicker
+                value={field.value}
+                onChange={field.onChange}
+                placeholder={t('financials.date', 'Date')}
+              />
+            )}
+          />
+          {errors.entry_date && <p className="text-xs text-red-500 mt-1">{errors.entry_date.message}</p>}
+        </div>
 
         <Input
           label={t('financials.description', 'Description')}

@@ -6,7 +6,7 @@
 
 ---
 
-**Project:** AquaDealer
+**Project:** AquaDealers
 **Generated:** 2026-05-26 17:00:23
 **Category:** Banking/Traditional Finance
 

@@ -149,7 +149,7 @@ const NewBillPage: React.FC = () => {
         <div className="relative w-full pt-1 pb-4 flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-4">
           
           {/* Mobile Top Row */}
-          <div className="flex justify-between items-center md:hidden mb-2">
+          <div className="flex justify-between items-center md:hidden mb-2 px-1">
             <button
               type="button"
               onClick={handlePageBack}
@@ -167,13 +167,12 @@ const NewBillPage: React.FC = () => {
               <X className="h-6 w-6" />
             </button>
           </div>
-
           {/* Desktop Left Side */}
           <div className="flex items-center gap-4 justify-start">
             <button
               type="button"
               onClick={handlePageBack}
-              className="billing-wizard__icon-button hidden md:flex shrink-0"
+              className="billing-wizard__icon-button !hidden md:!inline-flex shrink-0"
               aria-label="Back"
             >
               <ArrowLeft className="h-6 w-6" />
@@ -184,33 +183,33 @@ const NewBillPage: React.FC = () => {
             </div>
           </div>
           
-          {/* Center */}
-          <div className="flex justify-center w-full">
-            <section className="billing-stepper !mt-8 md:!mt-0 !mb-0 w-full md:w-auto" aria-label="Billing progress">
-            <div className="billing-stepper__track !bg-white/20" />
-            <div className="billing-stepper__progress !bg-[#0ba467]" style={{ width: `${stepIndex * 50}%` }} />
+          {/* Center (Desktop only) */}
+          <div className="hidden md:flex justify-center w-full">
+            <section className="billing-stepper !mt-0 !mb-0 w-full md:w-auto" aria-label="Billing progress">
+              <div className="billing-stepper__track !bg-white/20" />
+              <div className="billing-stepper__progress !bg-[#0ba467]" style={{ width: `${stepIndex * 50}%` }} />
 
-            {STEP_META.map((meta, index) => {
-              const isActive = meta.key === step;
-              const isDone = stepIndex > index;
+              {STEP_META.map((meta, index) => {
+                const isActive = meta.key === step;
+                const isDone = stepIndex > index;
 
-              return (
-                <button
-                  key={meta.key}
-                  type="button"
-                  disabled={!isDone && !isActive}
-                  onClick={() => isDone && setStep(meta.key)}
-                  className="billing-stepper__item"
-                >
-                  <span className={isDone ? 'billing-stepper__dot billing-stepper__dot--done' : isActive ? 'billing-stepper__dot billing-stepper__dot--active' : 'billing-stepper__dot !bg-white/20 !text-white'}>
-                    {isDone ? <Check className="h-5 w-5" strokeWidth={3} /> : index + 1}
-                  </span>
-                  <span className={isDone ? 'billing-stepper__label billing-stepper__label--done' : isActive ? 'billing-stepper__label billing-stepper__label--active !text-white' : 'billing-stepper__label !text-white/70'}>
-                    {meta.label}
-                  </span>
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={meta.key}
+                    type="button"
+                    disabled={!isDone && !isActive}
+                    onClick={() => isDone && setStep(meta.key)}
+                    className="billing-stepper__item"
+                  >
+                    <span className={isDone ? 'billing-stepper__dot billing-stepper__dot--done' : isActive ? 'billing-stepper__dot billing-stepper__dot--active' : 'billing-stepper__dot !bg-white/20 !text-white'}>
+                      {isDone ? <Check className="h-5 w-5" strokeWidth={3} /> : index + 1}
+                    </span>
+                    <span className={isDone ? 'billing-stepper__label billing-stepper__label--done' : isActive ? 'billing-stepper__label billing-stepper__label--active !text-white' : 'billing-stepper__label !text-white/70'}>
+                      {meta.label}
+                    </span>
+                  </button>
+                );
+              })}
             </section>
           </div>
 
@@ -227,6 +226,36 @@ const NewBillPage: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Mobile Stepper (below the blue header) */}
+      <div className="md:hidden w-full px-4 -mt-10 pb-3 relative z-10 bg-transparent shrink-0">
+        <section className="billing-stepper !mt-0 !mb-0 w-full" aria-label="Billing progress">
+          <div className="billing-stepper__track" />
+          <div className="billing-stepper__progress" style={{ width: `${stepIndex * 50}%` }} />
+
+          {STEP_META.map((meta, index) => {
+            const isActive = meta.key === step;
+            const isDone = stepIndex > index;
+
+            return (
+              <button
+                key={meta.key}
+                type="button"
+                disabled={!isDone && !isActive}
+                onClick={() => isDone && setStep(meta.key)}
+                className="billing-stepper__item"
+              >
+                <span className={isDone ? 'billing-stepper__dot billing-stepper__dot--done' : isActive ? 'billing-stepper__dot billing-stepper__dot--active' : 'billing-stepper__dot'}>
+                  {isDone ? <Check className="h-5 w-5" strokeWidth={3} /> : index + 1}
+                </span>
+                <span className={isDone ? 'billing-stepper__label billing-stepper__label--done' : isActive ? 'billing-stepper__label billing-stepper__label--active' : 'billing-stepper__label'}>
+                  {meta.label}
+                </span>
+              </button>
+            );
+          })}
+        </section>
+      </div>
 
       <main className="billing-wizard__body animate-fade-in lg:!px-0 lg:flex-1 lg:flex lg:flex-col lg:overflow-hidden" key={step}>
         {step === 'items' && (

@@ -177,7 +177,7 @@ export const shareDuesReportViaWhatsApp = async (
   const farmersWithDues = farmers.filter(f => f.total_due > 0);
   const totalAmount = farmersWithDues.reduce((s, f) => s + f.total_due, 0);
   
-  const fallbackText = `*${dealer?.shop_name || 'AquaDealer'}*\n-------------------\n*Outstanding Dues Report*\n*Date:* ${formatDate(new Date().toISOString())}\n*Farmers with dues:* ${farmersWithDues.length}\n*Total Outstanding:* ${formatCurrency(totalAmount)}\n-------------------\nPlease find the detailed report PDF attached.`;
+  const fallbackText = `*${dealer?.shop_name || 'AquaDealers'}*\n-------------------\n*Outstanding Dues Report*\n*Date:* ${formatDate(new Date().toISOString())}\n*Farmers with dues:* ${farmersWithDues.length}\n*Total Outstanding:* ${formatCurrency(totalAmount)}\n-------------------\nPlease find the detailed report PDF attached.`;
   
   await sharePdfViaWhatsApp(blob, `Dues_Report_${new Date().toISOString().split('T')[0]}.pdf`, fallbackText);
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
 import { useCollectPayment, useFarmerOpenBills } from '../hooks/useFarmerLedger';
@@ -14,6 +14,8 @@ interface CollectPaymentModalProps {
   farmerId: string;
   farmerName: string;
   totalDue: number;
+  initialBillId?: string;
+  initialAmount?: number;
 }
 
 export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
@@ -22,6 +24,8 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
   farmerId,
   farmerName,
   totalDue,
+  initialBillId,
+  initialAmount,
 }) => {
   const user = useAuthStore((s) => s.user);
   const activeBranchId = useBranchStore((s) => s.getActiveBranchId());
@@ -35,6 +39,13 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
   const [upiRef, setUpiRef] = useState('');
   const [chequeNo, setChequeNo] = useState('');
   const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setAmount(initialAmount ? String(initialAmount) : '');
+    setAllocationMode(initialBillId ? 'specific_bill' : 'oldest_first');
+    setTargetBillId(initialBillId || '');
+  }, [initialAmount, initialBillId, isOpen]);
 
   const paymentOptions = PAYMENT_METHODS.map((m) => ({ value: m.value, label: m.label }));
   const allocationOptions = [

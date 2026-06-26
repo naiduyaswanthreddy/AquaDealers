@@ -110,13 +110,18 @@ export const CartSidebar: React.FC = () => {
         credit_override_used: exceedsCreditLimit,
         credit_override_reason: exceedsCreditLimit ? 'Dealer override from checkout' : null,
         items: items.map(
-          ({ inventory_id, product_id, product_name, hsn_code, quantity, base_unit_price, discount_percentage, gst_rate }) => ({
+          ({ inventory_id, product_id, product_name, hsn_code, quantity, base_unit_price, discount_percentage, gst_rate, discount_source, discount_label, default_discount_percentage, farmer_discount_percentage }) => ({
             inventory_id,
             product_id,
             product_name,
             hsn_code,
             quantity,
             unit_price: Number((base_unit_price * (1 - discount_percentage / 100)).toFixed(2)),
+            discount_percentage,
+            discount_source,
+            discount_label,
+            default_discount_percentage,
+            farmer_discount_percentage,
             gst_rate: gstEnabled ? gst_rate : 0,
           })
         ),
@@ -162,22 +167,43 @@ export const CartSidebar: React.FC = () => {
             const lineTotal = discountedUnitPrice * item.quantity;
 
             return (
-              <div key={item.inventory_id} className="rounded-2xl border border-border bg-white p-4">
+              <div key={item.lot_id ? `${item.inventory_id}_${item.lot_id}` : item.inventory_id} className="rounded-2xl border border-border bg-white p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="truncate text-sm font-bold text-text-primary">{item.product_name}</h3>
                     <p className="mt-1 text-sm text-text-secondary">
                       {formatCurrency(discountedUnitPrice)} x {item.quantity} {item.unit}
                     </p>
-                    {item.discount_percentage > 0 ? (
-                      <p className="mt-1 text-xs font-semibold text-success">
-                        {item.discount_percentage}% off medicine price
+                    {item.batch_number ? (
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        Batch: {item.batch_number}
                       </p>
+                    ) : null}
+                    {item.product_type === 'medicine' ? (
+                      <div className="mt-1 flex items-center text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 w-fit">
+                        <span className={item.discount_percentage === (item.default_discount_percentage || 0) ? "text-emerald-700 font-black" : "text-slate-500 font-bold cursor-pointer hover:text-slate-700"} onClick={() => updateItemDiscount(item.inventory_id, item.lot_id, item.default_discount_percentage || 0)}>
+                          {item.default_discount_percentage || 0}%
+                        </span>
+                        {item.farmer_discount_percentage != null && item.farmer_discount_percentage !== (item.default_discount_percentage || 0) && (
+                          <>
+                            <span className="mx-1 text-slate-300">,</span>
+                            <span className={item.discount_percentage === item.farmer_discount_percentage ? "text-emerald-700 font-black" : "text-slate-500 font-bold cursor-pointer hover:text-slate-700"} onClick={() => updateItemDiscount(item.inventory_id, item.lot_id, item.farmer_discount_percentage!)}>
+                              {item.farmer_discount_percentage}%
+                            </span>
+                          </>
+                        )}
+                        {item.discount_percentage !== (item.default_discount_percentage || 0) && item.discount_percentage !== item.farmer_discount_percentage && (
+                          <>
+                            <span className="mx-1 text-slate-300">,</span>
+                            <span className="text-emerald-700 font-black">{item.discount_percentage}%</span>
+                          </>
+                        )}
+                      </div>
                     ) : null}
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-extrabold text-text-primary">{formatCurrency(lineTotal)}</div>
-                    <button type="button" onClick={() => removeItem(item.inventory_id)} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-danger">
+                    <button type="button" onClick={() => removeItem(item.inventory_id, item.lot_id)} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-danger">
                       <Trash2 className="h-3.5 w-3.5" />
                       {t('common.delete', 'Delete')}
                     </button>
@@ -190,7 +216,7 @@ export const CartSidebar: React.FC = () => {
                       type="number"
                       label={t('billing.itemDiscountPercentage', 'Discount %')}
                       value={item.discount_percentage || ''}
-                      onChange={(event) => updateItemDiscount(item.inventory_id, Number(event.target.value))}
+                      onChange={(event) => updateItemDiscount(item.inventory_id, item.lot_id, Number(event.target.value))}
                       placeholder="0"
                       inputSize="sm"
                     />
@@ -201,7 +227,7 @@ export const CartSidebar: React.FC = () => {
                   <div className="inline-flex items-center rounded-2xl border border-border bg-surface">
                     <button
                       type="button"
-                      onClick={() => updateQuantity(item.inventory_id, item.quantity - 1)}
+                      onClick={() => updateQuantity(item.inventory_id, item.lot_id, item.quantity - 1)}
                       aria-label={t('billing.decreaseQuantity', 'Decrease quantity')}
                       className="focus-ring flex h-10 w-10 items-center justify-center text-text-secondary hover:text-text-primary"
                     >
@@ -210,7 +236,7 @@ export const CartSidebar: React.FC = () => {
                     <span className="w-10 text-center text-sm font-bold text-text-primary">{item.quantity}</span>
                     <button
                       type="button"
-                      onClick={() => updateQuantity(item.inventory_id, item.quantity + 1)}
+                      onClick={() => updateQuantity(item.inventory_id, item.lot_id, item.quantity + 1)}
                       disabled={item.quantity >= item.max_quantity}
                       aria-label={t('billing.increaseQuantity', 'Increase quantity')}
                       className="focus-ring flex h-10 w-10 items-center justify-center text-text-secondary hover:text-text-primary disabled:opacity-45"

@@ -2,15 +2,37 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Branch } from '@/types/database';
 
+export interface TemplateSettings {
+  invoiceTemplate: string;
+  statementTemplate: string;
+  showLogo: boolean;
+  showShopAddress: boolean;
+  showTax: boolean;
+  showSignatureLine: boolean;
+}
+
+const DEFAULT_TEMPLATE_SETTINGS: TemplateSettings = {
+  invoiceTemplate: 'template1',
+  statementTemplate: 'statement1',
+  showLogo: true,
+  showShopAddress: true,
+  showTax: true,
+  showSignatureLine: true,
+};
+
 interface BranchState {
   branches: Branch[];
   activeBranch: Branch | null;
   isAllBranches: boolean;
+  branchTemplateSettings: Record<string, TemplateSettings>;
 
   setBranches: (branches: Branch[]) => void;
   setActiveBranch: (branch: Branch | null) => void;
   setAllBranches: (value: boolean) => void;
   getActiveBranchId: () => string | null;
+  
+  getTemplateSettings: (branchId: string) => TemplateSettings;
+  updateTemplateSettings: (branchId: string, settings: Partial<TemplateSettings>) => void;
 }
 
 export const useBranchStore = create<BranchState>()(
@@ -19,6 +41,7 @@ export const useBranchStore = create<BranchState>()(
       branches: [],
       activeBranch: null,
       isAllBranches: false,
+      branchTemplateSettings: {},
 
       setBranches: (branches) => {
         set({ branches });
@@ -48,12 +71,29 @@ export const useBranchStore = create<BranchState>()(
         if (state.isAllBranches) return null;
         return state.activeBranch?.id || null;
       },
+      
+      getTemplateSettings: (branchId) => {
+        return get().branchTemplateSettings[branchId] || DEFAULT_TEMPLATE_SETTINGS;
+      },
+      
+      updateTemplateSettings: (branchId, settings) => {
+        set((state) => ({
+          branchTemplateSettings: {
+            ...state.branchTemplateSettings,
+            [branchId]: {
+              ...(state.branchTemplateSettings[branchId] || DEFAULT_TEMPLATE_SETTINGS),
+              ...settings,
+            },
+          },
+        }));
+      },
     }),
     {
-      name: 'aquadealer-branch',
+      name: 'aquadealers-branch',
       partialize: (state) => ({
         activeBranch: state.activeBranch,
         isAllBranches: state.isAllBranches,
+        branchTemplateSettings: state.branchTemplateSettings,
       }),
     }
   )

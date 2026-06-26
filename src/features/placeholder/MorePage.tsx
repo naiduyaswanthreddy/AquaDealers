@@ -13,6 +13,7 @@ import {
   Wallet,
   ReceiptText,
   ShieldCheck,
+  TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -54,12 +55,13 @@ export const MorePage: React.FC = () => {
         { path: '/expenses', label: t('nav.shopExpenses', 'Shop Expenses'), icon: Wallet, color: 'bg-danger-light text-danger', featureKey: 'expenses' },
         { path: '/suppliers', label: t('nav.suppliersRegistry', 'Suppliers Registry'), icon: Users2, color: 'bg-primary/10 text-primary', featureKey: 'suppliers' },
         { path: '/bills', label: t('nav.allBills', 'All Bills'), icon: ReceiptText, color: 'bg-indigo-100 text-indigo-600', featureKey: 'billHistory' },
+        { path: '/inventory/rate-adjustment', label: 'Rate Diff Tool', icon: TrendingUp, color: 'bg-violet-100 text-violet-600' },
       ],
     },
     {
       title: t('more.settingsAdmin', 'Settings & Administration'),
       items: [
-        { path: '/reports', label: t('nav.gstAndReports', 'GST & Reports'), icon: FileBarChart, color: 'bg-info-light text-primary', featureKey: 'reports' },
+        { path: '/reports', label: t('nav.reports', 'Reports'), icon: FileBarChart, color: 'bg-info-light text-primary', featureKey: 'reports' },
         { path: '/branches', label: t('more.manageShops', 'Manage Shops'), icon: GitBranch, color: 'bg-surface text-text-primary', featureKey: 'branches' },
         { path: '/settings', label: t('nav.appSettings', 'App Settings'), icon: Settings, color: 'bg-warning-light text-warning', featureKey: 'settings' },
         { path: '/staff', label: t('more.staff', 'Staff'), icon: ShieldCheck, color: 'bg-emerald-100 text-emerald-700', featureKey: 'staffManagement' },

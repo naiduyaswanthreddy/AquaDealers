@@ -7,6 +7,8 @@ export interface SupplierInsert {
   name: string;
   company?: string | null;
   phone?: string | null;
+  alternate_phone?: string | null;
+  photo_url?: string | null;
   gstin?: string | null;
   address?: string | null;
   credit_days?: number;
@@ -39,7 +41,7 @@ export interface PurchasePayload {
   product_id: string;
   supplier_id: string;
   quantity: number;
-  cost_price_per_unit: number;
+  cost_price_per_unit?: number | null;
   gst_amount: number;
   total_amount: number;
   purchase_date: string;
@@ -58,6 +60,10 @@ export interface PurchaseResult {
   purchase_id: string;
   inventory_id: string;
   lot_id: string;
+  previous_final_unit_price?: number | null;
+  new_final_unit_price?: number | null;
+  rate_difference?: number;
+  rate_adjustment_required?: boolean;
 }
 
 export interface SupplierPaymentResult {

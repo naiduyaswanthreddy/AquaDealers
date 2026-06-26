@@ -104,3 +104,19 @@ export function useRecordPurchase() {
     },
   });
 }
+
+export function useRecordSupplierCharge() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  
+  return useMutation({
+    mutationFn: ({ supplierId, amount, notes }: { supplierId: string, amount: number, notes?: string }) => {
+      if (!user?.id) throw new Error('No dealer ID');
+      return supplierService.recordSupplierCharge(user.id, supplierId, amount, notes);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: supplierKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: supplierKeys.detail(variables.supplierId) });
+    },
+  });
+}

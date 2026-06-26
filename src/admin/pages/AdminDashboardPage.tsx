@@ -40,7 +40,7 @@ const AdminDashboardPage: React.FC = () => {
       <div>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 4 }}>Platform Dashboard</h1>
         <p style={{ color: 'var(--admin-text-muted)', fontSize: 14 }}>
-          Real-time overview of AquaDealer platform health
+          Real-time overview of AquaDealers platform health
         </p>
       </div>
 

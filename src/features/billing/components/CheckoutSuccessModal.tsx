@@ -7,6 +7,9 @@ import { Link } from 'react-router-dom';
 import { useBillDetails } from '../hooks/useBilling';
 import { useAuthStore } from '@/stores/authStore';
 import { shareBillPdfViaWhatsApp } from '@/lib/billPdfGenerator';
+import { useBranchStore } from '@/stores/branchStore';
+import { InvoiceTemplates } from '@/features/billing/components/templates';
+import { getBillSignature } from '@/lib/utils';
 
 interface CheckoutSuccessModalProps {
   isOpen: boolean;
@@ -39,6 +42,9 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
   
   const dealer = useAuthStore(s => s.user);
   const { data: bill } = useBillDetails(billId);
+  const branchId = useBranchStore(state => state.getActiveBranchId()) || dealer?.id || '';
+  const templateSettings = useBranchStore(state => state.getTemplateSettings(branchId));
+  const Template = InvoiceTemplates[templateSettings.invoiceTemplate as keyof typeof InvoiceTemplates] || InvoiceTemplates.template1;
 
   useEffect(() => {
     if (isOpen) {
@@ -165,6 +171,21 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
           </Button>
         </div>
       </div>
+      
+      {/* Hidden template for PDF generation */}
+      {bill && dealer && (
+        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+           <div id="print-content-wrapper" className="bg-white" style={{ width: '794px', minHeight: '1123px' }}>
+             <Template 
+               bill={bill} 
+               dealer={dealer} 
+               settings={templateSettings} 
+               type="invoice" 
+               billSignature={getBillSignature(bill)} 
+             />
+           </div>
+        </div>
+      )}
     </Modal>
   );
 };

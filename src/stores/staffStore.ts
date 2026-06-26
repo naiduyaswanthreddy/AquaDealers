@@ -50,7 +50,7 @@ export const useStaffStore = create<StaffState>()(
       clearStaffSession: () => set(initialState),
     }),
     {
-      name: 'aquadealer-staff',
+      name: 'aquadealers-staff',
       partialize: (state) => ({
         currentStaff: state.currentStaff,
         portalContext: state.portalContext,

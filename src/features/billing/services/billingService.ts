@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { BillingPayload, CreateBillResult } from '../types';
+import { BillingPayload, CreateBillResult, FifoBillPreview } from '../types';
 import { Bill, BillSignature, SignatureStroke } from '@/types/database';
 
 export const billingService = {
@@ -68,7 +68,7 @@ export const billingService = {
   async getBillDetails(billId: string) {
     const { data, error } = await supabase
       .from('bills')
-      .select('*, bill_items(*), bill_signatures(*)')
+      .select('*, bill_items(*), bill_signatures(*), farmers(*)')
       .eq('id', billId)
       .single();
 
@@ -89,6 +89,18 @@ export const billingService = {
     }
 
     return data as CreateBillResult;
+  },
+
+  async previewFifoBill(payload: BillingPayload): Promise<FifoBillPreview> {
+    const { data, error } = await supabase.rpc('preview_fifo_bill_lines', {
+      p_payload: payload,
+    });
+
+    if (error) {
+      throw new Error(`Failed to preview FIFO bill: ${error.message}`);
+    }
+
+    return data as FifoBillPreview;
   },
 
   async saveBillSignature(params: {
@@ -119,5 +131,39 @@ export const billingService = {
     }
 
     return data as BillSignature;
+  },
+
+  async editBill(payload: {
+    bill_id: string;
+    dealer_id: string;
+    edits: {
+      bill_item_id: string;
+      quantity: number;
+      unit_price: number;
+    }[];
+  }): Promise<any> {
+    const { data, error } = await supabase.rpc('edit_bill_v1', {
+      p_payload: payload,
+    });
+
+    if (error) {
+      throw new Error(`Failed to edit bill: ${error.message}`);
+    }
+
+    return data;
+  },
+
+  async getBillAuditLogs(billId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('bill_audit_logs')
+      .select('*')
+      .eq('bill_id', billId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch bill audit logs: ${error.message}`);
+    }
+
+    return data || [];
   }
 };

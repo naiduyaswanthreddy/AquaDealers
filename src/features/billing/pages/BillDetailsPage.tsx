@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Download, Printer, MessageCircle } from 'lucide-react';
 import { useBillDetails } from '../hooks/useBilling';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime, getBillSignature } from '@/lib/utils';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import Button from '@/components/ui/Button';
@@ -11,26 +11,17 @@ import SignatureRenderer from '../components/SignatureRenderer';
 import { SignatureStroke } from '@/types/database';
 import { downloadBillPdf, shareBillPdfViaWhatsApp } from '@/lib/billPdfGenerator';
 import { useAuthStore } from '@/stores/authStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { useBranchStore } from '@/stores/branchStore';
+import { InvoiceTemplates } from '@/features/billing/components/templates';
+import { MobileZoomableContainer } from '@/features/billing/components/MobileZoomableContainer';
+import { EditBillModal } from '../components/EditBillModal';
+import { EditBillConfirmationModal } from '../components/EditBillConfirmationModal';
+import { BillAuditHistory } from '../components/BillAuditHistory';
+import { PlanGate } from '@/components/auth/PlanGate';
+import { Edit } from 'lucide-react';
 
-const getBillSignature = (bill: any) => {
-  const relation = bill?.bill_signatures;
-  const signature = Array.isArray(relation) ? relation[0] : relation;
-  if (!signature) return null;
 
-  let strokes = signature.signature_data as SignatureStroke[] | string | null | undefined;
-  if (typeof strokes === 'string') {
-    try {
-      strokes = JSON.parse(strokes) as SignatureStroke[];
-    } catch {
-      strokes = [];
-    }
-  }
-
-  return {
-    ...signature,
-    signature_data: Array.isArray(strokes) ? strokes : [],
-  };
-};
 
 const BillDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,7 +30,19 @@ const BillDetailsPage: React.FC = () => {
   const { t } = useTranslation();
   const { data: bill, isLoading, error } = useBillDetails(id || '');
   const dealer = useAuthStore(s => s.user);
+  const { getActiveBranchId, getTemplateSettings } = useBranchStore();
+  
+  const hasProPlus = dealer?.plan === 'pro_plus' || useSubscriptionStore.getState().hasFeature('custom_templates');
+  const branchId = getActiveBranchId() || 'default';
+  const templateSettings = getTemplateSettings(branchId);
+  const Template = InvoiceTemplates[templateSettings.invoiceTemplate] || InvoiceTemplates.template1;
+
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [pendingEdits, setPendingEdits] = useState<any[]>([]);
+  
   const backTo = typeof location.state?.from === 'string' ? location.state.from : '/bills';
 
   const queryParams = React.useMemo(() => new URLSearchParams(location.search), [location.search]);
@@ -53,6 +56,16 @@ const BillDetailsPage: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [bill, shouldPrint]);
+
+  const shouldEdit = queryParams.get('edit') === 'true';
+  React.useEffect(() => {
+    if (bill && shouldEdit && bill.type !== 'adjustment' && hasProPlus) {
+      setIsEditModalOpen(true);
+      // Remove query param
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [bill, shouldEdit, hasProPlus]);
 
   const handleDownloadPDF = async () => {
     if (!bill) return;
@@ -142,12 +155,39 @@ const BillDetailsPage: React.FC = () => {
             >
               {t('billing.downloadInvoice')}
             </Button>
+            {bill.type !== 'adjustment' && hasProPlus && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<Edit className="w-4 h-4 text-white" />}
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="rounded-[24px] hover:bg-white/25 transition-all text-white border-solid font-semibold text-xs px-5 sm:px-6"
+                  style={{ background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.22)' }}
+                >
+                  Edit Bill
+                </Button>
+            )}
           </div>
         }
       />
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
-        <div className="border-b border-gray-100 pb-6 mb-6">
+      {hasProPlus ? (
+        <div className="flex justify-start md:justify-center overflow-x-auto bg-slate-100 rounded-xl mb-12 w-full">
+          <MobileZoomableContainer>
+            <div className="bg-white shadow-lg overflow-hidden shrink-0 mx-auto" style={{ width: '794px', minHeight: '1123px' }}>
+              <Template bill={bill} dealer={dealer} settings={templateSettings} type="bill" billSignature={billSignature} />
+            </div>
+          </MobileZoomableContainer>
+          
+          <div className="max-w-4xl mx-auto w-full px-6">
+            {(bill as any).is_edited && (
+              <BillAuditHistory billId={bill.id} />
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+          <div className="border-b border-gray-100 pb-6 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
@@ -263,7 +303,39 @@ const BillDetailsPage: React.FC = () => {
             </p>
           </div>
         ) : null}
+        
+        {(bill as any).is_edited && (
+          <BillAuditHistory billId={bill.id} />
+        )}
       </div>
+      )}
+
+      {isEditModalOpen && bill && bill.bill_items && (
+        <EditBillModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          bill={bill as any}
+          items={bill.bill_items as any}
+          onConfirm={(edits) => {
+            setPendingEdits(edits);
+            setIsEditModalOpen(false);
+            setIsConfirmModalOpen(true);
+          }}
+        />
+      )}
+
+      {isConfirmModalOpen && bill && (
+        <EditBillConfirmationModal
+          isOpen={isConfirmModalOpen}
+          onClose={() => setIsConfirmModalOpen(false)}
+          bill={bill as any}
+          edits={pendingEdits}
+          onSuccess={() => {
+            setIsConfirmModalOpen(false);
+            window.location.reload();
+          }}
+        />
+      )}
     </PageShell>
   );
 };

@@ -36,7 +36,7 @@ export const RecentTransactions: React.FC = () => {
 
   if (!transactions || transactions.length === 0) {
     return (
-      <div className="space-y-3 animate-fade-in">
+      <div className="mt-4 space-y-3 animate-fade-in">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-[1.05rem] font-bold text-slate-900 flex items-center gap-2">
             <Clock className="w-[1.1rem] h-[1.1rem] text-slate-500" />
@@ -58,7 +58,7 @@ export const RecentTransactions: React.FC = () => {
   }
 
   return (
-    <div className="space-y-3 animate-fade-in">
+    <div className="mt-4 space-y-3 animate-fade-in">
       <div className="flex items-center justify-between px-1">
         <h3 className="text-[1.05rem] font-bold text-slate-900 flex items-center gap-2">
           <Clock className="w-[1.1rem] h-[1.1rem] text-slate-500" />

@@ -24,7 +24,7 @@ export const useAdminAuthStore = create<AdminAuthState>()(
       logout: () => set({ adminUser: null, isAuthenticated: false }),
     }),
     {
-      name: 'aquadealer-admin-auth',
+      name: 'aquadealers-admin-auth',
       partialize: (state) => ({
         adminUser: state.adminUser,
         isAuthenticated: state.isAuthenticated,

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { inventoryService } from '../services/inventoryService';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
+import type { Product } from '@/types/database';
 
 export const inventoryKeys = {
   all: ['inventory'] as const,
@@ -38,9 +39,14 @@ export function useInventory() {
 }
 
 export function useProducts() {
+  const { user } = useAuthStore();
   return useQuery({
-    queryKey: inventoryKeys.products(),
-    queryFn: () => inventoryService.getProducts(),
+    queryKey: [...inventoryKeys.products(), user?.id],
+    queryFn: () => {
+      if (!user?.id) throw new Error('No dealer ID');
+      return inventoryService.getProducts(user.id);
+    },
+    enabled: !!user?.id,
   });
 }
 
@@ -70,6 +76,18 @@ export function useCreateProduct() {
   });
 }
 
+export function useBulkCreateProducts() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (data: import('@/types/database').ProductInsert[]) => inventoryService.createProducts(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.products() });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.lists() });
+    },
+  });
+}
+
 export function useAdjustStock() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
@@ -80,11 +98,13 @@ export function useAdjustStock() {
       currentQty,
       adjustmentQty,
       reason,
+      lotId,
     }: {
       inventoryId: string;
       currentQty: number;
       adjustmentQty: number;
       reason: string;
+      lotId?: string | null;
     }) => {
       if (!user?.id) throw new Error('No dealer ID');
       return inventoryService.adjustStock(
@@ -92,7 +112,8 @@ export function useAdjustStock() {
         user.id,
         currentQty,
         adjustmentQty,
-        reason
+        reason,
+        lotId
       );
     },
     onSuccess: () => {
@@ -137,6 +158,8 @@ export function useUpdateInventory() {
         cost_price?: number | null;
         min_stock_alert?: number;
         medicine_discount_percentage?: number;
+        mrp?: number | null;
+        image_url?: string | null;
       };
     }) => {
       if (!user?.id) throw new Error('No dealer ID');
@@ -144,6 +167,50 @@ export function useUpdateInventory() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.detail(user?.id || '', variables.inventoryId, null) });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+    },
+  });
+}
+
+export function useUpdateInventoryLotPricing() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+
+  return useMutation({
+    mutationFn: ({
+      lotId,
+      updates,
+    }: {
+      lotId: string;
+      updates: {
+        selling_price: number;
+        medicine_discount_percentage: number;
+        final_unit_price: number;
+        mrp?: number | null;
+        cost_price?: number | null;
+        batch_number?: string | null;
+        expiry_date?: string | null;
+      };
+    }) => {
+      if (!user?.id) throw new Error('No dealer ID');
+      return inventoryService.updateInventoryLotPricing(lotId, user.id, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+    },
+  });
+}
+
+export function useUpdateProduct() {
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+
+  return useMutation({
+    mutationFn: ({ productId, updates }: { productId: string; updates: Partial<Product> }) => {
+      if (!user?.id) throw new Error('No dealer ID');
+      return inventoryService.updateProduct(productId, updates);
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });

@@ -11,7 +11,8 @@ import {
   Settings,
   ChevronDown,
   BookText,
-  Truck
+  Truck,
+  LogOut
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
@@ -44,7 +45,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
 const DesktopSidebar: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const user = useAuthStore((state) => state.user);
+  const { user, logout } = useAuthStore();
   const currentStaff = useStaffStore((state) => state.currentStaff);
   const {
     branches,
@@ -72,10 +73,10 @@ const DesktopSidebar: React.FC = () => {
     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 h-dvh sticky top-0 z-50">
       <div className="flex items-center p-6 gap-3">
         <div className="flex items-center justify-center bg-primary rounded-xl p-2 w-10 h-10">
-          <img src="/logo.png" alt="AquaDealer Logo" className="h-6 w-6 object-contain filter brightness-0 invert" />
+          <img src="/logo.png" alt="AquaDealers Logo" className="h-6 w-6 object-contain filter brightness-0 invert" />
         </div>
         <div className="min-w-0">
-          <div className="text-xl font-bold text-slate-900 truncate tracking-tight">AquaDealer</div>
+          <div className="text-xl font-bold text-slate-900 truncate tracking-tight">AquaDealers</div>
         </div>
       </div>
 
@@ -122,32 +123,43 @@ const DesktopSidebar: React.FC = () => {
         })}
       </nav>
 
-      {user && branches.length > 0 ? (
+      {user ? (
         <div className="p-4 mt-auto border-t border-slate-100">
-          <div className="text-xs font-medium text-slate-400 mb-2 px-1 uppercase tracking-wider">Branch</div>
-          <div className="relative">
-            <select
-              value={isAllBranches ? 'all' : activeBranch?.id || ''}
-              onChange={handleBranchChange}
-              className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-8 transition-colors hover:bg-slate-100 outline-none"
-            >
-              {branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </option>
-              ))}
-              {!currentStaff ? <option value="all">All Shops</option> : null}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-          </div>
+          {branches.length > 0 ? (
+            <>
+              <div className="text-xs font-medium text-slate-400 mb-2 px-1 uppercase tracking-wider">Branch</div>
+              <div className="relative">
+                <select
+                  value={isAllBranches ? 'all' : activeBranch?.id || ''}
+                  onChange={handleBranchChange}
+                  className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-8 transition-colors hover:bg-slate-100 outline-none"
+                >
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                  {!currentStaff ? <option value="all">All Shops</option> : null}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              </div>
+            </>
+          ) : null}
           <div className="mt-4 flex items-center gap-3 px-1">
             <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0 text-slate-600 font-bold uppercase text-xs">
               {user.name?.charAt(0) || user.shop_name?.charAt(0) || 'D'}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-slate-900 truncate">{user.name || 'Dealer'}</div>
-              <div className="text-xs text-slate-500 truncate">{user.shop_name || 'AquaDealer'}</div>
+              <div className="text-xs text-slate-500 truncate">{user.shop_name || 'AquaDealers'}</div>
             </div>
+            <button 
+              onClick={() => logout()}
+              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </div>
       ) : null}

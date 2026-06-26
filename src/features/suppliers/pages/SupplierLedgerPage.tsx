@@ -94,10 +94,14 @@ const SupplierLedgerPage: React.FC = () => {
         <div className="p-6 border-b border-gray-100 bg-gradient-to-br from-blue-50/50 to-white">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center flex-shrink-0 shadow-inner">
-                <span className="text-2xl font-bold text-blue-700">
-                  {supplier.name.charAt(0).toUpperCase()}
-                </span>
+              <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center flex-shrink-0 shadow-inner overflow-hidden">
+                {supplier.photo_url ? (
+                  <img src={supplier.photo_url} alt={supplier.name} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-2xl font-bold text-blue-700">
+                    {supplier.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -106,10 +110,10 @@ const SupplierLedgerPage: React.FC = () => {
                     <Edit2 className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-gray-500 flex items-center gap-2">
+                <p className="text-gray-500 flex flex-wrap items-center gap-2">
                   <span>{supplier.company || t('inventory.noCompany', 'No company')}</span>
                   <span>•</span>
-                  <span>{supplier.phone || t('common.noPhone', 'No phone')}</span>
+                  <span>{[supplier.phone, supplier.alternate_phone].filter(Boolean).join(' / ') || t('common.noPhone', 'No phone')}</span>
                 </p>
               </div>
             </div>

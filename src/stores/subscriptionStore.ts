@@ -18,7 +18,11 @@ export type FeatureKey =
   | 'app_pin'
   | 'staff'
   | 'signature_proof'
-  | 'farmer_photo';
+  | 'farmer_photo'
+  | 'product_image'
+  | 'custom_templates'
+  | 'farmer_product_discounts'
+  | 'edit_bills';
 
 interface PlanDefinition {
   name: string;
@@ -73,6 +77,14 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     const { user } = useAuthStore.getState();
     if (!user) return false;
 
+    if (user.plan === 'pro_plus' && (feature === 'product_image' || feature === 'signature_proof' || feature === 'farmer_product_discounts')) {
+      return true;
+    }
+    
+    if (user.plan === 'pro' && feature === 'signature_proof') {
+      return true;
+    }
+
     // 1. Check custom_features
     if (user.custom_features && user.custom_features.includes(feature)) {
       return true;
@@ -109,6 +121,9 @@ export const useFeatureGate = (feature: FeatureKey) => {
   const planDefinitions = useSubscriptionStore(state => state.planDefinitions);
   
   if (!user) return false;
+  if (user.plan === 'pro_plus' && feature === 'product_image') {
+    return true;
+  }
   if (user.custom_features && user.custom_features.includes(feature)) {
     return true;
   }

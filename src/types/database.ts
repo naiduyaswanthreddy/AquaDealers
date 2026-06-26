@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────
-   AquaDealer — Database Type Definitions
+   AquaDealers — Database Type Definitions
    Mirrors the Supabase/PostgreSQL schema exactly.
    ────────────────────────────────────────────── */
 
@@ -20,9 +20,11 @@ export interface Dealer {
   is_active: boolean;
   gst_billing_enabled: boolean;
   bill_signature_enabled: boolean;
+  farmer_product_discounts_enabled?: boolean;
   pin_hash: string | null;
   pin_timeout_minutes: number;
   avatar_url: string | null;
+  authorized_signatory_data?: any[] | null;
   custom_features?: string[] | null;
   created_at: string;
 }
@@ -43,9 +45,11 @@ export interface DealerInsert {
   is_active?: boolean;
   gst_billing_enabled?: boolean;
   bill_signature_enabled?: boolean;
+  farmer_product_discounts_enabled?: boolean;
   pin_hash?: string | null;
   pin_timeout_minutes?: number;
   avatar_url?: string | null;
+  authorized_signatory_data?: any[] | null;
   custom_features?: string[];
 }
 
@@ -55,8 +59,12 @@ export interface Branch {
   name: string;
   address: string | null;
   phone: string | null;
+  feed_image_url: string | null;
   is_main: boolean;
   is_active: boolean;
+  invoice_template: string | null;
+  statement_template: string | null;
+  template_settings: any | null;
   created_at: string;
 }
 
@@ -65,6 +73,7 @@ export interface BranchInsert {
   name: string;
   address?: string | null;
   phone?: string | null;
+  feed_image_url?: string | null;
   is_main?: boolean;
   is_active?: boolean;
 }
@@ -127,12 +136,14 @@ export interface Farmer {
   crop_status: string;
   risk_status: string;
   credit_limit: number;
+  default_medicine_discount_percentage?: number;
   opening_balance: number;
   total_due: number;
   is_active: boolean;
   notes: string | null;
   image_url: string | null;
   risk_updated_at: string | null;
+  is_walk_in?: boolean;
   created_at: string;
 }
 
@@ -150,15 +161,18 @@ export interface FarmerInsert {
   crop_status?: string;
   risk_status?: string;
   credit_limit?: number;
+  default_medicine_discount_percentage?: number;
   opening_balance?: number;
   total_due?: number;
   is_active?: boolean;
   notes?: string | null;
   image_url?: string | null;
+  is_walk_in?: boolean;
 }
 
 export interface Product {
   id: string;
+  dealer_id: string;
   type: string; // 'feed' | 'medicine'
   company: string | null;
   name: string;
@@ -175,6 +189,7 @@ export interface Product {
 }
 
 export interface ProductInsert {
+  dealer_id: string;
   type: string;
   company?: string | null;
   name: string;
@@ -187,6 +202,17 @@ export interface ProductInsert {
   track_expiry?: boolean;
   is_active?: boolean;
   medicine_discount_percentage?: number;
+}
+
+export interface FarmerProductDiscount {
+  id: string;
+  dealer_id: string;
+  farmer_id: string;
+  product_id: string;
+  discount_percentage: number;
+  created_at: string;
+  updated_at: string;
+  product?: Product;
 }
 
 export interface Inventory {
@@ -202,6 +228,7 @@ export interface Inventory {
   min_stock_alert: number;
   expiry_date: string | null;
   batch_number: string | null;
+  image_url: string | null;
   updated_at: string;
 }
 
@@ -344,6 +371,8 @@ export interface Supplier {
   name: string;
   company: string | null;
   phone: string | null;
+  alternate_phone?: string | null;
+  photo_url?: string | null;
   gstin: string | null;
   address: string | null;
   credit_days: number;
@@ -449,6 +478,11 @@ export interface InventoryLot {
   quantity_received: number;
   remaining_quantity: number;
   cost_price: number | null;
+  selling_price?: number | null;
+  medicine_discount_percentage?: number | null;
+  final_unit_price?: number | null;
+  mrp?: number | null;
+  is_expired?: boolean;
   received_at: string;
   created_at: string;
 }

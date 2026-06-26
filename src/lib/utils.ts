@@ -109,3 +109,25 @@ export async function hashPin(pin: string): Promise<string> {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
+
+import type { SignatureStroke } from '@/types/database';
+
+export const getBillSignature = (bill: any) => {
+  const relation = bill?.bill_signatures;
+  const signature = Array.isArray(relation) ? relation[0] : relation;
+  if (!signature) return null;
+
+  let strokes = signature.signature_data as SignatureStroke[] | string | null | undefined;
+  if (typeof strokes === 'string') {
+    try {
+      strokes = JSON.parse(strokes) as SignatureStroke[];
+    } catch {
+      strokes = [];
+    }
+  }
+
+  return {
+    ...signature,
+    signature_data: Array.isArray(strokes) ? strokes : [],
+  };
+};

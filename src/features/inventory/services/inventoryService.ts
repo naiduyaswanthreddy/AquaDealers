@@ -36,6 +36,7 @@ const buildInventoryAnalytics = (
   let totalIssued = 0;
   let totalAdjustedIn = 0;
   let totalAdjustedOut = 0;
+  let totalExpired = 0;
 
   movements.forEach((movement) => {
     const monthKey = getMonthKey(movement.created_at);
@@ -46,6 +47,7 @@ const buildInventoryAnalytics = (
       adjustedIn: 0,
       adjustedOut: 0,
       cancelledBack: 0,
+      expired: 0,
       net: 0,
     };
 
@@ -60,6 +62,9 @@ const buildInventoryAnalytics = (
     } else if (movement.reference_type === 'bill_cancellation') {
       monthEntry.cancelledBack += quantity;
       totalReceived += quantity;
+    } else if (movement.reference_type === 'expiry') {
+      monthEntry.expired += quantity;
+      totalExpired += quantity;
     } else if (movement.reference_type === 'manual_adjustment') {
       if (movement.quantity_change >= 0) {
         monthEntry.adjustedIn += quantity;
@@ -75,13 +80,15 @@ const buildInventoryAnalytics = (
       monthEntry.adjustedIn +
       monthEntry.cancelledBack -
       monthEntry.sold -
-      monthEntry.adjustedOut;
+      monthEntry.adjustedOut -
+      monthEntry.expired;
 
     monthlyMap.set(monthKey, monthEntry);
   });
 
   const estimatedPrice = Number(inventory.selling_price || inventory.product.default_price || 0);
-  const availableLots = lots.filter((lot) => Number(lot.remaining_quantity || 0) > 0).length;
+  const availableLots = lots.filter((lot) => Number(lot.remaining_quantity || 0) > 0 && !lot.is_expired).length;
+  const expiredLots = lots.filter((lot) => lot.is_expired).length;
 
   // Robust fallback: if movements are empty or don't cover the lots, calculate from lots
   const totalReceivedFromLots = lots.reduce((acc, lot) => acc + Number(lot.quantity_received || 0), 0);
@@ -92,8 +99,10 @@ const buildInventoryAnalytics = (
       currentStock: Number(inventory.quantity_in_stock || 0),
       lowStockThreshold: inventory.min_stock_alert ?? null,
       availableLots,
+      expiredLots,
       totalReceived: finalTotalReceived,
       totalIssued,
+      totalExpired,
       totalAdjustedIn,
       totalAdjustedOut,
       estimatedStockValue: estimatedPrice > 0 ? estimatedPrice * Number(inventory.quantity_in_stock || 0) : null,
@@ -161,6 +170,7 @@ export const inventoryService = {
       searchQuery?: string;
       productType?: string;
       lowStockOnly?: boolean;
+      outOfStockOnly?: boolean;
     }
   ): Promise<{ data: InventoryItem[]; total: number }> {
     const page = options?.page || 1;
@@ -170,7 +180,7 @@ export const inventoryService = {
 
     let query = supabase
       .from('inventory')
-      .select('*, products!inner(*)', { count: 'exact' })
+      .select('*, products!inner(*), inventory_lots(*)', { count: 'exact' })
       .eq('dealer_id', dealerId)
       .order('updated_at', { ascending: false });
 
@@ -200,7 +210,9 @@ export const inventoryService = {
 
     let results = (data || []).map(mapInventoryItem) as InventoryItem[];
     
-    if (options?.lowStockOnly) {
+    if (options?.outOfStockOnly) {
+      results = results.filter((item) => (item.quantity_in_stock || 0) <= 0);
+    } else if (options?.lowStockOnly) {
       results = results.filter((item) => (item.quantity_in_stock || 0) <= (item.min_stock_alert || 0));
     }
 
@@ -373,12 +385,13 @@ export const inventoryService = {
   },
 
   /**
-   * Fetch all products from master catalog
+   * Fetch all products for the dealer
    */
-  async getProducts(): Promise<Product[]> {
+  async getProducts(dealerId: string): Promise<Product[]> {
     const { data, error } = await supabase
       .from('products')
       .select('*')
+      .eq('dealer_id', dealerId)
       .eq('is_active', true)
       .order('name');
       
@@ -397,7 +410,54 @@ export const inventoryService = {
       .single();
       
     if (error) throw error;
+    
+    // Initialize empty inventory record
+    if (data) {
+      const { error: invError } = await supabase
+        .from('inventory')
+        .insert({
+          dealer_id: data.dealer_id,
+          product_id: data.id,
+          quantity_in_stock: 0,
+          medicine_discount_percentage: data.medicine_discount_percentage || 0,
+          min_stock_alert: 0
+        });
+      if (invError) console.error('Failed to create initial inventory record', invError);
+    }
+    
     return data as Product;
+  },
+
+  /**
+   * Create multiple products in bulk
+   */
+  async createProducts(products: ProductInsert[]): Promise<Product[]> {
+    if (!products.length) return [];
+    const { data, error } = await supabase
+      .from('products')
+      .insert(products)
+      .select();
+      
+    if (error) throw error;
+    
+    // Initialize empty inventory records for bulk created products
+    if (data && data.length > 0) {
+      const inventoryRecords = data.map(p => ({
+        dealer_id: p.dealer_id,
+        product_id: p.id,
+        quantity_in_stock: 0,
+        medicine_discount_percentage: p.medicine_discount_percentage || 0,
+        min_stock_alert: 0
+      }));
+      
+      const { error: invError } = await supabase
+        .from('inventory')
+        .insert(inventoryRecords);
+        
+      if (invError) console.error('Failed to create initial inventory records', invError);
+    }
+    
+    return data as Product[];
   },
 
   /**
@@ -409,7 +469,8 @@ export const inventoryService = {
     dealerId: string,
     currentQty: number,
     adjustmentQty: number,
-    reason: string
+    reason: string,
+    lotId?: string | null
   ): Promise<void> {
     const newQty = currentQty + adjustmentQty;
     
@@ -422,6 +483,7 @@ export const inventoryService = {
         inventory_id: inventoryId,
         dealer_id: dealerId,
         adjustment_qty: adjustmentQty,
+        lot_id: lotId || null,
         reason,
       },
     });
@@ -453,7 +515,11 @@ export const inventoryService = {
     dealerId: string,
     productId: string,
     startDate: string,
-    endDate: string
+    endDate: string,
+    options?: {
+      newUnitPrice?: number | null;
+      oldUnitPrice?: number | null;
+    }
   ): Promise<{
     farmer_id: string;
     farmer_name: string;
@@ -467,6 +533,8 @@ export const inventoryService = {
       p_product_id: productId,
       p_start_date: startDate,
       p_end_date: endDate,
+      p_new_unit_price: options?.newUnitPrice ?? null,
+      p_old_unit_price: options?.oldUnitPrice ?? null,
     });
 
     if (error) throw error;
@@ -487,10 +555,16 @@ export const inventoryService = {
       totalBags: number;
       rateDifference: number;
       totalAdjustment: number;
+      oldUnitPrice?: number | null;
+      newUnitPrice?: number | null;
     }[]
   ): Promise<void> {
     for (const adj of adjustments) {
       if (adj.totalAdjustment <= 0) continue;
+
+      const rateLabel = adj.oldUnitPrice && adj.newUnitPrice
+        ? ` (Rs ${adj.oldUnitPrice} -> Rs ${adj.newUnitPrice})`
+        : '';
 
       const payload = {
         dealer_id: dealerId,
@@ -511,7 +585,7 @@ export const inventoryService = {
         items: [
           {
             product_id: adj.productId,
-            product_name: adj.productName,
+            product_name: `Rate difference: ${adj.productName}${rateLabel}`,
             quantity: adj.totalBags,
             unit_price: adj.rateDifference, // This acts as the difference per bag
             gst_rate: 0,
@@ -538,6 +612,8 @@ export const inventoryService = {
       cost_price?: number | null;
       min_stock_alert?: number;
       medicine_discount_percentage?: number;
+      mrp?: number | null;
+      image_url?: string | null;
     }
   ): Promise<void> {
     const { error } = await supabase
@@ -547,5 +623,97 @@ export const inventoryService = {
       .eq('dealer_id', dealerId);
 
     if (error) throw error;
-  }
+  },
+
+  async updateInventoryLotPricing(
+    lotId: string,
+    dealerId: string,
+    updates: {
+      selling_price: number;
+      medicine_discount_percentage: number;
+      final_unit_price: number;
+      mrp?: number | null;
+      cost_price?: number | null;
+      batch_number?: string | null;
+      expiry_date?: string | null;
+    }
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('inventory_lots')
+      .update(updates)
+      .eq('id', lotId)
+      .eq('dealer_id', dealerId);
+
+    if (error) throw error;
+  },
+
+  /**
+   * Delete a product and its associated inventory.
+   * Attempt hard delete first. If foreign key constraints prevent it, fallback to soft delete.
+   */
+  async deleteProduct(productId: string, dealerId: string): Promise<{ success: boolean; softDeleted?: boolean }> {
+    // Attempt hard delete from products (cascade should handle inventory if configured, otherwise we delete inventory first)
+    // Actually, inventory has a FK to products. Deleting product might fail if it's referenced in bills.
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', productId)
+      .eq('dealer_id', dealerId);
+
+    if (error) {
+      if (error.code === '23503') { // Foreign key constraint violation
+        // Fallback to soft delete
+        const { error: softDeleteError } = await supabase
+          .from('products')
+          .update({ is_active: false })
+          .eq('id', productId)
+          .eq('dealer_id', dealerId);
+
+        if (softDeleteError) throw softDeleteError;
+        return { success: true, softDeleted: true };
+      }
+      throw error;
+    }
+
+    return { success: true, softDeleted: false };
+  },
+
+  async updateProduct(productId: string, updates: Partial<Product>): Promise<Product> {
+    const { data, error } = await supabase
+      .from('products')
+      .update(updates)
+      .eq('id', productId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Product;
+  },
+
+  /**
+   * Process all expired inventory lots for a dealer.
+   * Finds lots where expiry_date < today, zeros remaining_quantity,
+   * reduces inventory.quantity_in_stock, and logs movements.
+   * Returns the number of lots processed.
+   */
+  async processExpiredLots(dealerId: string): Promise<number> {
+    const { data, error } = await supabase.rpc('process_expired_inventory_lots', {
+      p_dealer_id: dealerId,
+    });
+
+    if (error) throw error;
+    return (data as number) || 0;
+  },
+
+  /**
+   * Manually mark a single lot as expired.
+   */
+  async markLotAsExpired(dealerId: string, lotId: string): Promise<void> {
+    const { error } = await supabase.rpc('mark_lot_as_expired', {
+      p_dealer_id: dealerId,
+      p_lot_id: lotId,
+    });
+
+    if (error) throw error;
+  },
 };

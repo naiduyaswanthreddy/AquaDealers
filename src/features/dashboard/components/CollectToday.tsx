@@ -44,7 +44,7 @@ export const CollectToday: React.FC = () => {
 
   if (!farmers || farmers.length === 0) {
     return (
-      <div className="space-y-3 animate-fade-in">
+      <div className="mt-4 space-y-3 animate-fade-in">
         <h3 className="text-[1.05rem] font-bold text-slate-900 flex items-center gap-2 px-1">
           <TrendingDown className="w-[1.1rem] h-[1.1rem] text-rose-500" />
           Collect Today
@@ -57,7 +57,7 @@ export const CollectToday: React.FC = () => {
   }
 
   return (
-    <div className="space-y-3 animate-fade-in">
+    <div className="mt-4 space-y-3 animate-fade-in">
       <div className="flex items-center justify-between px-1">
         <h3 className="text-[1.05rem] font-bold text-slate-900 flex items-center gap-2">
           <TrendingDown className="w-[1.1rem] h-[1.1rem] text-rose-500" />

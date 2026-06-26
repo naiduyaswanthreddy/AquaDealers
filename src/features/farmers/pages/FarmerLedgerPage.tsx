@@ -18,6 +18,11 @@ import FarmerFooterSummary from '../components/FarmerFooterSummary';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import FarmerProductDiscounts from '../components/FarmerProductDiscounts';
+import { useAuthStore } from '@/stores/authStore';
+import FarmerItemsTab from '../components/FarmerItemsTab';
+import type { FarmerItemBill } from '../types/farmerItems';
 
 interface FarmerTransactionItem {
   id: string;
@@ -39,11 +44,14 @@ export const FarmerLedgerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const hasFarmerDiscountFeature = useSubscriptionStore((state) => state.hasFeature('farmer_product_discounts'));
+  const dealer = useAuthStore((state) => state.user);
   const now = useMemo(() => new Date(), []);
   const defaultFirstDay = useMemo(() => new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10), [now]);
   const defaultLastDay = useMemo(() => new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10), [now]);
 
   const [isCollectModalOpen, setIsCollectModalOpen] = useState(false);
+  const [collectPreset, setCollectPreset] = useState<FarmerItemBill | null>(null);
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('ledger');
   const [startDate, setStartDate] = useState(defaultFirstDay);
@@ -331,6 +339,13 @@ export const FarmerLedgerPage: React.FC = () => {
           </div>
         ))}
       </div>
+      {hasFarmerDiscountFeature && dealer?.farmer_product_discounts_enabled ? (
+        <FarmerProductDiscounts
+          farmerId={farmer.id}
+          farmerName={farmer.name}
+          defaultDiscount={Number(farmer.default_medicine_discount_percentage || 0)}
+        />
+      ) : null}
       <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2 text-sm font-black text-slate-900">
           <FileText className="h-4 w-4 text-slate-500" />
@@ -419,7 +434,10 @@ export const FarmerLedgerPage: React.FC = () => {
             farmerId={farmer.id}
             farmerName={farmer.name}
             farmerPhone={farmer.phone}
-            onCollect={() => setIsCollectModalOpen(true)}
+            onCollect={() => {
+              setCollectPreset(null);
+              setIsCollectModalOpen(true);
+            }}
           />
         </div>
 
@@ -446,26 +464,35 @@ export const FarmerLedgerPage: React.FC = () => {
                 />
               </>
             ) : null}
+            {activeTab === 'items' ? (
+              <FarmerItemsTab
+                farmerId={farmer.id}
+                farmerName={farmer.name}
+                stockingDate={farmer.stocking_date}
+                onCollect={(bill) => {
+                  setCollectPreset(bill);
+                  setIsCollectModalOpen(true);
+                }}
+              />
+            ) : null}
             {activeTab === 'bills' ? renderBills() : null}
             {activeTab === 'payments' ? renderPayments() : null}
             {activeTab === 'details' ? renderDetails() : null}
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <DetailItem label="Village" value={farmer.village || 'Not added'} />
-            <DetailItem label="Crop" value={cropLabel} />
-            <DetailItem label="Stocking" value={farmer.stocking_date ? formatDate(farmer.stocking_date) : 'Not added'} />
-            <DetailItem label="Created" value={formatDate(farmer.created_at)} />
           </div>
         </div>
       </div>
 
       <CollectPaymentModal
         isOpen={isCollectModalOpen}
-        onClose={() => setIsCollectModalOpen(false)}
+        onClose={() => {
+          setIsCollectModalOpen(false);
+          setCollectPreset(null);
+        }}
         farmerId={farmer.id}
         farmerName={farmer.name}
         totalDue={farmer.total_due}
+        initialBillId={collectPreset?.bill_id}
+        initialAmount={collectPreset?.balance_due}
       />
       {isStatementModalOpen && (
         <BalanceStatementModal

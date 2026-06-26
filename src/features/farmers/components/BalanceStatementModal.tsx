@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, MessageCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { Modal, Button } from '@/components/ui';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { useFarmerStatement } from '../hooks/useFarmerLedger';
 import { formatCurrency } from '@/lib/utils';
 import { shareFarmerStatementViaWhatsApp, downloadFarmerStatementPdf } from '../utils/farmerStatementPdf';
@@ -68,20 +69,18 @@ const BalanceStatementModal: React.FC<BalanceStatementModalProps> = ({
         <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
           <div className="flex-1 space-y-1">
             <label className="text-xs font-semibold text-slate-500 uppercase">From Date</label>
-            <input
-              type="date"
+            <DatePicker
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              onChange={setStartDate}
+              placeholder="From Date"
             />
           </div>
           <div className="flex-1 space-y-1">
             <label className="text-xs font-semibold text-slate-500 uppercase">To Date</label>
-            <input
-              type="date"
+            <DatePicker
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              onChange={setEndDate}
+              placeholder="To Date"
             />
           </div>
         </div>

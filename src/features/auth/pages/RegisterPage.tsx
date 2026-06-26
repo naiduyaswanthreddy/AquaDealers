@@ -64,7 +64,7 @@ export const RegisterPage: React.FC = () => {
         district: values.district,
         state: values.state,
       });
-      toast.success('Account created. Welcome to AquaDealer.');
+      toast.success('Account created. Welcome to AquaDealers.');
       navigate('/onboarding');
     } catch (error: any) {
       toast.error(error.message || 'Registration failed. Please try again.');
@@ -83,7 +83,7 @@ export const RegisterPage: React.FC = () => {
         <div className="relative z-20 flex-shrink-0">
           <img 
             src="/full logo white.png" 
-            alt="AquaDealer" 
+            alt="AquaDealers" 
             className="h-36 w-auto mb-8" 
           />
           
@@ -92,7 +92,7 @@ export const RegisterPage: React.FC = () => {
           </h1>
           
           <p className="text-blue-100 text-[1rem] mb-8 max-w-md font-medium leading-relaxed">
-            Join AquaDealer and take your<br/>aqua business to the next level.
+            Join AquaDealers and take your<br/>aqua business to the next level.
           </p>
           
           <ul className="space-y-3">

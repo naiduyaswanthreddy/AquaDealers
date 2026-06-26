@@ -448,6 +448,7 @@ const ReportsPage: React.FC = () => {
     <PageShell width="wide" className="space-y-6 pb-20 animate-fade-in">
       <PageHeader
         title={t('nav.reports', 'Reports & Analytics')}
+        onBack={() => navigate('/more')}
         action={
           <div className="flex flex-wrap gap-2">
             <Button
@@ -508,18 +509,44 @@ const ReportsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
         {overviewCards.map((card) => (
-          <div key={card.label} className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">{card.label}</p>
-                <h3 className="mt-1 text-2xl font-black text-slate-900">{toMonthlySummaryValue(card.value)}</h3>
-              </div>
-              <div className={cn('rounded-2xl p-3', card.bg)}>
+          <div key={card.label} className="rounded-[20px] sm:rounded-3xl border border-slate-100 bg-white p-4 sm:p-5 shadow-sm hover:shadow-md hover:border-slate-200 transition-all">
+            <div className="flex justify-between items-start">
+              <p className="text-xs sm:text-sm font-semibold text-slate-500 mt-1">{card.label}</p>
+              <div className={cn('rounded-xl p-2 sm:p-3', card.bg)}>
                 <card.icon className={cn('h-5 w-5', card.tone)} />
               </div>
             </div>
+            <h3 className="mt-2 text-[1.15rem] sm:text-2xl font-black text-slate-900 leading-tight">
+              {toMonthlySummaryValue(card.value)}
+            </h3>
+          </div>
+        ))}
+      </div>
+
+      {/* Main Reports Grid */}
+      <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4">
+        {[
+          { id: 'sales', title: 'Sales Report', icon: LineChart, color: 'text-blue-600', bg: 'bg-blue-50', action: () => handleOpenReport('sales'), trend: getTrend(pack?.rawTotals.totalSales, prevPack?.rawTotals.totalSales) },
+          { id: 'purchases', title: 'Purchase Report', icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-50', action: () => handleOpenReport('purchases'), trend: getTrend(pack?.rawTotals.totalPurchases, prevPack?.rawTotals.totalPurchases) },
+          { id: 'stock', title: 'Stock Report', icon: Package, color: 'text-purple-600', bg: 'bg-purple-50', action: () => navigate('/inventory/report') },
+          { id: 'payments', title: 'Payment Report', icon: CreditCard, color: 'text-rose-600', bg: 'bg-rose-50', action: () => handleOpenReport('receivables'), trend: getTrend(pack?.rawTotals.totalCollections, prevPack?.rawTotals.totalCollections) },
+          { id: 'dues', title: 'Customer Dues', icon: Users, color: 'text-orange-600', bg: 'bg-orange-50', action: () => handleOpenReport('receivables'), trend: getTrend(pack?.rawTotals.outstandingDues, prevPack?.rawTotals.outstandingDues) },
+          { id: 'pnl', title: 'Profit & Loss', icon: PieChart, color: 'text-teal-600', bg: 'bg-teal-50', action: () => handleOpenReport('profitAndLoss'), trend: getTrend(pack?.rawTotals.netProfit, prevPack?.rawTotals.netProfit) },
+          { id: 'gst', title: 'GST Report', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', action: () => navigate('/gst') },
+          { id: 'products', title: 'Top Products', icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50', action: () => handleOpenReport('topProducts') },
+        ].map((item) => (
+          <div key={item.id} onClick={item.action} className="rounded-3xl border border-slate-100 bg-white p-5 flex flex-col items-center justify-center text-center hover:shadow-lg hover:-translate-y-1 hover:border-slate-200 transition-all cursor-pointer group">
+            <div className={cn('rounded-2xl p-4 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3', item.bg)}>
+              <item.icon className={cn('h-8 w-8', item.color)} />
+            </div>
+            <h3 className="font-bold text-slate-800 mt-4 text-[15px]">{item.title}</h3>
+            {item.trend && (
+              <span className={cn('inline-block mt-2 px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide', item.trend.startsWith('↑') ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}>
+                {item.trend}
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -572,42 +599,6 @@ const ReportsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Main Reports Grid */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {[
-          { id: 'sales', title: 'Sales Report', description: 'Analyze sales performance, trends and revenue.', icon: LineChart, color: 'text-blue-600', bg: 'bg-blue-50', period: 'Last 30 days', action: () => handleOpenReport('sales'), trend: getTrend(pack?.rawTotals.totalSales, prevPack?.rawTotals.totalSales) },
-          { id: 'purchases', title: 'Purchase Report', description: 'Track purchases, expenses and vendor analysis.', icon: ShoppingCart, color: 'text-emerald-600', bg: 'bg-emerald-50', period: 'Last 30 days', action: () => handleOpenReport('purchases'), trend: getTrend(pack?.rawTotals.totalPurchases, prevPack?.rawTotals.totalPurchases) },
-          { id: 'stock', title: 'Stock Report', description: 'Monitor stock levels, movements and value.', icon: Package, color: 'text-purple-600', bg: 'bg-purple-50', period: 'Current Stock', action: () => navigate('/inventory/report') },
-          { id: 'payments', title: 'Payment Report', description: 'View payments received, outstanding and collection.', icon: CreditCard, color: 'text-rose-600', bg: 'bg-rose-50', period: 'Last 30 days', action: () => handleOpenReport('receivables'), trend: getTrend(pack?.rawTotals.totalCollections, prevPack?.rawTotals.totalCollections) },
-          { id: 'dues', title: 'Customer Dues', description: 'Track customer outstanding and due amounts.', icon: Users, color: 'text-orange-600', bg: 'bg-orange-50', period: 'All Customers', action: () => handleOpenReport('receivables'), trend: getTrend(pack?.rawTotals.outstandingDues, prevPack?.rawTotals.outstandingDues) },
-          { id: 'pnl', title: 'Profit & Loss', description: 'Analyze profit, expenses and business profitability.', icon: PieChart, color: 'text-teal-600', bg: 'bg-teal-50', period: 'This Financial Year', action: () => handleOpenReport('profitAndLoss'), trend: getTrend(pack?.rawTotals.netProfit, prevPack?.rawTotals.netProfit) },
-          { id: 'gst', title: 'GST Report', description: 'View GST summary, returns and tax analysis.', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50', period: 'This Month', action: () => navigate('/gst') },
-          { id: 'cashbook', title: 'Cash Book', description: 'Cash inflow and outflow with running balance.', icon: BookOpen, color: 'text-amber-600', bg: 'bg-amber-50', period: 'This Month', action: () => handleOpenReport('cashBook') },
-          { id: 'products', title: 'Top Products', description: 'Check your top selling products and performance.', icon: Award, color: 'text-indigo-600', bg: 'bg-indigo-50', period: 'Last 30 days', action: () => handleOpenReport('topProducts') },
-        ].map((item) => (
-          <div key={item.id} onClick={item.action} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm flex flex-col hover:shadow-md hover:border-slate-200 transition-all cursor-pointer">
-            <div className="flex items-start gap-4 mb-4">
-              <div className={cn('rounded-xl p-3 shrink-0', item.bg)}>
-                <item.icon className={cn('h-6 w-6', item.color)} />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-slate-900 text-lg">{item.title}</h3>
-                <p className="mt-1 text-sm text-slate-500 leading-snug">{item.description}</p>
-                {item.trend && (
-                  <span className={cn('inline-block mt-3 px-2 py-0.5 rounded text-xs font-bold', item.trend.startsWith('↑') ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700')}>
-                    {item.trend}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500 font-medium">
-              <span>{item.period}</span>
-              <ChevronRight className="h-4 w-4 text-slate-400" />
-            </div>
-          </div>
-        ))}
       </div>
 
       {/* GST Return Reports */}

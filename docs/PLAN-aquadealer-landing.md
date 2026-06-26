@@ -1,11 +1,11 @@
-# PLAN: AquaDealer B2B Landing & Shop Routing
+# PLAN: AquaDealers B2B Landing & Shop Routing
 
 ## Goal Description
-Create a high-conversion, interactive, and beautifully designed B2B landing page for AquaDealer to attract shop owners, alongside the core dealer authentication routes (`/login`, `/signup`) and the dynamic public-facing mini-storefronts (`/{shopname}`).
+Create a high-conversion, interactive, and beautifully designed B2B landing page for AquaDealers to attract shop owners, alongside the core dealer authentication routes (`/login`, `/signup`) and the dynamic public-facing mini-storefronts (`/{shopname}`).
 
 ### Core Objectives:
 1. **Target Audience**: Water/Aqua shop owners looking to digitize or scale their business.
-2. **Key Messaging**: Clearly communicate the "Why" (power of the platform), address specific pain points, and present AquaDealer as the definitive solution.
+2. **Key Messaging**: Clearly communicate the "Why" (power of the platform), address specific pain points, and present AquaDealers as the definitive solution.
 3. **Design Aesthetics**: Bright, trustworthy, utilizing glassmorphism, scroll-triggered storytelling, 3D elements, and bold typography.
 
 ---
@@ -19,7 +19,7 @@ Create a high-conversion, interactive, and beautifully designed B2B landing page
   1. **Intro Hook**: Stunning hero with glassmorphism & 3D elements showing a modern dashboard.
   2. **Chapter 1 (Problem)**: The chaotic reality of running a shop manually (Pain Points).
   3. **Chapter 2 (Journey)**: Transitioning to digital, seamless management.
-  4. **Chapter 3 (Solution)**: How powerful AquaDealer is (inventory, customers, billing).
+  4. **Chapter 3 (Solution)**: How powerful AquaDealers is (inventory, customers, billing).
   5. **Climax CTA**: "Join the Network" -> `/signup`.
 
 ### Style & Atmosphere
