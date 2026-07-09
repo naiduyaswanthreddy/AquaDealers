@@ -383,6 +383,8 @@ export const reportsService = {
           { key: 'date', label: 'Date' },
           { key: 'vendor', label: 'Vendor' },
           { key: 'billNo', label: 'Bill No' },
+          { key: 'medicineName', label: 'Product Name' },
+          { key: 'stockCount', label: 'Qty', align: 'right', type: 'number' },
           { key: 'category', label: 'Category' },
           { key: 'amount', label: 'Amount', align: 'right' },
           { key: 'gstAmount', label: 'GST', align: 'right' },

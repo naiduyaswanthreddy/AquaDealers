@@ -40,6 +40,7 @@ import EditInventoryModal from '../components/EditInventoryModal';
 import { DeleteProductModal } from '../components/DeleteProductModal';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
 import type { InventoryLot } from '@/types/database';
+import type { InventoryMovementDetail } from '../types';
 
 /* ────────────────────────────────────────────── */
 /*  Helpers                                       */
@@ -51,13 +52,20 @@ const getBadgeForLot = (lot: any, allLots: any[]) => {
     if (a.expiry_date && b.expiry_date) {
       return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
     }
-    return new Date(a.received_at).getTime() - new Date(b.received_at).getTime();
+    return new Date(getLotPurchaseDate(a)).getTime() - new Date(getLotPurchaseDate(b)).getTime();
   });
   const index = sortedLots.findIndex((l: any) => l.id === lot.id);
   if (index === sortedLots.length - 1) return 'New';
   if (index === 0) return sortedLots.length > 2 ? 'Very Old' : 'Old';
   return 'Old';
 };
+
+const getLotPurchaseDate = (lot: InventoryLot) => lot.stock_purchases?.purchase_date || lot.received_at;
+
+const getMovementDisplayDate = (movement: InventoryMovementDetail) =>
+  movement.reference_type === 'purchase' && movement.purchase?.purchase_date
+    ? movement.purchase.purchase_date
+    : movement.created_at;
 
 const getHealthTone = (quantity: number, minStockAlert: number) => {
   if (quantity <= 0) {
@@ -87,7 +95,7 @@ const getHealthTone = (quantity: number, minStockAlert: number) => {
 };
 
 const getMovementLabel = (referenceType: string, quantityChange: number) => {
-  if (referenceType === 'purchase') return 'Purchase Received';
+  if (referenceType === 'purchase') return 'Stock Purchased';
   if (referenceType === 'bill') return 'Sale';
   if (referenceType === 'bill_cancellation') return 'Bill Cancelled';
   if (referenceType === 'manual_adjustment') {
@@ -131,7 +139,7 @@ const buildStatCards = (
   stockUnit: string
 ) => [
   { label: 'Current Stock', value: `${summary.currentStock} ${stockUnit}`, icon: Boxes, tone: 'bg-sky-50 text-sky-600' },
-  { label: 'Total Received', value: `${summary.totalReceived} ${stockUnit}`, icon: TrendingDown, tone: 'bg-emerald-50 text-emerald-600' },
+  { label: 'Total Purchased', value: `${summary.totalReceived} ${stockUnit}`, icon: TrendingDown, tone: 'bg-emerald-50 text-emerald-600' },
   { label: 'Total Issued', value: `${summary.totalIssued} ${stockUnit}`, icon: TrendingUp, tone: 'bg-rose-50 text-rose-600' },
   { label: 'Available Lots', value: String(summary.availableLots), icon: ReceiptText, tone: 'bg-amber-50 text-amber-600' },
   { label: 'Manual Added', value: `${summary.totalAdjustedIn} ${stockUnit}`, icon: TrendingUp, tone: 'bg-teal-50 text-teal-600' },
@@ -201,7 +209,7 @@ const InventoryDetailPage: React.FC = () => {
   const historyFilteredMovements = useMemo(() => {
     if (!data?.movements) return [];
     return data.movements.filter(m => {
-      const dateStr = m.created_at.slice(0, 10);
+      const dateStr = getMovementDisplayDate(m).slice(0, 10);
       if (historyStartDate && dateStr < historyStartDate) return false;
       if (historyEndDate && dateStr > historyEndDate) return false;
       return true;
@@ -328,7 +336,7 @@ const InventoryDetailPage: React.FC = () => {
     if (!data?.movements.length || !selectedMonthData) return [];
 
     const prefix = parseMonthLabelToInputVal(selectedMonthData.month);
-    const filteredMovements = (data.movements || []).filter((movement) => movement.created_at.startsWith(prefix));
+    const filteredMovements = (data.movements || []).filter((movement) => getMovementDisplayDate(movement).startsWith(prefix));
 
     return filteredMovements.filter((movement) => {
       if (transactionModalType === 'in') return movement.quantity_change > 0;
@@ -371,9 +379,9 @@ const InventoryDetailPage: React.FC = () => {
       };
     }
 
-    const rows = data.movements.filter((movement) => movement.created_at.slice(0, 10) === dailyMovementDate);
+    const rows = data.movements.filter((movement) => getMovementDisplayDate(movement).slice(0, 10) === dailyMovementDate);
     const movementAfterDay = data.movements
-      .filter((movement) => movement.created_at.slice(0, 10) > dailyMovementDate)
+      .filter((movement) => getMovementDisplayDate(movement).slice(0, 10) > dailyMovementDate)
       .reduce((sum, movement) => sum + Number(movement.quantity_change || 0), 0);
     const remaining = Number(inventory.quantity_in_stock || 0) - movementAfterDay;
     const dayNet = rows.reduce((sum, movement) => sum + Number(movement.quantity_change || 0), 0);
@@ -416,7 +424,7 @@ const InventoryDetailPage: React.FC = () => {
        const dateStr = `${yearNum}-${String(monthNum + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
        
        const movementAfterDay = data.movements
-         .filter((m) => m.created_at.slice(0, 10) > dateStr)
+         .filter((m) => getMovementDisplayDate(m).slice(0, 10) > dateStr)
          .reduce((sum, m) => sum + Number(m.quantity_change || 0), 0);
          
        const remaining = Number(inventory.quantity_in_stock || 0) - movementAfterDay;
@@ -748,10 +756,10 @@ const InventoryDetailPage: React.FC = () => {
                      ₹{(((inventory.selling_price || 0) - (inventory.cost_price || 0)) * (selectedMonthData ? selectedMonthData.sold : 0)).toLocaleString()}
                    </span>
                 </div>
-                {/* 3. Total Received */}
+                {/* 3. Total Purchased */}
                 <div className="flex-none w-28 bg-[#FFF6EE] border border-[#FFE8D6] rounded-[18px] p-3.5 text-center flex flex-col items-center justify-center shadow-sm">
                    <TrendingDown className="w-5 h-5 text-[#E36B15] mb-2" />
-                   <span className="text-[10px] font-medium text-slate-500 mb-1 leading-tight">Total Received</span>
+                   <span className="text-[10px] font-medium text-slate-500 mb-1 leading-tight">Total Purchased</span>
                    <span className="text-xl font-black text-[#E36B15] leading-none mt-auto">{data.summary.totalReceived}</span>
                    <span className="text-[9px] font-bold text-[#E36B15] mt-1 leading-tight">units</span>
                 </div>
@@ -822,7 +830,7 @@ const InventoryDetailPage: React.FC = () => {
                            {isIncoming ? '+' : ''}{movement.quantity_change} units
                          </div>
                          <div className="text-[9px] font-medium text-slate-400 mt-0.5">
-                           {formatDateTime(movement.created_at)}
+                          {formatDateTime(getMovementDisplayDate(movement))}
                          </div>
                        </div>
                      </div>
@@ -909,7 +917,7 @@ const InventoryDetailPage: React.FC = () => {
                         {selectedMonthData.received + selectedMonthData.cancelledBack + selectedMonthData.adjustedIn}
                       </div>
                       <div className="mt-1 text-xs font-medium text-emerald-600/70">
-                        Received {selectedMonthData.received} • Adj {selectedMonthData.adjustedIn}
+                        Purchased {selectedMonthData.received} • Adj {selectedMonthData.adjustedIn}
                       </div>
                     </div>
 
@@ -1049,7 +1057,7 @@ const InventoryDetailPage: React.FC = () => {
                             )}
                           </div>
                           <div className="mt-1 text-xs font-semibold text-slate-500">
-                            Received {formatDate(lot.received_at)}
+                            Purchased {formatDate(getLotPurchaseDate(lot))}
                             {lot.expiry_date ? ` · Exp ${formatDate(lot.expiry_date)}` : ''}
                           </div>
                           {lot.is_expired && (
@@ -1132,7 +1140,7 @@ const InventoryDetailPage: React.FC = () => {
                             <td className="px-4 py-3">
                               <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[11px] font-semibold">{m.bill?.bill_number}</span>
                             </td>
-                            <td className="px-4 py-3 text-slate-500 text-xs font-semibold">{formatDate(m.created_at)}</td>
+                            <td className="px-4 py-3 text-slate-500 text-xs font-semibold">{formatDate(getMovementDisplayDate(m))}</td>
                             <td className="px-4 py-3 text-right">
                               <ChevronRight className="inline-block h-4 w-4 text-slate-300 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all" />
                             </td>
@@ -1170,7 +1178,7 @@ const InventoryDetailPage: React.FC = () => {
                             <td className="px-4 py-3">
                               <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-[11px] font-semibold">{m.purchase?.invoice_number || 'N/A'}</span>
                             </td>
-                            <td className="px-4 py-3 text-slate-500 text-xs font-semibold">{formatDate(m.created_at)}</td>
+                            <td className="px-4 py-3 text-slate-500 text-xs font-semibold">{formatDate(getMovementDisplayDate(m))}</td>
                             <td className="px-4 py-3 text-right">
                               <ChevronRight className="inline-block h-4 w-4 text-slate-300 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all" />
                             </td>
@@ -1245,7 +1253,7 @@ const InventoryDetailPage: React.FC = () => {
                             return (
                               <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="px-4 py-3 font-bold text-slate-800">{getMovementLabel(item.reference_type, item.quantity_change)}</td>
-                                <td className="px-4 py-3 text-slate-500 text-xs font-semibold">{formatDateTime(item.created_at)}</td>
+                                <td className="px-4 py-3 text-slate-500 text-xs font-semibold">{formatDateTime(getMovementDisplayDate(item))}</td>
                                 <td className="px-4 py-3 text-right">
                                   <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${isIncoming ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
                                     {isIncoming ? '+' : ''}{item.quantity_change}
@@ -1351,7 +1359,23 @@ const InventoryDetailPage: React.FC = () => {
               setLotDraft((draft) => ({
                 ...draft,
                 mrp: e.target.value,
+                selling_price: String(Number((mrp * (1 - (Number(draft.medicine_discount_percentage) || 0) / 100)).toFixed(2))),
                 cost_price: String(calculateCostPrice(mrp, Number(draft.cost_percentage) || 0)),
+              }));
+            }}
+          />
+          <Input
+            label="Discount % (Farmer Discount %)"
+            type="number"
+            step="0.01"
+            value={lotDraft.medicine_discount_percentage}
+            leftIcon={<ArrowUpCircle className="h-4 w-4 text-emerald-600" />}
+            onChange={(e) => {
+              const discount = e.target.valueAsNumber || 0;
+              setLotDraft((draft) => ({
+                ...draft,
+                medicine_discount_percentage: e.target.value,
+                selling_price: String(Number(((Number(draft.mrp) || 0) * (1 - discount / 100)).toFixed(2))),
               }));
             }}
           />
@@ -1361,15 +1385,14 @@ const InventoryDetailPage: React.FC = () => {
             step="0.01"
             value={lotDraft.selling_price}
             leftIcon={<ArrowUpCircle className="h-4 w-4 text-emerald-600" />}
-            onChange={(e) => setLotDraft((draft) => ({ ...draft, selling_price: e.target.value }))}
-          />
-          <Input
-            label="Discount % (Farmer Discount %)"
-            type="number"
-            step="0.01"
-            value={lotDraft.medicine_discount_percentage}
-            leftIcon={<ArrowUpCircle className="h-4 w-4 text-emerald-600" />}
-            onChange={(e) => setLotDraft((draft) => ({ ...draft, medicine_discount_percentage: e.target.value }))}
+            onChange={(e) => {
+              const sp = e.target.valueAsNumber || 0;
+              setLotDraft((draft) => ({
+                ...draft,
+                selling_price: e.target.value,
+                medicine_discount_percentage: (Number(draft.mrp) || 0) > 0 ? String(calculateCostPercentage(Number(draft.mrp) || 0, sp)) : draft.medicine_discount_percentage,
+              }));
+            }}
           />
           <Input
             label="Cost Discount % (Dealer Discount %)"

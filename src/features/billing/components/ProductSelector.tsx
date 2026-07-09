@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ChevronRight, Package2, Pill, Plus, Minus, User, Wheat, Pencil, Trash2, Info, SlidersHorizontal, Search, MoreVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Modal, Button, SearchBar, Input } from '@/components/ui';
+import { Modal, Button, SearchBar, Input, DatePicker } from '@/components/ui';
 import { useInventory, useProducts } from '@/features/inventory/hooks/useInventory';
 import { InventoryItem } from '@/features/inventory/types';
 import { InventoryLot } from '@/types/database';
@@ -17,11 +17,13 @@ import { useSubscriptionStore } from '@/stores/subscriptionStore';
 const getLotsWithStock = (item: InventoryItem) => {
   return (item.inventory_lots || []).filter((lot: any) => lot.remaining_quantity > 0)
     .sort((a: any, b: any) => {
-      // FIFO: sort by expiry first if available, else by received_at (oldest first)
+      // FIFO: sort by expiry first if available, else by selected purchase date.
       if (a.expiry_date && b.expiry_date) {
         return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
       }
-      return new Date(a.received_at).getTime() - new Date(b.received_at).getTime();
+      const aPurchaseDate = a.stock_purchases?.purchase_date || a.received_at;
+      const bPurchaseDate = b.stock_purchases?.purchase_date || b.received_at;
+      return new Date(aPurchaseDate).getTime() - new Date(bPurchaseDate).getTime();
     });
 };
 
@@ -75,8 +77,10 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
     farmerCreditLimit,
     gstEnabled,
     discountAmount,
+    billDate,
     setGstEnabled,
     setDiscount,
+    setBillDate,
     addItem,
     updateQuantity,
     removeItem,
@@ -542,6 +546,14 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
           </button>
         </section>
 
+        <section className="px-4 py-3">
+          <DatePicker
+            value={billDate}
+            onChange={setBillDate}
+            placeholder="Bill Date"
+          />
+        </section>
+
         <section className="billing-quick-section">
           <h2 className="billing-section-title">Quick Add</h2>
           <div className="billing-quick-grid">
@@ -700,6 +712,15 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
              <button onClick={() => setShowFarmerModal(true)} className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-primary hover:bg-slate-50 transition-colors shrink-0">
                <Pencil className="w-4 h-4" /> Change
              </button>
+          </section>
+
+          <section className="bg-white rounded-2xl border border-slate-200 p-4 shrink-0 shadow-sm">
+             <div className="text-sm font-bold text-slate-500 mb-2">Bill Date</div>
+             <DatePicker
+               value={billDate}
+               onChange={setBillDate}
+               placeholder="Bill Date"
+             />
           </section>
 
           <section className="flex flex-col flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">

@@ -25,7 +25,7 @@ export const billingService = {
 
     let query = supabase
       .from('bills')
-      .select('*', { count: 'exact' })
+      .select('*, bill_items(product_name_snapshot, quantity)', { count: 'exact' })
       .eq('dealer_id', dealerId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false });

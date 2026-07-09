@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Plus, Receipt } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
 import { Button, EmptyState, SearchBar, DateRangeFilter } from '@/components/ui';
@@ -19,10 +19,23 @@ const BillHistoryPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: bills = [], isLoading, error } = useBills();
-  const [search, setSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showItems, setShowItems] = useState(false);
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  const [startDate, setStartDate] = useState(todayStr);
-  const [endDate, setEndDate] = useState(todayStr);
+  const search = searchParams.get('search') || '';
+  const startDate = searchParams.get('startDate') || todayStr;
+  const endDate = searchParams.get('endDate') || todayStr;
+
+  const updateParams = (newParams: Record<string, string>) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      Object.entries(newParams).forEach(([k, v]) => {
+        if (v) next.set(k, v);
+        else next.delete(k);
+      });
+      return next;
+    });
+  };
 
   const { user } = useAuthStore();
   const { activeBranch, isAllBranches } = useBranchStore();
@@ -74,7 +87,7 @@ const BillHistoryPage: React.FC = () => {
         <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <SearchBar
             value={search}
-            onChange={setSearch}
+            onChange={(v) => updateParams({ search: v })}
             placeholder={t('billing.searchBills', 'Search by bill number or customer name')}
             className="max-w-xl flex-1"
             showVoicePlaceholder
@@ -84,19 +97,23 @@ const BillHistoryPage: React.FC = () => {
             <DateRangeFilter
               startDate={startDate}
               endDate={endDate}
-              onChange={(start, end) => {
-                setStartDate(start);
-                setEndDate(end);
-              }}
+              onChange={(start, end) => updateParams({ startDate: start, endDate: end })}
             />
           </div>
         </div>
       </SectionCard>
 
       <div className="space-y-3">
-        <div className="px-1 sm:px-2">
+        <div className="px-1 sm:px-2 flex items-center justify-between">
           <div className="text-sm font-black tracking-tight text-slate-900">
             {pagedBills.totalCount} {t('billing.billCount', 'bill')}{pagedBills.totalCount === 1 ? '' : 's'}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-700">Show Items</span>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input type="checkbox" checked={showItems} onChange={(e) => setShowItems(e.target.checked)} className="sr-only peer" />
+              <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
           </div>
         </div>
 
@@ -136,8 +153,14 @@ const BillHistoryPage: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <div className="mt-0.5 truncate text-[0.82rem] font-medium text-slate-500">
-                          {bill.bill_number} • {formatDateTime(bill.created_at)}
+                        <div className={`mt-0.5 text-[0.82rem] font-medium text-slate-500 ${showItems ? 'whitespace-normal' : 'truncate'}`}>
+                          {showItems && (bill as any).bill_items?.length ? (
+                            <span className="text-slate-600 block leading-relaxed mt-1">
+                              {(bill as any).bill_items.map((item: any) => `${item.product_name_snapshot} (${item.quantity})`).join(', ')}
+                            </span>
+                          ) : (
+                            <>{bill.bill_number} • {formatDateTime(bill.created_at)}</>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -78,6 +78,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     discountAmount,
     amountPaid,
     paymentType,
+    billDate,
   } = useCartStore();
 
   const [showColumnSettings, setShowColumnSettings] = React.useState(false);
@@ -153,7 +154,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     };
   }, [discountAmount, gstEnabled, items]);
 
-  const todayIso = React.useMemo(() => new Date().toISOString(), []);
+  const todayIso = React.useMemo(() => `${billDate}T00:00:00.000Z`, [billDate]);
   const displayDate = formatDateTime(todayIso);
   const totals = useMemo(() => {
     if (!fifoPreview) return clientTotals;
@@ -271,18 +272,16 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
 
     if (!ignoreWarning && farmerId) {
       try {
-        const todayStart = new Date();
-        todayStart.setHours(0,0,0,0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23,59,59,999);
+        const billStart = new Date(`${billDate}T00:00:00.000Z`);
+        const billEnd = new Date(`${billDate}T23:59:59.999Z`);
         
         const { data: recentBills } = await supabase
           .from('bills')
           .select('total, created_at')
           .eq('farmer_id', farmerId)
           .eq('dealer_id', user.id)
-          .gte('created_at', todayStart.toISOString())
-          .lte('created_at', todayEnd.toISOString());
+          .gte('created_at', billStart.toISOString())
+          .lte('created_at', billEnd.toISOString());
 
         if (recentBills && recentBills.length > 0) {
           const similarBill = recentBills.find(b => Math.abs(Number(b.total) - totals.total) <= 100);

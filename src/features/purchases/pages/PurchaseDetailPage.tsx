@@ -65,6 +65,7 @@ const PurchaseDetailPage: React.FC = () => {
   }
 
   const { purchase, product, supplier, linkedLot, linkedMovements } = data;
+  const linkedLotPurchaseDate = linkedLot?.stock_purchases?.purchase_date || purchase.purchase_date;
 
   return (
     <PageShell>
@@ -232,10 +233,10 @@ const PurchaseDetailPage: React.FC = () => {
                 </div>
                 <div className="rounded-[20px] bg-white px-3 py-3">
                   <div className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-400">
-                    Received
+                    Purchase Date
                   </div>
                   <div className="mt-2 text-sm font-bold text-slate-900">
-                    {formatDate(linkedLot.received_at)}
+                    {formatDate(linkedLotPurchaseDate)}
                   </div>
                 </div>
                 <div className="rounded-[20px] bg-white px-3 py-3">
@@ -275,7 +276,7 @@ const PurchaseDetailPage: React.FC = () => {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="success" className="normal-case tracking-[0.02em]">
-                        Purchase Received
+                        Stock Purchased
                       </Badge>
                       {movement.lot_id ? (
                         <Badge variant="neutral" className="normal-case tracking-[0.02em]">
@@ -287,7 +288,7 @@ const PurchaseDetailPage: React.FC = () => {
                       {movement.notes || 'No note provided'}
                     </div>
                     <div className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                      {formatDateTime(movement.created_at)}
+                      {formatDateTime(purchase.purchase_date)}
                     </div>
                   </div>
                   <div className="text-right text-emerald-700">

@@ -485,6 +485,7 @@ export interface InventoryLot {
   is_expired?: boolean;
   received_at: string;
   created_at: string;
+  stock_purchases?: Pick<StockPurchase, 'purchase_date'> | null;
 }
 
 export interface InventoryMovement {

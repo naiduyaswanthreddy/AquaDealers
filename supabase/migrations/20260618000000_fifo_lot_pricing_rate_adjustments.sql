@@ -38,14 +38,14 @@ CREATE POLICY bill_item_lot_allocations_delete ON bill_item_lot_allocations FOR 
 
 UPDATE inventory_lots il
 SET selling_price = COALESCE(il.selling_price, i.selling_price, p.default_price, il.cost_price, 0),
-    medicine_discount_percentage = COALESCE(il.medicine_discount_percentage, i.medicine_discount_percentage, p.medicine_discount_percentage, 0),
+    medicine_discount_percentage = COALESCE(il.medicine_discount_percentage, i.medicine_discount_percentage, 0),
     final_unit_price = COALESCE(
       il.final_unit_price,
       ROUND(
         COALESCE(i.selling_price, p.default_price, il.cost_price, 0)
         * (1 - CASE
           WHEN lower(COALESCE(p.type, '')) LIKE '%medic%'
-            THEN GREATEST(0, LEAST(COALESCE(i.medicine_discount_percentage, p.medicine_discount_percentage, 0), 100)) / 100
+            THEN GREATEST(0, LEAST(COALESCE(i.medicine_discount_percentage, 0), 100)) / 100
           ELSE 0
         END),
         2

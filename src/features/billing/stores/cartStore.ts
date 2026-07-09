@@ -11,6 +11,7 @@ interface CartState {
   discountAmount: number;
   amountPaid: number;
   paymentType: string;
+  billDate: string;
 
   setFarmer: (id: string | null, name: string | null, totalDue?: number, creditLimit?: number) => void;
   addItem: (item: CartItem) => void;
@@ -24,6 +25,7 @@ interface CartState {
   setDiscount: (amount: number) => void;
   setAmountPaid: (amount: number) => void;
   setPaymentType: (type: string) => void;
+  setBillDate: (date: string) => void;
   clearItems: () => void;
   clearCart: () => void;
 }
@@ -41,9 +43,12 @@ export const useCartStore = create<CartState>((set) => ({
   discountAmount: 0,
   amountPaid: 0,
   paymentType: 'cash',
+  billDate: new Date().toISOString().split('T')[0],
 
   setFarmer: (id, name, totalDue = 0, creditLimit = 0) =>
     set({ farmerId: id, farmerName: name, farmerTotalDue: totalDue, farmerCreditLimit: creditLimit }),
+
+  setBillDate: (date) => set({ billDate: date }),
 
   addItem: (item) =>
     set((state) => {
@@ -187,5 +192,6 @@ export const useCartStore = create<CartState>((set) => ({
       discountAmount: 0,
       amountPaid: 0,
       paymentType: 'cash',
+      billDate: new Date().toISOString().split('T')[0],
     }),
 }));

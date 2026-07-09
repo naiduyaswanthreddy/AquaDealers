@@ -26,6 +26,13 @@ const mapInventoryItem = (item: any): InventoryItem => ({
   product: item.products as Product,
 });
 
+const getLotPurchaseDate = (lot: InventoryLot): string => lot.stock_purchases?.purchase_date || lot.received_at;
+
+const getMovementDate = (movement: InventoryMovementDetail): string =>
+  movement.reference_type === 'purchase' && movement.purchase?.purchase_date
+    ? movement.purchase.purchase_date
+    : movement.created_at;
+
 const buildInventoryAnalytics = (
   inventory: InventoryItem,
   lots: InventoryLot[],
@@ -39,7 +46,7 @@ const buildInventoryAnalytics = (
   let totalExpired = 0;
 
   movements.forEach((movement) => {
-    const monthKey = getMonthKey(movement.created_at);
+    const monthKey = getMonthKey(getMovementDate(movement));
     const monthEntry = monthlyMap.get(monthKey) || {
       month: formatMonthLabel(monthKey),
       received: 0,
@@ -106,7 +113,7 @@ const buildInventoryAnalytics = (
       totalAdjustedIn,
       totalAdjustedOut,
       estimatedStockValue: estimatedPrice > 0 ? estimatedPrice * Number(inventory.quantity_in_stock || 0) : null,
-      lastMovementAt: movements[0]?.created_at ?? null,
+      lastMovementAt: movements[0] ? getMovementDate(movements[0]) : null,
     },
     monthlySeries: Array.from(monthlyMap.entries())
       .sort(([a], [b]) => b.localeCompare(a))
@@ -180,7 +187,7 @@ export const inventoryService = {
 
     let query = supabase
       .from('inventory')
-      .select('*, products!inner(*), inventory_lots(*)', { count: 'exact' })
+      .select('*, products!inner(*), inventory_lots(*, stock_purchases(purchase_date))', { count: 'exact' })
       .eq('dealer_id', dealerId)
       .order('updated_at', { ascending: false });
 
@@ -244,7 +251,7 @@ export const inventoryService = {
 
     const { data: lotsData, error: lotsError } = await supabase
       .from('inventory_lots')
-      .select('*')
+      .select('*, stock_purchases(purchase_date)')
       .eq('inventory_id', inventoryId)
       .eq('dealer_id', dealerId)
       .order('expiry_date', { ascending: true, nullsFirst: false })
@@ -313,11 +320,12 @@ export const inventoryService = {
       (supplierData || []) as Supplier[]
     );
 
-    const analytics = buildInventoryAnalytics(inventory, (lotsData || []) as InventoryLot[], movements);
+    const lots = (lotsData || []) as InventoryLot[];
+    const analytics = buildInventoryAnalytics(inventory, lots, movements);
 
     return {
       inventory,
-      lots: (lotsData || []) as InventoryLot[],
+      lots,
       movements,
       summary: analytics.summary,
       monthlySeries: analytics.monthlySeries,
@@ -349,7 +357,7 @@ export const inventoryService = {
 
     const { data: lotData, error: lotError } = await supabase
       .from('inventory_lots')
-      .select('*')
+      .select('*, stock_purchases(purchase_date)')
       .eq('stock_purchase_id', purchaseId)
       .eq('dealer_id', dealerId)
       .order('created_at', { ascending: true })

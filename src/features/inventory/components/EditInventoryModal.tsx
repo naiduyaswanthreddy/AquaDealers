@@ -111,7 +111,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
     return Number.isFinite(numeric) ? numeric : null;
   };
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<EditInventoryForm>({
+  const { register, handleSubmit, reset, watch, setValue, getValues, formState: { errors } } = useForm<EditInventoryForm>({
     defaultValues: {
       selling_price: initialSellingPrice,
       cost_price: initialData.cost_price || 0,
@@ -146,23 +146,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
 
   const watchMrp = watch('mrp');
   const watchDiscount = watch('medicine_discount_percentage');
-  const watchCostDiscount = watch('cost_percentage');
-
-  useEffect(() => {
-    const mrp = Number(watchMrp) || 0;
-    const discount = Number(watchDiscount) || 0;
-    if (mrp > 0) {
-      setValue('selling_price', Number((mrp * (1 - discount / 100)).toFixed(2)));
-    }
-  }, [watchMrp, watchDiscount, setValue]);
-
-  useEffect(() => {
-    const mrp = Number(watchMrp) || 0;
-    const dealerDiscount = Number(watchCostDiscount) || 0;
-    if (mrp > 0) {
-      setValue('cost_price', calculateCostPrice(mrp, dealerDiscount));
-    }
-  }, [watchMrp, watchCostDiscount, setValue]);
+  // Removed useEffects to prevent infinite loops when user types
 
   const onSubmit = async (data: EditInventoryForm) => {
     try {
@@ -325,6 +309,14 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
               type="number"
               step="0.01"
               {...register('mrp', { valueAsNumber: true, min: 0 })}
+              onChange={(e) => {
+                 const mrp = e.target.valueAsNumber || 0;
+                 setValue('mrp', mrp);
+                 const currentDiscount = getValues('medicine_discount_percentage') || 0;
+                 const currentCostDiscount = getValues('cost_percentage') || 0;
+                 setValue('selling_price', Number((mrp * (1 - currentDiscount / 100)).toFixed(2)));
+                 setValue('cost_price', calculateCostPrice(mrp, currentCostDiscount));
+              }}
               error={errors.mrp?.message}
             />
 
@@ -334,6 +326,12 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
               step="0.01"
               leftIcon={<ArrowUpRight className="h-4 w-4 text-emerald-600" />}
               {...register('medicine_discount_percentage', { valueAsNumber: true, min: 0, max: 100 })}
+              onChange={(e) => {
+                 const discount = e.target.valueAsNumber || 0;
+                 setValue('medicine_discount_percentage', discount);
+                 const mrp = getValues('mrp') || 0;
+                 setValue('selling_price', Number((mrp * (1 - discount / 100)).toFixed(2)));
+              }}
               error={errors.medicine_discount_percentage?.message}
             />
         </>
@@ -344,6 +342,14 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
           step="0.01"
           leftIcon={<ArrowUpRight className="h-4 w-4 text-emerald-600" />}
           {...register('selling_price', { valueAsNumber: true, min: 0 })}
+          onChange={(e) => {
+             const sp = e.target.valueAsNumber || 0;
+             setValue('selling_price', sp);
+             const mrp = getValues('mrp') || 0;
+             if (mrp > 0) {
+                setValue('medicine_discount_percentage', calculateCostPercentage(mrp, sp));
+             }
+          }}
           error={errors.selling_price?.message}
         />
 
@@ -353,6 +359,12 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
           step="0.01"
           leftIcon={<ArrowDownLeft className="h-4 w-4 text-sky-600" />}
           {...register('cost_percentage', { valueAsNumber: true, min: 0, max: 100 })}
+          onChange={(e) => {
+             const discount = e.target.valueAsNumber || 0;
+             setValue('cost_percentage', discount);
+             const mrp = getValues('mrp') || 0;
+             setValue('cost_price', calculateCostPrice(mrp, discount));
+          }}
           error={errors.cost_percentage?.message}
         />
         
@@ -363,9 +375,10 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
           leftIcon={<ArrowDownLeft className="h-4 w-4 text-sky-600" />}
           {...register('cost_price', { valueAsNumber: true, min: 0 })}
           onChange={(event) => {
-            const value = event.target.valueAsNumber;
-            setValue('cost_price', value);
-            setValue('cost_percentage', calculateCostPercentage(Number(watchMrp), value));
+            const cp = event.target.valueAsNumber || 0;
+            setValue('cost_price', cp);
+            const mrp = getValues('mrp') || 0;
+            setValue('cost_percentage', calculateCostPercentage(mrp, cp));
           }}
           error={errors.cost_price?.message}
         />
