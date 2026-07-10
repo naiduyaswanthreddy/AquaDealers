@@ -2312,3 +2312,138 @@ input[type="search"]::-webkit-search-cancel-button {
   0% { transform: translateX(-100%); background-position: 200% 0; }
   100% { transform: translateX(350%); background-position: -200% 0; }
 }
+
+/* =============================================================================
+   DAILY BOOK — physical register look. Every /book page shares this language:
+   cream paper, ruled lines, dashed entry separators, mono numbers, page-turn.
+   ============================================================================= */
+
+.book-paper {
+  --book-paper: #fdfaf1;
+  --book-rule: #d4c9a8;
+  --book-dash: #c8bc9a;
+  --book-ink: #2f2a1e;
+  --book-ink-soft: #6f6650;
+  --book-accent: #0e5048;
+  --book-green: #1a7a4a;
+  --book-red: #c0392b;
+  --book-blue: #1d5bbf;
+  --book-orange: #e08a00;
+  min-height: 100dvh;
+  background: linear-gradient(170deg, #11594f 0%, #0d4a42 55%, #093a34 100%);
+  color: var(--book-ink);
+  padding: 0.75rem 0.625rem calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+/* The cream page card sitting on the deep-teal desk. */
+.book-sheet {
+  position: relative;
+  min-height: calc(100dvh - 1.5rem);
+  border-radius: 16px;
+  border: 1px solid rgba(9, 58, 52, 0.35);
+  background: linear-gradient(180deg, #fefcf5 0%, var(--book-paper) 40%, #f9f4e4 100%);
+  box-shadow: 0 12px 30px rgba(3, 32, 28, 0.4);
+  overflow: hidden;
+}
+
+/* Small tinted square holding a row's emoji icon, like the reference index page. */
+.book-icon {
+  display: inline-flex;
+  height: 1.85rem;
+  width: 1.85rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: rgba(14, 80, 72, 0.08);
+  font-size: 0.95rem;
+}
+
+.book-serif {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
+}
+
+/* Header block: title + date over a double rule, like the ruled top of a ledger page. */
+.book-head {
+  border-bottom: 4px double rgba(14, 80, 72, 0.65);
+}
+
+.book-page-enter {
+  animation: book-page-in 260ms ease-out both;
+  will-change: transform;
+}
+
+@keyframes book-page-in {
+  from { transform: translateX(26px); opacity: 0.3; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.book-rule {
+  border-bottom: 2px solid var(--book-rule);
+}
+
+.book-rule-thin {
+  border-bottom: 1px solid var(--book-rule);
+}
+
+.book-dashed {
+  border-bottom: 1px dashed var(--book-dash);
+}
+
+.book-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.85rem 0.25rem;
+  border-bottom: 1px dashed var(--book-dash);
+}
+
+.book-row--tap {
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.book-row--tap:active,
+.book-row--tap:hover {
+  background: rgba(212, 201, 168, 0.16);
+}
+
+.book-section-title {
+  border-left: 3px solid var(--book-accent);
+  border-bottom: 1px solid var(--book-rule);
+  padding: 0.15rem 0 0.3rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--book-accent);
+}
+
+.book-num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.book-empty {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--book-ink-soft);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 27px,
+    rgba(212, 201, 168, 0.5) 28px
+  );
+}
+
+@media print {
+  .book-no-print { display: none !important; }
+  .book-paper { min-height: auto; padding: 0; background: #fff; }
+  .book-sheet {
+    min-height: auto;
+    border: none;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+  }
+}

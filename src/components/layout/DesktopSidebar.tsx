@@ -11,7 +11,9 @@ import {
   Settings,
   ChevronDown,
   BookText,
+  NotebookPen,
   Truck,
+  LayoutGrid,
   LogOut
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +33,7 @@ interface SidebarItem {
 
 const SIDEBAR_ITEMS: SidebarItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, featureKey: 'dashboard' },
+  { path: '/book', label: 'Daily Book', icon: NotebookPen, featureKey: 'reports' },
   { path: '/bills', label: 'Billing', icon: Receipt, featureKey: 'billHistory' },
   { path: '/farmers', label: 'Farmers', icon: Users, featureKey: 'farmerList' },
   { path: '/dues', label: 'Dues', icon: WalletCards, featureKey: 'farmerList' },
@@ -39,6 +42,7 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { path: '/cashbook', label: 'Cashbook', icon: BookText, featureKey: 'cashbook' },
   { path: '/expenses', label: 'Expenses', icon: CircleDollarSign, featureKey: 'expenses' },
   { path: '/reports', label: 'Reports', icon: FileBarChart, featureKey: 'reports' },
+  { path: '/more', label: 'More', icon: LayoutGrid, alwaysVisible: true },
   { path: '/settings', label: 'Settings', icon: Settings, featureKey: 'settings' },
 ];
 

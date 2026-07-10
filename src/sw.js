@@ -61,11 +61,16 @@ const bgSyncPlugin = new BackgroundSyncPlugin('supabase-offline-queue', {
   maxRetentionTime: 24 * 60, // Retry for max of 24 Hours (specified in minutes)
 });
 
-// Register background sync for all mutation methods
+// Register background sync for table mutation methods.
+// RPC calls (/rest/v1/rpc/...) are excluded: bill creation is handled by the
+// app-level offline queue (offlineBillStore) with an idempotency ref, and
+// blindly replaying other RPCs could double-apply stock/cash movements.
 ['POST', 'PUT', 'PATCH', 'DELETE'].forEach((method) => {
   registerRoute(
     ({ url, request }) =>
-      url.origin.includes('supabase.co') && request.method === method,
+      url.origin.includes('supabase.co') &&
+      request.method === method &&
+      !url.pathname.includes('/rpc/'),
     new NetworkOnly({
       plugins: [bgSyncPlugin],
     }),

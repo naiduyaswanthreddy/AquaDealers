@@ -1,11 +1,16 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IndianRupee, MessageCircle, Phone, Plus, History } from 'lucide-react';
+import { IndianRupee, Link2, MessageCircle, Phone, Plus, History } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/authStore';
+import { formatCurrency } from '@/lib/utils';
 
 interface LedgerActionsProps {
   farmerId: string;
   farmerPhone: string | null;
   farmerName: string;
+  shareToken?: string | null;
+  totalDue?: number;
   onCollect: () => void;
 }
 
@@ -13,9 +18,12 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
   farmerId,
   farmerPhone,
   farmerName,
+  shareToken,
+  totalDue = 0,
   onCollect,
 }) => {
   const navigate = useNavigate();
+  const dealer = useAuthStore((state) => state.user);
 
   const handleWhatsApp = () => {
     if (!farmerPhone) return;
@@ -26,6 +34,23 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
   const handleCall = () => {
     if (!farmerPhone) return;
     window.open(`tel:${farmerPhone}`, '_self');
+  };
+
+  const handleShareBalance = () => {
+    if (!shareToken) {
+      toast.error('Balance link is not ready for this farmer yet.');
+      return;
+    }
+    const link = `${window.location.origin}/f/${shareToken}`;
+    const message = encodeURIComponent(
+      `Namaste ${farmerName}! Your balance with ${dealer?.shop_name || 'our shop'} is ${formatCurrency(totalDue)}. ` +
+      `View your full bill and payment statement anytime here: ${link}`
+    );
+    if (farmerPhone) {
+      window.open(`https://wa.me/91${farmerPhone}?text=${message}`, '_blank');
+    } else {
+      window.open(`https://wa.me/?text=${message}`, '_blank');
+    }
   };
 
   return (
@@ -65,14 +90,14 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3 grid grid-cols-3 gap-3">
         <button
           onClick={handleWhatsApp}
           disabled={!farmerPhone}
           style={{ backgroundColor: '#f0fcf4' }}
-          className="flex h-14 items-center justify-center gap-3 rounded-[18px] border border-emerald-200/50 text-emerald-900 shadow-sm transition-all active:scale-95 disabled:opacity-50 hover:brightness-[0.97]"
+          className="flex h-14 items-center justify-center gap-2 rounded-[18px] border border-emerald-200/50 text-emerald-900 shadow-sm transition-all active:scale-95 disabled:opacity-50 hover:brightness-[0.97]"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
             <MessageCircle className="w-4 h-4 text-emerald-500" />
           </div>
           <span className="text-sm font-black">WhatsApp</span>
@@ -82,12 +107,24 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
           onClick={handleCall}
           disabled={!farmerPhone}
           style={{ backgroundColor: '#f0f8ff' }}
-          className="flex h-14 items-center justify-center gap-3 rounded-[18px] border border-sky-200/50 text-sky-900 shadow-sm transition-all active:scale-95 disabled:opacity-50 hover:brightness-[0.97]"
+          className="flex h-14 items-center justify-center gap-2 rounded-[18px] border border-sky-200/50 text-sky-900 shadow-sm transition-all active:scale-95 disabled:opacity-50 hover:brightness-[0.97]"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
             <Phone className="w-4 h-4 text-sky-500" />
           </div>
           <span className="text-sm font-black">Call</span>
+        </button>
+
+        <button
+          onClick={handleShareBalance}
+          disabled={!shareToken}
+          style={{ backgroundColor: '#f5f0ff' }}
+          className="flex h-14 items-center justify-center gap-2 rounded-[18px] border border-violet-200/50 text-violet-900 shadow-sm transition-all active:scale-95 disabled:opacity-50 hover:brightness-[0.97]"
+        >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
+            <Link2 className="w-4 h-4 text-violet-500" />
+          </div>
+          <span className="text-sm font-black leading-tight">Share Balance</span>
         </button>
       </div>
     </div>

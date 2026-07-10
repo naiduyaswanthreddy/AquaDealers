@@ -65,6 +65,7 @@ export interface Branch {
   invoice_template: string | null;
   statement_template: string | null;
   template_settings: any | null;
+  color?: string | null;
   created_at: string;
 }
 
@@ -144,6 +145,10 @@ export interface Farmer {
   image_url: string | null;
   risk_updated_at: string | null;
   is_walk_in?: boolean;
+  follow_up_date?: string | null;
+  follow_up_note?: string | null;
+  promised_amount?: number | null;
+  share_token?: string | null;
   created_at: string;
 }
 
@@ -168,6 +173,9 @@ export interface FarmerInsert {
   notes?: string | null;
   image_url?: string | null;
   is_walk_in?: boolean;
+  follow_up_date?: string | null;
+  follow_up_note?: string | null;
+  promised_amount?: number | null;
 }
 
 export interface Product {

@@ -14,6 +14,7 @@ import { useBills } from '../hooks/useBilling';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
 import { billingService } from '../services/billingService';
 import { Bill } from '@/types/database';
+import OfflinePendingBanner from '../components/OfflinePendingBanner';
 
 const BillHistoryPage: React.FC = () => {
   const { t } = useTranslation();
@@ -82,6 +83,8 @@ const BillHistoryPage: React.FC = () => {
           </Button>
         )}
       />
+
+      <OfflinePendingBanner />
 
       <SectionCard>
         <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

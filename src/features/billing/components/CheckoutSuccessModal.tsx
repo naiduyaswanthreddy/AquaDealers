@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, MessageCircle, Printer, ArrowRight, Sparkles, FileText, ChevronRight } from 'lucide-react';
+import { CheckCircle2, CloudOff, MessageCircle, Printer, ArrowRight, Sparkles, FileText, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Button } from '@/components/ui';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -21,6 +21,7 @@ interface CheckoutSuccessModalProps {
   balanceDue: number;
   farmerName: string | null;
   billDate: string;
+  isOffline?: boolean;
   onStartNewBill: () => void;
 }
 
@@ -34,14 +35,16 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
   balanceDue,
   farmerName,
   billDate,
+  isOffline = false,
   onStartNewBill,
 }) => {
   const { t } = useTranslation();
   const [showConfetti, setShowConfetti] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  
+
   const dealer = useAuthStore(s => s.user);
-  const { data: bill } = useBillDetails(billId);
+  // Offline bills only exist on this device — there is no server bill to fetch.
+  const { data: bill } = useBillDetails(isOffline ? '' : billId);
   const branchId = useBranchStore(state => state.getActiveBranchId()) || dealer?.id || '';
   const templateSettings = useBranchStore(state => state.getTemplateSettings(branchId));
   const Template = InvoiceTemplates[templateSettings.invoiceTemplate as keyof typeof InvoiceTemplates] || InvoiceTemplates.template1;
@@ -81,15 +84,30 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
 
         {/* Animated Checkmark */}
         <div className="relative mb-5 mt-2">
-          <div className="absolute inset-0 scale-[1.3] animate-pulse bg-emerald-100/50 rounded-full blur-md" />
-          <div className="relative flex h-[72px] w-[72px] items-center justify-center rounded-[24px] bg-emerald-50 text-emerald-500 shadow-[0_8px_24px_rgba(16,185,129,0.2)] ring-1 ring-emerald-200/50">
-            <CheckCircle2 className="h-9 w-9" strokeWidth={2.5} />
-            <Sparkles className="absolute -top-2 -right-2 h-5 w-5 text-amber-400 animate-bounce" />
+          <div className={`absolute inset-0 scale-[1.3] animate-pulse rounded-full blur-md ${isOffline ? 'bg-amber-100/60' : 'bg-emerald-100/50'}`} />
+          <div className={`relative flex h-[72px] w-[72px] items-center justify-center rounded-[24px] ${
+            isOffline
+              ? 'bg-amber-50 text-amber-500 shadow-[0_8px_24px_rgba(245,158,11,0.2)] ring-1 ring-amber-200/50'
+              : 'bg-emerald-50 text-emerald-500 shadow-[0_8px_24px_rgba(16,185,129,0.2)] ring-1 ring-emerald-200/50'
+          }`}>
+            {isOffline ? <CloudOff className="h-9 w-9" strokeWidth={2.5} /> : <CheckCircle2 className="h-9 w-9" strokeWidth={2.5} />}
+            {!isOffline && <Sparkles className="absolute -top-2 -right-2 h-5 w-5 text-amber-400 animate-bounce" />}
           </div>
         </div>
 
-        <h2 className="text-[22px] font-black text-slate-900 tracking-tight">{t('billing.billSaved', 'Invoice Saved!')}</h2>
+        <h2 className="text-[22px] font-black text-slate-900 tracking-tight">
+          {isOffline ? t('billing.billSavedOffline', 'Saved Offline!') : t('billing.billSaved', 'Invoice Saved!')}
+        </h2>
         <p className="mt-1.5 text-[13px] font-medium text-slate-500">{t('billing.billNumberIs', 'Invoice Number')} <span className="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded ml-1">{billNumber}</span></p>
+
+        {isOffline && (
+          <div className="mt-3 w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] font-semibold text-amber-800 text-left">
+            {t(
+              'billing.offlineSyncNote',
+              'No internet right now. This bill is safely stored on this device and will sync automatically — the final invoice number will be assigned then.'
+            )}
+          </div>
+        )}
 
         {/* Receipt Overview Card */}
         <div className="mt-6 w-full rounded-[20px] border border-slate-200 bg-slate-50 p-4.5 text-[13px] text-left space-y-3.5 shadow-sm">
@@ -126,36 +144,40 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
           </div>
         </div>
 
-        {/* Links & Quick Actions */}
-        <div className="w-full mt-4 flex items-center justify-between px-2">
-           <Link to={`/bills/${billId}`} className="text-[13px] font-bold text-primary hover:text-[#2a8dcb] flex items-center gap-1 group">
-             <FileText className="w-4 h-4" /> View Details <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-           </Link>
-        </div>
+        {/* Links & Quick Actions — need the synced server bill, so hidden for offline saves */}
+        {!isOffline && (
+          <>
+            <div className="w-full mt-4 flex items-center justify-between px-2">
+               <Link to={`/bills/${billId}`} className="text-[13px] font-bold text-primary hover:text-[#2a8dcb] flex items-center gap-1 group">
+                 <FileText className="w-4 h-4" /> View Details <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+               </Link>
+            </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 w-full">
-          <Button
-            type="button"
-            variant="outline"
-            leftIcon={<Printer className="h-4 w-4" />}
-            onClick={handlePrint}
-            className="border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            fullWidth
-          >
-            {t('billing.printInvoice', 'Print')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            leftIcon={<MessageCircle className="h-4 w-4" />}
-            className="border-[#25D366]/30 bg-[#25D366]/5 text-[#1DA851] hover:bg-[#25D366]/10"
-            onClick={handleShareWhatsApp}
-            loading={isSharing}
-            fullWidth
-          >
-            WhatsApp
-          </Button>
-        </div>
+            <div className="mt-5 grid grid-cols-2 gap-3 w-full">
+              <Button
+                type="button"
+                variant="outline"
+                leftIcon={<Printer className="h-4 w-4" />}
+                onClick={handlePrint}
+                className="border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                fullWidth
+              >
+                {t('billing.printInvoice', 'Print')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                leftIcon={<MessageCircle className="h-4 w-4" />}
+                className="border-[#25D366]/30 bg-[#25D366]/5 text-[#1DA851] hover:bg-[#25D366]/10"
+                onClick={handleShareWhatsApp}
+                loading={isSharing}
+                fullWidth
+              >
+                WhatsApp
+              </Button>
+            </div>
+          </>
+        )}
 
         {/* Primary Checkout Finish Button */}
         <div className="mt-4 w-full">

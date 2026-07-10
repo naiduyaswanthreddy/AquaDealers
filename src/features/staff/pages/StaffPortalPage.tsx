@@ -6,6 +6,7 @@ import { PageShell } from '@/components/layout/PageShell';
 import { SectionCard } from '@/components/layout/SectionCard';
 import { Button } from '@/components/ui';
 import { resolveStaffPortalContext, verifyStaffPortalPin } from '../services/staffService';
+import { supabase } from '@/lib/supabase';
 import { useStaffStore } from '@/stores/staffStore';
 import { useAuthStore } from '@/stores/authStore';
 import { buildStaffDealerProfile, getStaffDefaultRoute } from '@/lib/staffAccess';
@@ -73,6 +74,7 @@ export const StaffPortalPage: React.FC = () => {
           branchIds: result.staff.branchIds,
           permissions: result.staff.permissions,
           defaultRoute,
+          sessionToken: result.sessionToken,
         },
         {
           shopSlug: result.shopSlug,
@@ -86,15 +88,22 @@ export const StaffPortalPage: React.FC = () => {
       );
 
       setPin('');
-      if (!session) {
-        useAuthStore.getState().setUser(
-          buildStaffDealerProfile({
-            dealerId: result.dealerId,
-            shopName: result.shopName,
-          })
-        );
-        useAuthStore.getState().setOnboardingComplete(true);
+
+      // A dealer signed in on this device would mix identities with the staff
+      // session (their JWT could read/write a different shop than the portal
+      // shows). Staff mode runs single-identity: sign the dealer out first.
+      if (session) {
+        await supabase.auth.signOut();
+        useAuthStore.getState().clearSession();
       }
+
+      useAuthStore.getState().setUser(
+        buildStaffDealerProfile({
+          dealerId: result.dealerId,
+          shopName: result.shopName,
+        })
+      );
+      useAuthStore.getState().setOnboardingComplete(true);
 
       navigate(defaultRoute, { replace: true });
     } catch (err: any) {
@@ -107,6 +116,7 @@ export const StaffPortalPage: React.FC = () => {
   };
 
   const handleDigit = (digit: string) => {
+    if (contextError) return;
     if (error) setError(false);
     if (pin.length >= 4) return;
     const next = `${pin}${digit}`;
@@ -148,8 +158,9 @@ export const StaffPortalPage: React.FC = () => {
 
         <div className="space-y-6 px-5 py-5 sm:px-6">
           {contextError ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900">
-              {contextError}. You can still try the PIN; the portal will resolve after login.
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm leading-6 text-rose-900">
+              {contextError}. This staff link looks incorrect or the branch is inactive — please ask your dealer for
+              the latest staff link.
             </div>
           ) : null}
 
@@ -219,7 +230,7 @@ export const StaffPortalPage: React.FC = () => {
             loading={isSubmitting}
             rightIcon={<ArrowRight className="h-4.5 w-4.5" />}
             onClick={() => handlePinSubmit(pin)}
-            disabled={pin.length !== 4 || isSubmitting}
+            disabled={pin.length !== 4 || isSubmitting || !!contextError}
           >
             Open Staff Portal
           </Button>

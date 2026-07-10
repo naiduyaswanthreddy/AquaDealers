@@ -494,7 +494,7 @@ const InventoryDetailPage: React.FC = () => {
             </div>
           )
         }
-        onBack={() => navigate('/inventory')}
+        onBack={() => navigate((location.state as { from?: string } | null)?.from || '/inventory')}
         topRightAction={
           <button
             type="button"

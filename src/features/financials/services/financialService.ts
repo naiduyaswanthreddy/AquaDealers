@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { sanitizeSearchTerm } from '@/lib/utils';
 import {
   CashBookEntry,
   CashBookInsert,
@@ -71,7 +72,10 @@ export const financialService = {
     if (branchId) query = query.eq('branch_id', branchId);
     
     if (search) {
-      query = query.or(`description.ilike.%${search}%,category.ilike.%${search}%`);
+      const safeSearch = sanitizeSearchTerm(search);
+      if (safeSearch) {
+        query = query.or(`description.ilike.%${safeSearch}%,category.ilike.%${safeSearch}%`);
+      }
     }
 
     query = query.range(from, to);

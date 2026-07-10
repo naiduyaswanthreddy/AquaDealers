@@ -26,6 +26,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [alignRight, setAlignRight] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   
   const popoverRef = useClickOutside<HTMLDivElement>(() => {
@@ -55,9 +56,9 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       ref={popoverRef}
       className={cn(
         "z-[100] animate-in fade-in zoom-in-95 duration-200",
-        isMobile 
-          ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" 
-          : "absolute top-full left-0 mt-2"
+        isMobile
+          ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+          : cn("absolute top-full mt-2", alignRight ? "right-0" : "left-0")
       )}
       onClick={(e) => e.stopPropagation()}
     >
@@ -77,7 +78,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         className={cn("relative w-full", className)}
       >
         <div
-          onClick={() => !disabled && setIsOpen(!isOpen)}
+          onClick={() => {
+            if (disabled) return;
+            // Flip the desktop popover to right-aligned when a left-aligned
+            // calendar (~380px) would overflow the viewport's right edge.
+            const rect = wrapperRef.current?.getBoundingClientRect();
+            setAlignRight(!!rect && rect.left + 384 > window.innerWidth - 8);
+            setIsOpen(!isOpen);
+          }}
           className={cn(
             "flex h-11 w-full items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all focus-within:ring-2 focus-within:ring-primary/20",
             disabled ? "opacity-50 cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500" : "cursor-pointer border-slate-200 hover:border-primary/50 text-slate-900",

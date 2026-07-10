@@ -400,6 +400,28 @@ export async function getFarmerAgeing(
   return ageing;
 }
 
+export interface DuesAgeingRow {
+  farmer_id: string;
+  amount_0_30: number;
+  amount_31_60: number;
+  amount_61_90: number;
+  amount_90_plus: number;
+  oldest_due_days: number;
+}
+
+export async function getDuesAgeing(
+  dealerId: string,
+  branchId?: string | null
+): Promise<DuesAgeingRow[]> {
+  const { data, error } = await supabase.rpc('get_dues_ageing', {
+    p_dealer_id: dealerId,
+    p_branch_id: branchId ?? null,
+  });
+
+  if (error) throw error;
+  return (data ?? []) as DuesAgeingRow[];
+}
+
 export async function getOpenBillsForFarmer(
   farmerId: string,
   dealerId: string

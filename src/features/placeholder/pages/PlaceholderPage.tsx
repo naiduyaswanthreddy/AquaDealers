@@ -24,6 +24,8 @@ import { supabase } from '@/lib/supabase';
 import type { Branch } from '@/types/database';
 import { cn } from '@/lib/utils';
 import { useBranchStore } from '@/stores/branchStore';
+import { BranchColorPicker } from '@/components/ui/BranchColorPicker';
+import { getBranchColorOption } from '@/lib/branchTheme';
 
 export const PlaceholderPage: React.FC = () => {
   const navigate = useNavigate();
@@ -44,10 +46,12 @@ export const PlaceholderPage: React.FC = () => {
   const [branchName, setBranchName] = useState('');
   const [branchAddress, setBranchAddress] = useState('');
   const [branchPhone, setBranchPhone] = useState('');
+  const [branchColor, setBranchColor] = useState<string | null>(null);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [editBranchName, setEditBranchName] = useState('');
   const [editBranchAddress, setEditBranchAddress] = useState('');
   const [editBranchPhone, setEditBranchPhone] = useState('');
+  const [editBranchColor, setEditBranchColor] = useState<string | null>(null);
   const [editBranchIsMain, setEditBranchIsMain] = useState(false);
   const [editBranchIsActive, setEditBranchIsActive] = useState(true);
   const [isSavingEditBranch, setIsSavingEditBranch] = useState(false);
@@ -56,6 +60,7 @@ export const PlaceholderPage: React.FC = () => {
     setBranchName('');
     setBranchAddress('');
     setBranchPhone('');
+    setBranchColor(null);
     setIsAddBranchOpen(true);
   };
 
@@ -64,6 +69,7 @@ export const PlaceholderPage: React.FC = () => {
     setEditBranchName('');
     setEditBranchAddress('');
     setEditBranchPhone('');
+    setEditBranchColor(null);
     setEditBranchIsMain(false);
     setEditBranchIsActive(true);
   };
@@ -73,6 +79,7 @@ export const PlaceholderPage: React.FC = () => {
     setEditBranchName(branch.name);
     setEditBranchAddress(branch.address || '');
     setEditBranchPhone(branch.phone || '');
+    setEditBranchColor(branch.color || null);
     setEditBranchIsMain(branch.is_main);
     setEditBranchIsActive(branch.is_active);
   };
@@ -102,6 +109,7 @@ export const PlaceholderPage: React.FC = () => {
           name: trimmedName,
           address: trimmedAddress || null,
           phone: trimmedPhone || null,
+          color: branchColor,
           is_main: branches.length === 0,
           is_active: true,
         })
@@ -164,6 +172,7 @@ export const PlaceholderPage: React.FC = () => {
           name: trimmedName,
           address: trimmedAddress || null,
           phone: trimmedPhone || null,
+          color: editBranchColor,
           is_active: editBranchIsActive,
           is_main: editBranchIsMain || editingBranch.is_main,
         })
@@ -376,6 +385,11 @@ export const PlaceholderPage: React.FC = () => {
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className="h-3.5 w-3.5 shrink-0 rounded-full border border-black/10 shadow-sm"
+                              style={{ backgroundColor: getBranchColorOption(branch.color).primary }}
+                              title={`Theme: ${getBranchColorOption(branch.color).label}`}
+                            />
                             <h3 className="truncate text-sm font-extrabold tracking-[-0.02em] text-text-primary">
                               {branch.name}
                             </h3>
@@ -564,6 +578,9 @@ export const PlaceholderPage: React.FC = () => {
               onChange={(e) => setBranchPhone(e.target.value)}
               placeholder="Branch contact number"
             />
+            <div className="rounded-2xl border border-border bg-surface/35 p-4">
+              <BranchColorPicker value={branchColor} onChange={setBranchColor} />
+            </div>
             <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4 text-sm leading-6 text-text-secondary">
               <div className="font-bold text-text-primary">Tip</div>
               <p className="mt-1">
@@ -615,6 +632,10 @@ export const PlaceholderPage: React.FC = () => {
               onChange={(e) => setEditBranchPhone(e.target.value)}
               placeholder="Branch contact number"
             />
+
+            <div className="rounded-2xl border border-border bg-surface/35 p-4">
+              <BranchColorPicker value={editBranchColor} onChange={setEditBranchColor} />
+            </div>
 
             <div className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-surface/35 px-4 py-4">
               <div className="min-w-0">

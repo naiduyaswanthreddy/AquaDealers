@@ -46,6 +46,7 @@ const NewBillPage: React.FC = () => {
     balanceDue: number;
     farmerName: string | null;
     billDate: string;
+    isOffline?: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -294,6 +295,7 @@ const NewBillPage: React.FC = () => {
           balanceDue={successData.balanceDue}
           farmerName={successData.farmerName}
           billDate={successData.billDate}
+          isOffline={successData.isOffline}
           onStartNewBill={handleStartNewBill}
         />
       )}

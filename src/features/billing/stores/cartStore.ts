@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { CartItem } from '../types';
+import { getLocalDateString } from '@/lib/utils';
 
 interface CartState {
   items: CartItem[];
@@ -43,7 +44,7 @@ export const useCartStore = create<CartState>((set) => ({
   discountAmount: 0,
   amountPaid: 0,
   paymentType: 'cash',
-  billDate: new Date().toISOString().split('T')[0],
+  billDate: getLocalDateString(),
 
   setFarmer: (id, name, totalDue = 0, creditLimit = 0) =>
     set({ farmerId: id, farmerName: name, farmerTotalDue: totalDue, farmerCreditLimit: creditLimit }),
@@ -192,6 +193,6 @@ export const useCartStore = create<CartState>((set) => ({
       discountAmount: 0,
       amountPaid: 0,
       paymentType: 'cash',
-      billDate: new Date().toISOString().split('T')[0],
+      billDate: getLocalDateString(),
     }),
 }));

@@ -27,6 +27,7 @@ import DashboardPage from '@/features/dashboard/pages/DashboardPage';
 import LandingPage from '@/features/landing/pages/LandingPage';
 import SeoLandingPage from '@/features/landing/pages/SeoLandingPage';
 import ShopHomePage from '@/features/shop/pages/ShopHomePage';
+import FarmerStatementPage from '@/features/publicStatement/pages/FarmerStatementPage';
 
 // Farmers
 import FarmerListPage from '@/features/farmers/pages/FarmerListPage';
@@ -56,6 +57,19 @@ import PurchaseDetailPage from '@/features/purchases/pages/PurchaseDetailPage';
 // Financials
 import ExpensesPage from '@/features/financials/pages/ExpensesPage';
 import CashBookPage from '@/features/financials/pages/CashBookPage';
+
+// Daily Book
+import DailyBookPage from '@/features/dailyBook/pages/DailyBookPage';
+import BookProductsPage from '@/features/dailyBook/pages/BookProductsPage';
+import BookProductDetailPage from '@/features/dailyBook/pages/BookProductDetailPage';
+import BookFarmersPage from '@/features/dailyBook/pages/BookFarmersPage';
+import BookFarmerPage from '@/features/dailyBook/pages/BookFarmerPage';
+import BookBillPage from '@/features/dailyBook/pages/BookBillPage';
+import BookCashPage from '@/features/dailyBook/pages/BookCashPage';
+import BookClosingPage from '@/features/dailyBook/pages/BookClosingPage';
+import BookStockPage from '@/features/dailyBook/pages/BookStockPage';
+import BookStockPositionPage from '@/features/dailyBook/pages/BookStockPositionPage';
+import BookExpensesPage from '@/features/dailyBook/pages/BookExpensesPage';
 
 // Reports & Settings
 import ReportsPage from '@/features/reports/pages/ReportsPage';
@@ -155,6 +169,9 @@ const App: React.FC = () => {
         <Route path="/register" element={!session ? <RegisterPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="/forgot-password" element={!session ? <ForgotPasswordPage /> : <Navigate to="/dashboard" replace />} />
         
+        {/* Public farmer balance statement (tokenized, read-only, no login) */}
+        <Route path="/f/:token" element={<FarmerStatementPage />} />
+
         {/* Staff Portal should match precisely */}
         <Route path="/:shopSlug/:branchSlug/staff" element={<StaffPortalPage />} />
 
@@ -216,6 +233,19 @@ const App: React.FC = () => {
           <Route path="/cashbook" element={<FeatureGate allowed={['cashbook']} title="Cash Book" description="You do not have access to the cashbook."><CashBookPage /></FeatureGate>} />
 
           {/* Reports & Settings */}
+          {/* Daily Book — the register-style daily view */}
+          <Route path="/book" element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><DailyBookPage /></FeatureGate>} />
+          <Route path="/book/products" element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookProductsPage /></FeatureGate>} />
+          <Route path="/book/products/:productId" element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookProductDetailPage /></FeatureGate>} />
+          <Route path="/book/farmers" element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookFarmersPage /></FeatureGate>} />
+          <Route path="/book/farmers/:farmerId" element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookFarmerPage /></FeatureGate>} />
+          <Route path="/book/bills/:billId" element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookBillPage /></FeatureGate>} />
+          <Route path="/book/cash" element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookCashPage /></FeatureGate>} />
+          <Route path="/book/closing" element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookClosingPage /></FeatureGate>} />
+          <Route path="/book/stock" element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookStockPage /></FeatureGate>} />
+          <Route path="/book/stock-position" element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookStockPositionPage /></FeatureGate>} />
+          <Route path="/book/expenses" element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookExpensesPage /></FeatureGate>} />
+
           <Route path="/reports" element={<FeatureGate allowed={['reports']} title="Reports" description="You do not have access to reports."><ReportsPage /></FeatureGate>} />
           <Route path="/gst" element={<FeatureGate allowed={['reports']} title="GST Ledger" description="You do not have access to reports."><GSTLedgerPage /></FeatureGate>} />
           <Route path="/settings" element={<FeatureGate allowed={['settings']} title="Settings" description="You do not have access to settings."><SettingsPage /></FeatureGate>} />

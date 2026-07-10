@@ -10,6 +10,7 @@ import { useBranchStore } from '@/stores/branchStore';
 import { useFarmers } from '@/features/farmers/hooks/useFarmers';
 import { useInventory } from '@/features/inventory/hooks/useInventory';
 import { billingService } from '@/features/billing/services/billingService';
+import { getLocalDateString } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface HistoricalRow {
@@ -35,7 +36,7 @@ const BulkHistoricalBillPage: React.FC = () => {
   const [reduceStock, setReduceStock] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const defaultDate = new Date().toISOString().split('T')[0];
+  const defaultDate = getLocalDateString();
   
   const [rows, setRows] = useState<HistoricalRow[]>([
     { id: crypto.randomUUID(), date: defaultDate, inventoryId: '', quantity: 1, unitPrice: 0 }

@@ -13,6 +13,7 @@ import { billingService } from '../services/billingService';
 import { SignatureStroke } from '@/types/database';
 import { Modal, Button } from '@/components/ui';
 import { BillingPayload, FifoBillPreview } from '../types';
+import { generateTempBillNumber, isNetworkError, useOfflineBillStore } from '../offline/offlineBillStore';
 
 interface ReviewStepProps {
   onBack: () => void;
@@ -24,6 +25,7 @@ interface ReviewStepProps {
     balanceDue: number;
     farmerName: string | null;
     billDate: string;
+    isOffline?: boolean;
   }) => void;
   upiRef: string;
   chequeNumber: string;
@@ -37,8 +39,10 @@ const normalizeType = (type?: string | null) => {
 
 const getLine = (item: { base_unit_price: number; discount_percentage: number; quantity: number; gst_rate: number }, gstEnabled: boolean) => {
   const unitPrice = Number((item.base_unit_price * (1 - item.discount_percentage / 100)).toFixed(2));
-  const subtotal = unitPrice * item.quantity;
-  const gstAmount = gstEnabled ? (subtotal * item.gst_rate) / 100 : 0;
+  // Round each line to 2dp before summing — matches the server's per-line
+  // ROUND(qty*price, 2) so the preview total equals the saved bill total.
+  const subtotal = Number((unitPrice * item.quantity).toFixed(2));
+  const gstAmount = gstEnabled ? Number(((subtotal * item.gst_rate) / 100).toFixed(2)) : 0;
   return { unitPrice, subtotal, gstAmount, total: subtotal + gstAmount };
 };
 
@@ -63,6 +67,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
   const { user } = useAuthStore();
   const { activeBranch } = useBranchStore();
   const { mutateAsync: createBill, isPending } = useCreateBill();
+  const queueOfflineBill = useOfflineBillStore((s) => s.queueBill);
   const [signatureStrokes, setSignatureStrokes] = React.useState<SignatureStroke[]>([]);
   const [isSavingSignature, setIsSavingSignature] = React.useState(false);
   const [duplicateWarning, setDuplicateWarning] = React.useState<{ show: boolean; farmerName: string; amount: number } | null>(null);
@@ -255,6 +260,33 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     };
   }, [buildPayload, clientTotals.subtotal, clientTotals.gstAmount, clientTotals.total]);
 
+  const saveOffline = async (payload: BillingPayload) => {
+    const clientRef = crypto.randomUUID();
+    const tempBillNumber = generateTempBillNumber();
+    await queueOfflineBill({
+      clientRef,
+      tempBillNumber,
+      payload,
+      signatureStrokes: signatureEnabled && signatureStrokes.length > 0 ? signatureStrokes : null,
+      signerName: farmerName || 'Walk-in Customer',
+      farmerName,
+      total: totals.total,
+      amountPaid,
+      balanceDue,
+    });
+    toast.success(t('billing.savedOffline', 'No internet — bill saved on this device and will sync automatically.'));
+    onSuccess({
+      billId: clientRef,
+      billNumber: tempBillNumber,
+      total: totals.total,
+      amountPaid,
+      balanceDue,
+      farmerName,
+      billDate: displayDate,
+      isOffline: true,
+    });
+  };
+
   const handleCheckout = async (ignoreWarning = false) => {
     if (!items.length || !user?.id) return;
     if (amountPaid > totals.total) {
@@ -270,7 +302,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       return;
     }
 
-    if (!ignoreWarning && farmerId) {
+    if (!ignoreWarning && farmerId && navigator.onLine) {
       try {
         const billStart = new Date(`${billDate}T00:00:00.000Z`);
         const billEnd = new Date(`${billDate}T23:59:59.999Z`);
@@ -299,16 +331,25 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       }
     }
 
+    const payload = buildPayload({
+      subtotal: totals.subtotal,
+      gstAmount: totals.gstAmount,
+      total: totals.total,
+    });
+    if (!payload) return;
+
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    if (!navigator.onLine) {
+      try {
+        await saveOffline(payload);
+      } catch (error: any) {
+        toast.error(error.message || t('common.error', 'Something went wrong.'));
+      }
+      return;
+    }
+
     try {
-      if (navigator.vibrate) navigator.vibrate(50);
-
-      const payload = buildPayload({
-        subtotal: totals.subtotal,
-        gstAmount: totals.gstAmount,
-        total: totals.total,
-      });
-      if (!payload) return;
-
       const result = await createBill(payload);
 
       if (signatureEnabled && signatureStrokes.length > 0) {
@@ -333,6 +374,14 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         billDate: displayDate,
       });
     } catch (error: any) {
+      if (isNetworkError(error)) {
+        try {
+          await saveOffline(payload);
+          return;
+        } catch (offlineError) {
+          console.error('Failed to save bill offline:', offlineError);
+        }
+      }
       toast.error(error.message || t('common.error', 'Something went wrong.'));
     } finally {
       setIsSavingSignature(false);

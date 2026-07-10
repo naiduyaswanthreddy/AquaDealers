@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useFarmer, useFarmerTransactions } from '../hooks/useFarmerLedger';
 import { Skeleton, Button, DateRangeFilter, FarmerAvatar } from '@/components/ui';
@@ -43,6 +43,8 @@ const DetailItem: React.FC<{ label: string; value: string }> = ({ label, value }
 export const FarmerLedgerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const backTo = typeof location.state?.from === 'string' ? location.state.from : '/farmers';
   const { t } = useTranslation();
   const hasFarmerDiscountFeature = useSubscriptionStore((state) => state.hasFeature('farmer_product_discounts'));
   const dealer = useAuthStore((state) => state.user);
@@ -114,7 +116,7 @@ export const FarmerLedgerPage: React.FC = () => {
           <User className="h-10 w-10 text-slate-400" />
         </div>
         <p className="font-medium text-text-secondary">{t('farmers.farmerNotFound', 'Farmer not found.')}</p>
-        <Button onClick={() => navigate('/farmers')} variant="outline" className="mt-6">
+        <Button onClick={() => navigate(backTo)} variant="outline" className="mt-6">
           {t('common.back', 'Go Back')}
         </Button>
       </div>
@@ -363,7 +365,7 @@ export const FarmerLedgerPage: React.FC = () => {
       <PageHeader
         title={farmer.name}
         eyebrow={t('farmers.farmerDetails', 'Farmer Details')}
-        onBack={() => navigate('/farmers')}
+        onBack={() => navigate(backTo)}
         avatar={
           <FarmerAvatar 
             imageUrl={farmer.image_url} 
@@ -434,6 +436,8 @@ export const FarmerLedgerPage: React.FC = () => {
             farmerId={farmer.id}
             farmerName={farmer.name}
             farmerPhone={farmer.phone}
+            shareToken={farmer.share_token}
+            totalDue={farmer.total_due}
             onCollect={() => {
               setCollectPreset(null);
               setIsCollectModalOpen(true);

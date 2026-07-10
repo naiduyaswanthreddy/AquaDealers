@@ -33,6 +33,7 @@ export interface StaffPortalContext {
 }
 
 export interface StaffPortalLoginResult extends StaffPortalContext {
+  sessionToken: string;
   staff: {
     id: string;
     name: string;
@@ -55,6 +56,15 @@ function normalizePermissions(permissions?: Partial<StaffPermissions>): StaffPer
 
 function buildStaffSessionRoute(permissions: StaffPermissions): string {
   return getStaffDefaultRoute(permissions);
+}
+
+// Two staff of the same dealer cannot share a PIN (unique index on the hash);
+// surface that as a readable message instead of a raw Postgres error.
+function toFriendlyStaffError(error: { code?: string; message?: string }): Error {
+  if (error?.code === '23505') {
+    return new Error('This PIN is already used by another staff member. Please choose a different PIN.');
+  }
+  return new Error(error?.message || 'Unable to save staff member.');
 }
 
 export async function listStaffMembers(dealerId: string): Promise<StaffMember[]> {
@@ -86,7 +96,7 @@ export async function createStaffMember(input: StaffCreateInput): Promise<StaffM
     .select(STAFF_SELECT_FIELDS)
     .single();
 
-  if (error) throw error;
+  if (error) throw toFriendlyStaffError(error);
   return data as StaffMember;
 }
 
@@ -115,7 +125,7 @@ export async function updateStaffMember(
     .select(STAFF_SELECT_FIELDS)
     .single();
 
-  if (error) throw error;
+  if (error) throw toFriendlyStaffError(error);
   return data as StaffMember;
 }
 

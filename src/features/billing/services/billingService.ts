@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { sanitizeSearchTerm } from '@/lib/utils';
 import { BillingPayload, CreateBillResult, FifoBillPreview } from '../types';
 import { Bill, BillSignature, SignatureStroke } from '@/types/database';
 
@@ -35,8 +36,10 @@ export const billingService = {
     }
 
     if (options?.searchQuery) {
-      const search = options.searchQuery.toLowerCase();
-      query = query.or(`bill_number.ilike.%${search}%,farmer_name_snapshot.ilike.%${search}%`);
+      const search = sanitizeSearchTerm(options.searchQuery.toLowerCase());
+      if (search) {
+        query = query.or(`bill_number.ilike.%${search}%,farmer_name_snapshot.ilike.%${search}%`);
+      }
     }
 
     if (options?.status && options.status !== 'all') {

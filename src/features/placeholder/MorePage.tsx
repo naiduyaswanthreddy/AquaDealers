@@ -7,6 +7,7 @@ import {
   GitBranch,
   Lock,
   LogOut,
+  NotebookPen,
   PiggyBank,
   Settings,
   Users2,
@@ -51,6 +52,7 @@ export const MorePage: React.FC = () => {
     {
       title: t('more.businessOperations', 'Business Operations'),
       items: [
+        { path: '/book', label: t('nav.dailyBook', 'Daily Book'), icon: NotebookPen, color: 'bg-amber-100 text-amber-700', featureKey: 'reports' },
         { path: '/cashbook', label: t('nav.cashbook', 'Cash Book'), icon: PiggyBank, color: 'bg-success-light text-success', featureKey: 'cashbook' },
         { path: '/expenses', label: t('nav.shopExpenses', 'Shop Expenses'), icon: Wallet, color: 'bg-danger-light text-danger', featureKey: 'expenses' },
         { path: '/suppliers', label: t('nav.suppliersRegistry', 'Suppliers Registry'), icon: Users2, color: 'bg-primary/10 text-primary', featureKey: 'suppliers' },

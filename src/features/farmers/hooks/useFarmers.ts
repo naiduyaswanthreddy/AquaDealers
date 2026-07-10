@@ -9,6 +9,7 @@ import {
   upsertFarmerProductDiscount,
   deleteFarmerProductDiscount,
   getUniqueVillages,
+  getDuesAgeing,
 } from '../services/farmerService';
 import type { FarmerInsert } from '@/types/database';
 import { toast } from 'sonner';
@@ -37,6 +38,18 @@ export function useFarmers(params?: {
       });
       return res.data;
     },
+    enabled: !!dealerId,
+  });
+}
+
+export function useDuesAgeing() {
+  const user = useAuthStore((s) => s.user);
+  const activeBranchId = useBranchStore((s) => s.getActiveBranchId());
+  const dealerId = user?.id || '';
+
+  return useQuery({
+    queryKey: ['farmers', 'dues-ageing', dealerId, activeBranchId],
+    queryFn: () => getDuesAgeing(dealerId, activeBranchId),
     enabled: !!dealerId,
   });
 }

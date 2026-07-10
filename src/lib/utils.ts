@@ -100,6 +100,27 @@ export function getAgeingBucket(days: number): '0-30' | '31-60' | '61-90' | '90+
 }
 
 /**
+ * Strips characters that would alter the PostgREST .or() filter grammar
+ * (commas, parentheses, wildcards). Use before interpolating user search
+ * text into supabase .or(...) filters.
+ */
+export function sanitizeSearchTerm(term: string): string {
+  return term.replace(/[,()\\%*]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Local calendar date as YYYY-MM-DD. new Date().toISOString() returns the UTC
+ * date, which is yesterday between 00:00 and 05:29 IST — bills stamped that
+ * way vanish from "today" views. Always use this for default dates.
+ */
+export function getLocalDateString(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
  * Simple hash function for the PIN (SHA-256 via Web Crypto API).
  */
 export async function hashPin(pin: string): Promise<string> {

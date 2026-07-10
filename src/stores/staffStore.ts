@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { StaffPermissions } from '@/types/database';
+import { setStaffSessionToken } from '@/lib/sessionTokens';
 
 export interface StaffPortalContext {
   shopSlug: string;
@@ -21,6 +22,7 @@ export interface StaffSession {
   branchIds: string[];
   permissions: StaffPermissions;
   defaultRoute: string;
+  sessionToken: string;
 }
 
 interface StaffState {
@@ -29,6 +31,7 @@ interface StaffState {
 
   setStaffSession: (session: StaffSession, context: StaffPortalContext) => void;
   clearStaffSession: () => void;
+  getSessionToken: () => string | null;
 }
 
 const initialState = {
@@ -38,16 +41,23 @@ const initialState = {
 
 export const useStaffStore = create<StaffState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialState,
 
-      setStaffSession: (session, context) =>
+      setStaffSession: (session, context) => {
+        setStaffSessionToken(session.sessionToken || null);
         set({
           currentStaff: session,
           portalContext: context,
-        }),
+        });
+      },
 
-      clearStaffSession: () => set(initialState),
+      clearStaffSession: () => {
+        setStaffSessionToken(null);
+        set(initialState);
+      },
+
+      getSessionToken: () => get().currentStaff?.sessionToken || null,
     }),
     {
       name: 'aquadealers-staff',
@@ -55,6 +65,9 @@ export const useStaffStore = create<StaffState>()(
         currentStaff: state.currentStaff,
         portalContext: state.portalContext,
       }),
+      onRehydrateStorage: () => (state) => {
+        setStaffSessionToken(state?.currentStaff?.sessionToken || null);
+      },
     }
   )
 );

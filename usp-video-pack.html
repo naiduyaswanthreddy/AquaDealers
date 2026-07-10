@@ -1,0 +1,768 @@
+<title>AquaDealers — USP Video Production Pack</title>
+<style>
+  :root {
+    --ink: #14202b;
+    --ink-soft: #4b5a68;
+    --paper: #f7f8f6;
+    --card: #ffffff;
+    --line: #dde3e2;
+    --aqua: #0e7f8a;
+    --aqua-soft: #e3f1f2;
+    --rec: #d1372c;
+    --amber: #b26a00;
+    --amber-soft: #fdf3e0;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: "Segoe UI", system-ui, -apple-system, "Noto Sans", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8edf0;
+      --ink-soft: #9fb0bc;
+      --paper: #101820;
+      --card: #18232d;
+      --line: #2a3募0;
+      --line: #2a3a46;
+      --aqua: #4cc3ce;
+      --aqua-soft: #12333a;
+      --rec: #ff6f61;
+      --amber: #e8a94a;
+      --amber-soft: #33270f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #e8edf0;
+    --ink-soft: #9fb0bc;
+    --paper: #101820;
+    --card: #18232d;
+    --line: #2a3a46;
+    --aqua: #4cc3ce;
+    --aqua-soft: #12333a;
+    --rec: #ff6f61;
+    --amber: #e8a94a;
+    --amber-soft: #33270f;
+  }
+  :root[data-theme="light"] {
+    --ink: #14202b;
+    --ink-soft: #4b5a68;
+    --paper: #f7f8f6;
+    --card: #ffffff;
+    --line: #dde3e2;
+    --aqua: #0e7f8a;
+    --aqua-soft: #e3f1f2;
+    --rec: #d1372c;
+    --amber: #b26a00;
+    --amber-soft: #fdf3e0;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    margin: 0;
+    padding: 2.2rem 1rem 5rem;
+  }
+  .wrap { max-width: 62rem; margin: 0 auto; }
+
+  header.masthead { margin-bottom: 2.2rem; }
+  .slate {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-soft);
+    border: 1px solid var(--line); border-radius: 999px; padding: 0.3rem 0.8rem;
+  }
+  .slate::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--rec); }
+  h1 {
+    font-size: clamp(1.7rem, 4.5vw, 2.5rem); line-height: 1.12; margin: 0.7rem 0 0.4rem;
+    letter-spacing: -0.02em; text-wrap: balance; font-weight: 800;
+  }
+  .lede { color: var(--ink-soft); max-width: 46rem; margin: 0; }
+
+  section.rules {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.3rem 1.4rem; margin-bottom: 2.4rem;
+  }
+  .rules h2 { margin: 0 0 0.7rem; font-size: 1.05rem; letter-spacing: -0.01em; }
+  .rules ul { margin: 0; padding-left: 1.1rem; }
+  .rules li { margin: 0.35rem 0; }
+  .rules b { color: var(--aqua); }
+
+  .toc { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0 0 2.6rem; padding: 0; list-style: none; }
+  .toc a {
+    display: inline-block; text-decoration: none; color: var(--ink);
+    font-family: var(--mono); font-size: 0.74rem;
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 8px; padding: 0.35rem 0.6rem;
+  }
+  .toc a:hover, .toc a:focus-visible { border-color: var(--aqua); color: var(--aqua); outline: none; }
+
+  article.video {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    margin-bottom: 2.2rem; overflow: hidden;
+  }
+  .vhead {
+    padding: 1.2rem 1.4rem 1rem; border-bottom: 2px solid var(--aqua);
+    display: flex; flex-direction: column; gap: 0.55rem;
+  }
+  .vnum { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.16em; color: var(--aqua); }
+  .vhead h2 { margin: 0; font-size: 1.35rem; letter-spacing: -0.015em; line-height: 1.2; text-wrap: balance; }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .chip {
+    font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em;
+    border: 1px solid var(--line); border-radius: 999px; padding: 0.22rem 0.65rem;
+    color: var(--ink-soft);
+  }
+  .chip.emotion { background: var(--amber-soft); color: var(--amber); border-color: transparent; }
+  .chip.new { background: var(--aqua-soft); color: var(--aqua); border-color: transparent; font-weight: 700; }
+
+  .vbody { padding: 1.2rem 1.4rem 1.5rem; }
+  .hook {
+    border-left: 3px solid var(--rec); padding: 0.15rem 0 0.15rem 0.85rem; margin: 0 0 1.2rem;
+    font-size: 1.02rem; font-weight: 600;
+  }
+  .hook small { display: block; font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--rec); margin-bottom: 0.25rem; font-weight: 700; }
+
+  h3.blocktitle {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 1.4rem 0 0.6rem;
+  }
+
+  .scenes { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.86rem; }
+  th {
+    text-align: left; font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--ink-soft); font-weight: 600;
+    padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--line);
+  }
+  td { padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td.tc { font-family: var(--mono); font-size: 0.74rem; white-space: nowrap; color: var(--aqua); font-weight: 700; font-variant-numeric: tabular-nums; }
+  td .te { display: block; color: var(--ink-soft); margin-top: 0.2rem; }
+  td .ov { font-weight: 700; }
+
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 640px) { .twocol { grid-template-columns: 1fr; } }
+  .panel { border: 1px dashed var(--line); border-radius: 10px; padding: 0.8rem 0.95rem; }
+  .panel p { margin: 0.25rem 0; font-size: 0.88rem; }
+  .panel ul { margin: 0.3rem 0 0; padding-left: 1.05rem; font-size: 0.88rem; }
+  .panel li { margin: 0.22rem 0; }
+
+  .cta {
+    margin-top: 1.2rem; background: var(--aqua-soft); border-radius: 10px;
+    padding: 0.85rem 1rem; font-size: 0.92rem;
+  }
+  .cta b { color: var(--aqua); }
+  .cta .te { color: var(--ink-soft); display: block; margin-top: 0.2rem; }
+
+  footer { color: var(--ink-soft); font-size: 0.85rem; text-align: center; margin-top: 3rem; }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <span class="slate">Production pack · 12 reels · 9:16</span>
+    <h1>AquaDealers USP Video Pack</h1>
+    <p class="lede">One video per USP. Each card is a complete shoot plan: the hook, scene-by-scene storyboard with timecodes, on-screen overlay text in English + Telugu, voiceover script, emotion arc, music, props, and the closing CTA. Shoot everything on a phone at the shop — real counter, real farmers, real feed bags.</p>
+  </header>
+
+  <section class="rules">
+    <h2>Ground rules for every video</h2>
+    <ul>
+      <li><b>Format:</b> Vertical 9:16, 1080×1920, 30fps. Length 25–35 seconds. Also export a 15s cut (hook + best scene + CTA) for ads.</li>
+      <li><b>First 3 seconds decide everything.</b> Open on the pain or the wow — never on a logo.</li>
+      <li><b>Language:</b> Voiceover in Telugu, overlays bilingual (Telugu big, English small). Always burn in subtitles — most reels are watched on mute.</li>
+      <li><b>Real people, real shop.</b> A dealer in a lungi at his own counter beats an actor. Ask 2–3 friendly farmers for 10 minutes on camera.</li>
+      <li><b>Phone screen shots:</b> record the app with built-in screen recording (clean status bar, 100% battery icon hidden if possible), then film the phone in-hand for context shots. Never mix the two in one cut.</li>
+      <li><b>Light:</b> shoot morning 7–10am at the counter facing the entrance light. No tube-light-behind-head shots.</li>
+      <li><b>End card (same for all 12):</b> logo, one line "మీ షాప్ కోసం తయారైన యాప్" (An app built for your shop), phone number + "WhatsApp చేయండి", 2s hold.</li>
+      <li><b>Music:</b> use trending Telugu reel audio when posting organically (reach), switch to the listed royalty-free mood for paid ads.</li>
+    </ul>
+  </section>
+
+  <ul class="toc">
+    <li><a href="#v01">V01 Bill in 30s</a></li>
+    <li><a href="#v02">V02 No signal</a></li>
+    <li><a href="#v03">V03 Who owes you</a></li>
+    <li><a href="#v04">V04 Farmer trust link</a></li>
+    <li><a href="#v05">V05 Daily Book</a></li>
+    <li><a href="#v06">V06 Expiry safety</a></li>
+    <li><a href="#v07">V07 Day close</a></li>
+    <li><a href="#v08">V08 Multi-shop</a></li>
+    <li><a href="#v09">V09 Staff PIN</a></li>
+    <li><a href="#v10">V10 Profit &amp; GST</a></li>
+    <li><a href="#v11">V11 WhatsApp</a></li>
+    <li><a href="#v12">V12 Udhar control</a></li>
+  </ul>
+
+  <!-- ============================================================ V01 -->
+  <article class="video" id="v01">
+    <div class="vhead">
+      <span class="vnum">V01 · SPEED</span>
+      <h2>The 30-Second Bill</h2>
+      <div class="chips">
+        <span class="chip">30s</span>
+        <span class="chip emotion">Emotion: frustration → relief → pride</span>
+        <span class="chip">Difficulty: easy</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>"బిల్లు రాయడానికి 10 నిమిషాలా?" — a queue of impatient farmers at a counter, dealer scribbling in a book.</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–3s</td><td>Close-up: hand writing a paper bill slowly, farmers waiting, one checks his watch. Slightly sped up to feel chaotic.</td><td><span class="ov">బిల్లుకి 10 నిమిషాలా? 😤</span><span class="te">10 minutes for one bill?</span></td><td>"రోజూ ఇదే గొడవ… బిల్లు రాసేలోపు రైతు విసుక్కుంటాడు."</td></tr>
+        <tr><td class="tc">3–8s</td><td>Dealer picks up phone. Screen recording: tap New Bill → select farmer → tap 2 products.</td><td><span class="ov">ఇప్పుడు చూడండి 👇</span><span class="te">Now watch this</span></td><td>"AquaDealers లో — రైతు పేరు, ఫీడ్ బ్యాగ్స్, ఒక్కో ట్యాప్."</td></tr>
+        <tr><td class="tc">8–15s</td><td>Screen recording continues: quantity, total appears, farmer signs on the phone screen with finger.</td><td><span class="ov">సంతకం కూడా ఫోన్ మీదే ✍️</span><span class="te">Signature on the phone itself</span></td><td>"లెక్క ఆటోమేటిక్. రైతు సంతకం ఫోన్ మీదే."</td></tr>
+        <tr><td class="tc">15–22s</td><td>Tap WhatsApp share → cut to farmer's phone receiving the PDF bill. Farmer smiles, nods.</td><td><span class="ov">బిల్లు నేరుగా WhatsApp కి 📲</span><span class="te">Bill straight to WhatsApp</span></td><td>"బిల్లు వెంటనే రైతు WhatsApp కి. ప్రింట్ కావాలంటే అదీ ఉంది."</td></tr>
+        <tr><td class="tc">22–27s</td><td>Wide shot: same counter, no queue, dealer relaxed, sipping tea. Timer overlay "00:30" freezes.</td><td><span class="ov">30 సెకన్లు. అంతే.</span><span class="te">30 seconds. That's it.</span></td><td>"పది నిమిషాల పని — ముప్పై సెకన్లలో."</td></tr>
+        <tr><td class="tc">27–30s</td><td>End card.</td><td><span class="ov">AquaDealers · WhatsApp చేయండి</span></td><td>"AquaDealers. మీ షాప్ కోసం."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>0–3s: chaotic ambience, pen scratching, murmur</li>
+            <li>3s: record-scratch / whoosh into upbeat rhythm</li>
+            <li>22s: satisfying "ding" when timer freezes</li>
+            <li>Paid ads: upbeat percussion, 120bpm, no vocals</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>Old bill book + pen (the "villain")</li>
+            <li>3 farmers (or staff acting), tea glass</li>
+            <li>Screen recording: bill flow rehearsed twice before recording</li>
+            <li>Stopwatch overlay added in edit (CapCut timer sticker)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "Send 'BILL' on WhatsApp — we'll set up your shop free in 1 day."<span class="te">WhatsApp లో 'BILL' అని పంపండి — ఒక్క రోజులో మీ షాప్ సెటప్ ఫ్రీ.</span></div>
+    </div>
+  </article>
+
+  <!-- ============================================================ V02 -->
+  <article class="video" id="v02">
+    <div class="vhead">
+      <span class="vnum">V02 · RELIABILITY</span>
+      <h2>No Signal? No Problem.</h2>
+      <div class="chips">
+        <span class="chip">30s</span>
+        <span class="chip new">NEW feature</span>
+        <span class="chip emotion">Emotion: anxiety → calm confidence</span>
+        <span class="chip">Difficulty: medium (pond-side shoot)</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>Phone held up at a pond bund, zero signal bars. "సిగ్నల్ లేదు… బిల్లు ఎలా?"</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–4s</td><td>Pond-side. Dealer delivering feed bags from a bike/auto. Holds phone up to the sky — close-up on "No Service".</td><td><span class="ov">చెరువు దగ్గర సిగ్నల్ ఉండదు 📵</span><span class="te">No signal at the pond</span></td><td>"చెరువు దగ్గరికి ఫీడ్ ఇచ్చాం. సిగ్నల్ లేదు. బిల్లు?"</td></tr>
+        <tr><td class="tc">4–12s</td><td>Screen recording (airplane mode ON, visible): creates bill normally. "Saved Offline!" success screen with amber cloud icon.</td><td><span class="ov">నెట్ లేకుండానే బిల్లు ✅</span><span class="te">Bill saved — without internet</span></td><td>"AquaDealers కి నెట్ అక్కర్లేదు. బిల్లు ఫోన్‌లో సేఫ్ గా సేవ్."</td></tr>
+        <tr><td class="tc">12–18s</td><td>Farmer signs on phone at the pond. Handshake. Dealer rides back — scenery shot.</td><td><span class="ov">సంతకం అక్కడే ✍️</span></td><td>"రైతు సంతకం అక్కడే తీసుకోండి. పని అయిపోయింది."</td></tr>
+        <tr><td class="tc">18–25s</td><td>Back at shop. Phone gets signal — notification pops: "2 offline bills synced ✓ Bill no. SLA-0042". Dealer doesn't even look at it.</td><td><span class="ov">షాప్ కి రాగానే ఆటో-సింక్ 🔄</span><span class="te">Auto-syncs when you're back</span></td><td>"షాప్‌కి రాగానే బిల్లులు వాటంతట అవే ఎక్కుతాయి. మీరు ఏమీ చేయనక్కర్లేదు."</td></tr>
+        <tr><td class="tc">25–30s</td><td>Dealer to camera: "సిగ్నల్ మీద ఆధారపడే వ్యాపారం కాదు మనది." End card.</td><td><span class="ov">పని ఆగదు. ఎప్పుడూ.</span><span class="te">Work never stops.</span></td><td>"AquaDealers — పని ఆగదు, ఎప్పుడూ."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>0–4s: wind, water, distant pump — raw ambience, no music</li>
+            <li>4s onward: calm confident acoustic groove</li>
+            <li>18s: soft "sync complete" chime</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>Shoot at a real pond delivery (golden hour looks best)</li>
+            <li>Turn airplane mode ON before screen recording — the offline banner must be genuine</li>
+            <li>Feed bags on vehicle for authenticity</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "Your counter never depends on the tower again. WhatsApp 'OFFLINE' to try it."<span class="te">'OFFLINE' అని WhatsApp చేయండి — ఫ్రీ ట్రయల్.</span></div>
+    </div>
+  </article>
+
+  <!-- ============================================================ V03 -->
+  <article class="video" id="v03">
+    <div class="vhead">
+      <span class="vnum">V03 · MONEY</span>
+      <h2>Who Owes You — and Since When</h2>
+      <div class="chips">
+        <span class="chip">30s</span>
+        <span class="chip new">NEW feature</span>
+        <span class="chip emotion">Emotion: worry → control → determination</span>
+        <span class="chip">Difficulty: easy</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>Dealer flipping through a fat ledger at night, rubbing his forehead. "బయట ఎంత ఉందో తెలుసా?"</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–4s</td><td>Night. Single bulb. Dealer flips ledger pages, does mental math, sighs. Slow push-in.</td><td><span class="ov">బయట డబ్బు ఎంతో గుర్తుందా? 🤔</span><span class="te">Do you know your total dues?</span></td><td>"పుస్తకంలో ఉంది… కానీ మొత్తం ఎంత? ఎవరు ఎన్నాళ్ల నుంచి?"</td></tr>
+        <tr><td class="tc">4–11s</td><td>Screen recording: Dues page. Ageing blocks — green / yellow / orange / red with amounts. Tap the red 90+ bucket → list filters.</td><td><span class="ov">ఎరుపు = 90 రోజులు దాటింది 🔴</span><span class="te">Red = pending 90+ days</span></td><td>"AquaDealers లో ఒక్క చూపులో — ఎవరు 30 రోజులు, ఎవరు 90 రోజులు దాటారో రంగుల్లో కనిపిస్తుంది."</td></tr>
+        <tr><td class="tc">11–18s</td><td>Screen recording: tap a farmer → set follow-up "will pay ₹50,000 on Monday" with date + note.</td><td><span class="ov">"సోమవారం ఇస్తా" — నోట్ పెట్టండి 📅</span><span class="te">Save every promise</span></td><td>"రైతు 'సోమవారం ఇస్తా' అన్నాడా? యాప్‌లో నోట్ పెట్టండి."</td></tr>
+        <tr><td class="tc">18–24s</td><td>Morning. Screen recording: "Follow-ups due today" list. Dealer calls first farmer, smiling, confident.</td><td><span class="ov">రోజూ పొద్దున — ఎవరిని అడగాలో రెడీ ✅</span><span class="te">Your daily collection list, ready</span></td><td>"పొద్దున యాప్ చెబుతుంది — ఈరోజు ఎవరిని అడగాలో."</td></tr>
+        <tr><td class="tc">24–30s</td><td>Dealer to camera, ledger closed and pushed aside. End card.</td><td><span class="ov">వసూళ్లు = లాభం</span><span class="te">Collections are profit</span></td><td>"గుర్తుంచుకునే పని యాప్‌ది. వసూలు చేసే పని మీది. AquaDealers."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>0–4s: quiet night crickets, page flips, low tense drone</li>
+            <li>4s: drone lifts into steady determined beat</li>
+            <li>Ads: mid-tempo motivational, no vocals</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>Old thick ledger (the fatter the better)</li>
+            <li>Seed demo data: at least one farmer in each color bucket</li>
+            <li>Warm lamp for the night scene, phone torch bounce is enough</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "See your reds today. WhatsApp 'DUES' for a free demo with your own data."<span class="te">'DUES' అని పంపండి — మీ డేటాతోనే డెమో.</span></div>
+    </div>
+  </article>
+
+  <!-- ============================================================ V04 -->
+  <article class="video" id="v04">
+    <div class="vhead">
+      <span class="vnum">V04 · TRUST</span>
+      <h2>"మీ లెక్క తప్పు" — Never Again</h2>
+      <div class="chips">
+        <span class="chip">30s</span>
+        <span class="chip new">NEW feature</span>
+        <span class="chip emotion">Emotion: conflict → transparency → respect</span>
+        <span class="chip">Difficulty: medium (two actors)</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>Farmer and dealer arguing over amounts at the counter: "నేను ఇచ్చాను!" / "లేదు, బాకీ ఉంది!"</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–4s</td><td>Two-shot: friendly argument at counter. Farmer waves hand, dealer points at ledger. Freeze frame.</td><td><span class="ov">"మీ లెక్క తప్పు!" 😠</span><span class="te">"Your math is wrong!"</span></td><td>"ప్రతి డీలర్‌కి తెలిసిన గొడవ — లెక్క మీద నమ్మకం లేకపోవడం."</td></tr>
+        <tr><td class="tc">4–11s</td><td>Screen recording: dealer opens farmer ledger → taps "Share Balance" → WhatsApp opens with the link + message.</td><td><span class="ov">ఒక్క లింక్ పంపండి 🔗</span><span class="te">Send one link</span></td><td>"AquaDealers లో రైతుకి ఒక లింక్ పంపండి."</td></tr>
+        <tr><td class="tc">11–19s</td><td>Farmer's phone: opens the link — sees shop name, his balance, every bill and payment listed. He scrolls, nods slowly.</td><td><span class="ov">రైతు ఎప్పుడైనా తన లెక్క చూడొచ్చు 👀</span><span class="te">He sees his own statement, any time</span></td><td>"రైతు తన బిల్లులు, చెల్లింపులు, బ్యాలెన్స్ — అన్నీ తనే చూసుకుంటాడు. లాగిన్ అక్కర్లేదు."</td></tr>
+        <tr><td class="tc">19–26s</td><td>Same two men now laughing, tea together. Farmer shows his phone to a friend — word of mouth moment.</td><td><span class="ov">గొడవ కాదు — నమ్మకం 🤝</span><span class="te">Not disputes — trust</span></td><td>"లెక్క పారదర్శకం అయితే, నమ్మకం పెరుగుతుంది. వ్యాపారం పెరుగుతుంది."</td></tr>
+        <tr><td class="tc">26–30s</td><td>End card.</td><td><span class="ov">AquaDealers · నమ్మకంతో వ్యాపారం</span></td><td>"AquaDealers — నమ్మకంతో వ్యాపారం."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>0–4s: overlapping argument voices, abrupt stop on freeze</li>
+            <li>4s: clean minimal piano/pluck groove</li>
+            <li>19s: warm swell as they laugh</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>Two phones (dealer's + farmer's)</li>
+            <li>Rehearse the argument — keep it playful, not ugly</li>
+            <li>Demo farmer with 5–6 transactions so the statement looks real</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "Give your farmers their own balance link. WhatsApp 'TRUST' to start."<span class="te">'TRUST' అని పంపండి — రైతులకు లింక్ ఇవ్వండి.</span></div>
+    </div>
+  </article>
+
+  <!-- ============================================================ V05 -->
+  <article class="video" id="v05">
+    <div class="vhead">
+      <span class="vnum">V05 · NOSTALGIA</span>
+      <h2>Your Register. Now It Talks Back.</h2>
+      <div class="chips">
+        <span class="chip">35s</span>
+        <span class="chip new">NEW — Daily Book</span>
+        <span class="chip emotion">Emotion: nostalgia → wonder → ownership</span>
+        <span class="chip">Difficulty: easy</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>Extreme close-up: finger sliding down a real ruled register page… then the same gesture on the phone — same cream page.</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–5s</td><td>Match cut: real register page → Daily Book screen (same cream, ruled lines). Hold both side by side.</td><td><span class="ov">మీ పుస్తకం… ఫోన్‌లో 📔</span><span class="te">Your register — on the phone</span></td><td>"ఇది మీ రోజువారీ పుస్తకం. అలాగే ఉంటుంది. కానీ ఇది మాట్లాడుతుంది."</td></tr>
+        <tr><td class="tc">5–13s</td><td>Screen recording: Daily Book index — cash in hand, products sold, farmers. Tap "Products Sold" → page turns. Tap "Avanti 3mm" → who bought it.</td><td><span class="ov">ఏ ప్రొడక్ట్ ఎవరు కొన్నారో — ట్యాప్ చేయండి</span><span class="te">Tap any line — it opens</span></td><td>"ఈరోజు ఏం అమ్మారో ట్యాప్ చేయండి — ఎవరు కొన్నారో పేజీ తిరుగుతుంది."</td></tr>
+        <tr><td class="tc">13–20s</td><td>Screen recording: tap farmer → his page → tap bill → full bill. Then back-back-back — pages turn back.</td><td><span class="ov">పేజీలు తిప్పినట్టే 📖</span><span class="te">Turns like real pages</span></td><td>"రైతు పేజీ, బిల్లు పేజీ — పుస్తకం తిప్పినట్టే. వెనక్కి కూడా అంతే."</td></tr>
+        <tr><td class="tc">20–28s</td><td>Screen recording: calendar tap → jump to last Tuesday. Day Closing page → print. Cut to printed page handed to CA/wife.</td><td><span class="ov">ఏ రోజైనా తెరవండి 📅 · CA కి ప్రింట్</span><span class="te">Open any day · print for your CA</span></td><td>"పోయిన మంగళవారం ఏమైందో? ఒక్క ట్యాప్. రోజు మొత్తం ప్రింట్ చేసి CA కి ఇవ్వండి."</td></tr>
+        <tr><td class="tc">28–35s</td><td>Older dealer smiles at phone, hands his old register to his grandson as a toy. End card.</td><td><span class="ov">పాత అలవాటు. కొత్త శక్తి.</span><span class="te">Old habit. New power.</span></td><td>"AquaDealers డైలీ బుక్ — పాత అలవాటు, కొత్త శక్తి."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>Paper page-turn foley on every navigation (sync to screen)</li>
+            <li>Warm nostalgic melody — flute or veena texture works for the audience</li>
+            <li>28s: soft emotional lift</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>A genuinely old, used register — worn edges sell the story</li>
+            <li>Practice the match cut: same finger, same speed, same direction</li>
+            <li>Seed one full busy day of demo data before recording</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "See your own shop as a book. WhatsApp 'BOOK' for a demo."<span class="te">'BOOK' అని పంపండి — మీ షాప్ డైలీ బుక్ చూడండి.</span></div>
+    </div>
+  </article>
+
+  <!-- ============================================================ V06 -->
+  <article class="video" id="v06">
+    <div class="vhead">
+      <span class="vnum">V06 · SAFETY</span>
+      <h2>Expired Medicine Never Reaches a Pond</h2>
+      <div class="chips">
+        <span class="chip">30s</span>
+        <span class="chip emotion">Emotion: fear → vigilance → relief</span>
+        <span class="chip">Difficulty: easy</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>Macro shot of a medicine bottle label: EXP date circled in red. "ఇది అమ్మితే…?"</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–4s</td><td>Macro: dusty bottle, expiry date. Pull back — it's buried mid-shelf among 50 bottles.</td><td><span class="ov">ఏ బాటిల్ ఎప్పుడు ఎక్స్‌పైర్? 😨</span><span class="te">Which bottle expires when?</span></td><td>"యాభై బాటిళ్లలో ఏది ముందు ఎక్స్‌పైర్ అవుతుందో గుర్తుందా?"</td></tr>
+        <tr><td class="tc">4–12s</td><td>Screen recording: inventory lots — batch numbers, expiry dates, oldest-first order. Expiring-soon warning badge.</td><td><span class="ov">ప్రతి బ్యాచ్, ప్రతి తేదీ 🗂️</span><span class="te">Every batch, every date, tracked</span></td><td>"AquaDealers ప్రతి బ్యాచ్‌ని, ప్రతి ఎక్స్‌పైరీని గుర్తుంచుకుంటుంది."</td></tr>
+        <tr><td class="tc">12–19s</td><td>Screen recording: billing a medicine — app auto-picks the oldest good batch. Expired lot shown crossed out, not sold.</td><td><span class="ov">పాత స్టాక్ ముందు · ఎక్స్‌పైర్డ్ ఎప్పటికీ కాదు 🚫</span><span class="te">Oldest first · expired never</span></td><td>"అమ్మేటప్పుడు పాత స్టాక్ ముందు వెళ్తుంది — ఎక్స్‌పైర్ అయినది అస్సలు వెళ్లదు."</td></tr>
+        <tr><td class="tc">19–26s</td><td>App notification: "2 expired lots removed from stock". Dealer removes bottles from shelf into a discard box.</td><td><span class="ov">యాప్ దానంతట అదే తీసేస్తుంది ✅</span><span class="te">Removed from stock automatically</span></td><td>"ఎక్స్‌పైర్ అయిన లాట్లు స్టాక్ నుంచి వాటంతట అవే బయటకి."</td></tr>
+        <tr><td class="tc">26–30s</td><td>Healthy pond shot, farmer feeding. End card.</td><td><span class="ov">రైతు నమ్మకం = మీ బ్రాండ్</span><span class="te">Farmer safety is your brand</span></td><td>"రైతు చెరువు సేఫ్. మీ పేరు సేఫ్. AquaDealers."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>0–4s: low ominous tone, clock tick</li>
+            <li>4s: tension releases into clean steady beat</li>
+            <li>19s: soft alert chime → resolve chord</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>One visibly old bottle (mask the real brand if needed)</li>
+            <li>Demo data: one expired lot + one expiring-soon lot</li>
+            <li>Pond b-roll from any delivery trip works for the closer</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "Your shelf, under watch 24/7. WhatsApp 'STOCK' for a demo."<span class="te">'STOCK' అని పంపండి.</span></div>
+    </div>
+  </article>
+
+  <!-- ============================================================ V07 -->
+  <article class="video" id="v07">
+    <div class="vhead">
+      <span class="vnum">V07 · PEACE</span>
+      <h2>Close the Day in 2 Minutes</h2>
+      <div class="chips">
+        <span class="chip">30s</span>
+        <span class="chip emotion">Emotion: exhaustion → clarity → peace</span>
+        <span class="chip">Difficulty: easy</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>Night shot: shutter half down, dealer counting cash under counter light, recounting, confused.</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–4s</td><td>Cash recount. Notes don't tally. Wife/son waiting at the door. Clock shows 9:45pm.</td><td><span class="ov">రాత్రి 10 అయినా లెక్క తేలడం లేదా? 😩</span><span class="te">Still counting at 10pm?</span></td><td>"రోజంతా కష్టపడి, రాత్రి లెక్కల్లో మునిగిపోతున్నారా?"</td></tr>
+        <tr><td class="tc">4–12s</td><td>Screen recording: Day Close screen — expected cash vs counted cash. Types physical count, variance shows ₹0 ✅.</td><td><span class="ov">యాప్ చెబుతుంది: డ్రాయర్‌లో ఎంత ఉండాలో 💵</span><span class="te">App says what should be in the drawer</span></td><td>"AquaDealers చెబుతుంది — క్యాష్, UPI, ఉధార్ అన్నీ విడివిడిగా. డ్రాయర్‌లో ఎంత ఉండాలో కూడా."</td></tr>
+        <tr><td class="tc">12–19s</td><td>Screen recording: Daily Book → Day Closing page — sales, received, spent, vs yesterday ↑18%.</td><td><span class="ov">నిన్నటి కంటే +18% 📈</span><span class="te">+18% vs yesterday</span></td><td>"ఈరోజు ఎంత అమ్మారో, నిన్నటి కంటే ఎంత ఎక్కువో — ఒక్క పేజీలో."</td></tr>
+        <tr><td class="tc">19–26s</td><td>Dealer pulls shutter fully down at 8:15pm, lights off, rides home. Family dinner shot.</td><td><span class="ov">8:15 కి ఇంట్లో 🏠</span><span class="te">Home by 8:15</span></td><td>"లెక్కలు రెండు నిమిషాల్లో. మిగతా టైం మీ కుటుంబానికి."</td></tr>
+        <tr><td class="tc">26–30s</td><td>End card over dinner ambience.</td><td><span class="ov">AquaDealers · రోజు ముగింపు సులభం</span></td><td>"AquaDealers. రోజు ముగింపు — సులభం."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>0–4s: counting under breath, note shuffling, tired sigh</li>
+            <li>4s: gentle hopeful keys</li>
+            <li>19s: warm family ambience, music softens</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>Cash bundle, counter lamp, wall clock</li>
+            <li>Family shot can be silhouettes if privacy matters</li>
+            <li>Emotional target: this one sells to the dealer's family too</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "Go home earlier. WhatsApp 'DAYCLOSE' for a free demo."<span class="te">'DAYCLOSE' అని పంపండి.</span></div>
+    </div>
+  </article>
+
+  <!-- ============================================================ V08 -->
+  <article class="video" id="v08">
+    <div class="vhead">
+      <span class="vnum">V08 · SCALE</span>
+      <h2>Three Shops. One Phone.</h2>
+      <div class="chips">
+        <span class="chip">30s</span>
+        <span class="chip emotion">Emotion: ambition → command → pride</span>
+        <span class="chip">Difficulty: medium (multi-location b-roll)</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>Three quick shop-front shots (different towns) slam in one after another. "మూడు షాపులు. ఒక్క ఫోన్."</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–4s</td><td>3 shop fronts, 1s each, whip cuts. Then dealer's face — calm.</td><td><span class="ov">నెల్లూరు · కావలి · గూడూరు</span></td><td>"మూడు ఊర్లలో షాపులు. టెన్షన్ ఒక్కటీ లేదు."</td></tr>
+        <tr><td class="tc">4–12s</td><td>Screen recording: branch selector — switch shop → entire app turns green. Switch again → orange. (Branch colors!)</td><td><span class="ov">ఏ షాప్‌లో ఉన్నారో రంగే చెబుతుంది 🎨</span><span class="te">The color tells you which shop you're in</span></td><td>"షాప్ మారిస్తే యాప్ రంగు మారుతుంది — గ్రీన్ అంటే కావలి, ఆరెంజ్ అంటే గూడూరు. పొరపాటుకి చోటే లేదు."</td></tr>
+        <tr><td class="tc">12–19s</td><td>Screen recording: "All Shops" view — combined sales, then per-shop split. Stock in shop 2, dues in shop 3.</td><td><span class="ov">అన్ని షాపుల లెక్క ఒక్క చోట 📊</span><span class="te">Every shop's numbers in one place</span></td><td>"ఏ షాప్‌లో అమ్మకం ఎంతో, స్టాక్ ఎంతో, బాకీ ఎంతో — అన్నీ ఒక్క ఫోన్‌లో."</td></tr>
+        <tr><td class="tc">19–26s</td><td>Dealer at home/tea shop checking phone while shops run. Staff serving customers in b-roll.</td><td><span class="ov">షాప్‌కి వెళ్లకుండానే కంట్రోల్ 💪</span><span class="te">Full control, from anywhere</span></td><td>"మీరు ఎక్కడున్నా — వ్యాపారం మీ చేతిలో."</td></tr>
+        <tr><td class="tc">26–30s</td><td>End card.</td><td><span class="ov">AquaDealers · పెరుగుతున్న డీలర్ల కోసం</span></td><td>"AquaDealers — పెరుగుతున్న డీలర్ల కోసం."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>Confident driving beat throughout — this is the "boss" video</li>
+            <li>Whip-pan whooshes on shop cuts</li>
+            <li>Color-change moments: subtle "pop" SFX</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>If you have only 1 shop location, shoot 3 angles/signboards differently dressed</li>
+            <li>Set branch colors before recording (Settings → Branches → Edit)</li>
+            <li>The color flip is the money shot — record it smoothly, twice</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "Running 2+ shops? WhatsApp 'BRANCH' — multi-shop setup free."<span class="te">'BRANCH' అని పంపండి — మల్టీ-షాప్ సెటప్ ఫ్రీ.</span></div>
+    </div>
+  </article>
+
+  <!-- ============================================================ V09 -->
+  <article class="video" id="v09">
+    <div class="vhead">
+      <span class="vnum">V09 · CONTROL</span>
+      <h2>Staff Runs the Counter. You Keep the Keys.</h2>
+      <div class="chips">
+        <span class="chip">30s</span>
+        <span class="chip emotion">Emotion: hesitation → control → freedom</span>
+        <span class="chip">Difficulty: easy</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>Dealer whispering to camera while staff stands at counter behind: "వాడికి ఫోన్ ఇస్తే… అన్నీ చూస్తాడేమో?"</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–4s</td><td>Comic tone: dealer clutches phone protectively. Staff extends hand for it. Standoff.</td><td><span class="ov">స్టాఫ్‌కి యాప్ ఇవ్వాలంటే భయమా? 😅</span><span class="te">Scared to hand the app to staff?</span></td><td>"స్టాఫ్‌కి ఇస్తే లాభాలు కనిపిస్తాయా? రేట్లు మారుస్తాడా?"</td></tr>
+        <tr><td class="tc">4–12s</td><td>Screen recording: staff PIN pad — staff enters 4-digit PIN → app opens with ONLY billing + farmers. Menus visibly fewer.</td><td><span class="ov">స్టాఫ్‌కి PIN మాత్రమే 🔐</span><span class="te">Staff gets a PIN — not your account</span></td><td>"AquaDealers లో స్టాఫ్‌కి సొంత PIN. మీరు ఇచ్చిన పేజీలే కనిపిస్తాయి — అంతే."</td></tr>
+        <tr><td class="tc">12–19s</td><td>Screen recording: dealer's permission screen — toggling Reports OFF, Cashbook OFF, Billing ON. Then staff view: "Access restricted" on reports.</td><td><span class="ov">లాభాలు, రిపోర్ట్లు — మీకు మాత్రమే 🙈</span><span class="te">Profits stay owner-only</span></td><td>"రిపోర్ట్లు, లాభాలు, రేట్లు — మీ దగ్గరే. ఏది చూపించాలో మీరే నిర్ణయిస్తారు."</td></tr>
+        <tr><td class="tc">19–26s</td><td>Staff billing happily at counter; dealer leaves on bike waving. Split screen: staff bills / dealer at bank or pond.</td><td><span class="ov">మీరు లేకపోయినా షాప్ నడుస్తుంది ✅</span><span class="te">Shop runs even when you're out</span></td><td>"మీరు బ్యాంక్‌కో, చెరువుకో వెళ్లినా — కౌంటర్ ఆగదు."</td></tr>
+        <tr><td class="tc">26–30s</td><td>End card.</td><td><span class="ov">AquaDealers · యజమాని మీరే</span></td><td>"కంట్రోల్ మీ చేతిలో. AquaDealers."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>0–4s: comedic pluck/pizzicato</li>
+            <li>4s: switches to secure/техy minimal beat</li>
+            <li>4s: switches to clean minimal beat</li>
+            <li>12s: lock "click" SFX on each permission toggle</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>Real staff member (their genuine smile at 19s sells it)</li>
+            <li>Create a demo staff PIN with restricted permissions beforehand</li>
+            <li>Keep the comedy in the first 4s only — rest is confident</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "Add your first staff PIN in 2 minutes. WhatsApp 'STAFF'."<span class="te">'STAFF' అని పంపండి.</span></div>
+    </div>
+  </article>
+
+  <!-- ============================================================ V10 -->
+  <article class="video" id="v10">
+    <div class="vhead">
+      <span class="vnum">V10 · CLARITY</span>
+      <h2>Know Your Profit. Not Just Your Sales.</h2>
+      <div class="chips">
+        <span class="chip">30s</span>
+        <span class="chip emotion">Emotion: doubt → revelation → confidence</span>
+        <span class="chip">Difficulty: easy</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>Dealer to camera: "టర్నోవర్ కోటి… లాభం ఎంతో తెలీదు." (turnover in crores, profit unknown)</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–4s</td><td>Dealer shrugging at camera, stacks of purchase invoices around.</td><td><span class="ov">అమ్మకం తెలుసు… లాభం? 🤷</span><span class="te">You know sales. But profit?</span></td><td>"అమ్మకాలు గుర్తుంటాయి. కానీ నిజమైన లాభం ఎంత?"</td></tr>
+        <tr><td class="tc">4–12s</td><td>Screen recording: Reports — profit line graph rising, monthly comparison, top products by margin.</td><td><span class="ov">ప్రొడక్ట్ వారీగా లాభం 📈</span><span class="te">Profit — product by product</span></td><td>"AquaDealers కొన్న రేటు, అమ్మిన రేటు రెండూ తెలుసు. అసలు లాభం ఏ ప్రొడక్ట్‌లో ఉందో చూపిస్తుంది."</td></tr>
+        <tr><td class="tc">12–19s</td><td>Screen recording: GST ledger — output/input tax, net payable, month ready. Cut: handing phone to CA, CA nods approvingly.</td><td><span class="ov">GST రెడీ — CA హ్యాపీ 🧾</span><span class="te">GST ready, CA happy</span></td><td>"GST లెక్కలు నెల మొత్తం రెడీగా. CA కి ఫోన్ చూపిస్తే చాలు."</td></tr>
+        <tr><td class="tc">19–26s</td><td>Dealer making a decision: points at a product shelf, tells staff to push it. Confident energy.</td><td><span class="ov">లాభం తెలిస్తే నిర్ణయాలు సులభం 💡</span><span class="te">Know profit → decide better</span></td><td>"ఏది ఎక్కువ అమ్మాలో, ఏ రేటు మార్చాలో — డేటాతో నిర్ణయించండి."</td></tr>
+        <tr><td class="tc">26–30s</td><td>End card.</td><td><span class="ov">AquaDealers · లెక్క స్పష్టం</span></td><td>"AquaDealers — లెక్క స్పష్టం, లాభం స్పష్టం."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>Steady "numbers" beat — clean, precise, no drama</li>
+            <li>12s: paper stamp SFX on GST screen</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>Invoice stacks for the opening</li>
+            <li>Real (or seeded) 3-month data so graphs look alive</li>
+            <li>A real CA cameo = bonus credibility</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "See your real profit this month. WhatsApp 'PROFIT'."<span class="te">'PROFIT' అని పంపండి.</span></div>
+    </div>
+  </article>
+
+  <!-- ============================================================ V11 -->
+  <article class="video" id="v11">
+    <div class="vhead">
+      <span class="vnum">V11 · FAMILIARITY</span>
+      <h2>If You Can WhatsApp, You Can Run This</h2>
+      <div class="chips">
+        <span class="chip">25s</span>
+        <span class="chip emotion">Emotion: intimidation → ease → delight</span>
+        <span class="chip">Difficulty: easy</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>Older dealer (55+) squints at phone: "ఈ యాప్‌లు మనకి రావు అనుకున్నా…"</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–4s</td><td>Older dealer hesitant with phone. Grandson-age helper starts showing… dealer takes over surprisingly fast.</td><td><span class="ov">"యాప్‌లు మనకి రావు" అనుకుంటున్నారా?</span><span class="te">Think apps aren't for you?</span></td><td>"కొత్త యాప్ అంటే భయమా?"</td></tr>
+        <tr><td class="tc">4–11s</td><td>Screen recording: big buttons, Telugu labels, 3 taps to a bill. Slow, unhurried demonstration.</td><td><span class="ov">తెలుగులో · పెద్ద బటన్లు · 3 ట్యాప్‌లు</span><span class="te">Telugu · big buttons · 3 taps</span></td><td>"ఇది WhatsApp అంత సులభం. తెలుగులో. పెద్ద బటన్లు."</td></tr>
+        <tr><td class="tc">11–18s</td><td>Bill → WhatsApp share → farmer gets it. Dealer grins: "అంతేనా?!"</td><td><span class="ov">బిల్లు → WhatsApp → అయిపోయింది ✅</span></td><td>"బిల్లు పంపడం కూడా WhatsApp లోనే. మీకు అలవాటే."</td></tr>
+        <tr><td class="tc">18–25s</td><td>Dealer now teaching ANOTHER older dealer at a tea shop. End card.</td><td><span class="ov">55 ఏళ్ల డీలర్లు కూడా వాడుతున్నారు 💪</span><span class="te">Dealers 55+ use it daily</span></td><td>"వయసు అడ్డు కాదు. AquaDealers — WhatsApp వచ్చిన ప్రతి ఒక్కరికీ."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>Light, warm, slightly humorous acoustic</li>
+            <li>11s: WhatsApp send "woosh" (recreate, don't rip the real one for ads)</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>Cast a genuinely senior dealer — authenticity is the whole video</li>
+            <li>Show hands + phone big and steady; no fast cuts in the demo</li>
+            <li>Set the app language to Telugu before recording</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "Try it yourself — we teach you on a video call, free. WhatsApp 'EASY'."<span class="te">'EASY' అని పంపండి — ఫ్రీగా నేర్పిస్తాం.</span></div>
+    </div>
+  </article>
+
+  <!-- ============================================================ V12 -->
+  <article class="video" id="v12">
+    <div class="vhead">
+      <span class="vnum">V12 · DISCIPLINE</span>
+      <h2>Udhar With Limits, Not With Losses</h2>
+      <div class="chips">
+        <span class="chip">30s</span>
+        <span class="chip emotion">Emotion: awkwardness → firmness → respect</span>
+        <span class="chip">Difficulty: medium (two actors)</span>
+      </div>
+    </div>
+    <div class="vbody">
+      <p class="hook"><small>Hook · first 3s</small>Farmer asks for one more lakh of feed on credit. Dealer's face: can't say no, can't say yes.</p>
+
+      <h3 class="blocktitle">Storyboard</h3>
+      <div class="scenes"><table>
+        <tr><th>Time</th><th>What you film</th><th>Overlay text</th><th>Voiceover (Telugu)</th></tr>
+        <tr><td class="tc">0–4s</td><td>Counter. Farmer: "ఇంకో 20 బ్యాగులు రాయి అన్నా." Dealer's frozen smile, close-up.</td><td><span class="ov">"కాదు" అనలేక… 😬</span><span class="te">Can't say no…</span></td><td>"ఉధార్ అడిగితే కాదనలేం. కానీ ఎంత వరకు?"</td></tr>
+        <tr><td class="tc">4–12s</td><td>Screen recording: billing that farmer — credit limit warning pops: "Limit ₹1,00,000 · Current due ₹95,000". Bill blocked unless owner overrides.</td><td><span class="ov">లిమిట్ దాటితే యాప్ ఆపుతుంది 🛑</span><span class="te">App stops over-limit udhar</span></td><td>"AquaDealers లో ప్రతి రైతుకి ఒక లిమిట్. దాటితే యాప్ హెచ్చరిస్తుంది."</td></tr>
+        <tr><td class="tc">12–19s</td><td>Dealer shows the screen to farmer — "యాప్ ఒప్పుకోవడం లేదు బాబూ." Farmer accepts gracefully, pays part cash.</td><td><span class="ov">చెడ్డవాడు యాప్ — మీరు కాదు 😄</span><span class="te">Let the app be the bad guy</span></td><td>"'యాప్ ఒప్పుకోదు' అంటే చాలు — స్నేహం చెడదు, డబ్బూ పోదు."</td></tr>
+        <tr><td class="tc">19–26s</td><td>Screen recording: farmer risk badge (green/amber/red) + credit score view. Dealer sets a higher limit for a green farmer confidently.</td><td><span class="ov">మంచి రైతుకి ఎక్కువ · రిస్క్ రైతుకి తక్కువ</span><span class="te">Good farmers earn bigger limits</span></td><td>"బాగా కట్టే రైతుకి లిమిట్ పెంచండి. రిస్క్ ఉన్న వాడికి తగ్గించండి. అంతా మీ చేతిలో."</td></tr>
+        <tr><td class="tc">26–30s</td><td>Farmer and dealer shake hands. End card.</td><td><span class="ov">AquaDealers · ఉధార్‌కి క్రమశిక్షణ</span></td><td>"ఉధార్‌కి క్రమశిక్షణ. AquaDealers."</td></tr>
+      </table></div>
+
+      <div class="twocol">
+        <div class="panel">
+          <p><b>Audio</b></p>
+          <ul>
+            <li>0–4s: awkward silence, ceiling fan hum</li>
+            <li>4s: firm confident rhythm</li>
+            <li>12s: light comic sting on "blame the app" moment</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <p><b>Props &amp; checklist</b></p>
+          <ul>
+            <li>Demo farmer set near his credit limit before recording</li>
+            <li>Keep the farmer sympathetic — he's a customer, not a villain</li>
+            <li>The "blame the app" beat is the most shareable moment — nail it</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="cta"><b>CTA:</b> "Set credit limits tonight. WhatsApp 'UDHAR'."<span class="te">'UDHAR' అని పంపండి.</span></div>
+    </div>
+  </article>
+
+  <footer>
+    AquaDealers USP Video Pack · shoot order suggestion: V01 → V03 → V05 (fastest wins first) · reuse b-roll across videos
+  </footer>
+</div>
