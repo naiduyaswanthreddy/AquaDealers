@@ -6,12 +6,34 @@ on:
     - cron: '0 0 */3 * *'
   workflow_dispatch:
 
+# Anon/publishable keys are safe to commit — they are shipped in client code
+# (see src/lib/supabase.ts) and RLS protects the data. Using them directly
+# avoids depending on repo secrets that may not be configured.
 jobs:
   ping-supabase:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: aquadealers-current
+            url: https://xttuxtyjtqegjvirtpbr.supabase.co
+            key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dHV4dHlqdHFlZ2p2aXJ0cGJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDkyNDksImV4cCI6MjA5NTc4NTI0OX0.Wj5dvvzMX5VXNBo2DY2j_5jhsEPzHCC_OUmsZvjrU3A
+          - name: aquadealers-legacy
+            url: https://fgrdcscbrtcewmoprnfr.supabase.co
+            key: sb_publishable_zk6VPJ4fks7YquigLMBjbg_hFz2LwJN
+    name: ping-supabase (${{ matrix.name }})
     steps:
       - name: Ping Supabase Database
         run: |
-          curl -s -X GET "${{ secrets.VITE_SUPABASE_URL }}/rest/v1/dealers?select=id&limit=1" \
-          -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
-          -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}"
+          status=$(curl -sS -o /tmp/body -w "%{http_code}" \
+            "${{ matrix.url }}/rest/v1/dealers?select=id&limit=1" \
+            -H "apikey: ${{ matrix.key }}" \
+            -H "Authorization: Bearer ${{ matrix.key }}")
+          echo "HTTP $status from ${{ matrix.url }}"
+          cat /tmp/body
+          # 2xx = alive; RLS returning an empty list still counts as activity.
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "Keep-alive ping failed with HTTP $status" >&2
+            exit 1
+          fi

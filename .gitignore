@@ -2,7 +2,12 @@ node_modules/
 dist/
 .env
 .env.local
+.env.e2e
 *.log
+
+# Playwright
+test-results/
+playwright/.auth/
 
 # Local AI assistant/tooling state
 .agent/

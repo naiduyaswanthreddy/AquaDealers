@@ -817,9 +817,9 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
                             )}
                           </div>
                          <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-1 w-[5.5rem] justify-self-center">
-                            <button onClick={() => updateQuantity(item.inventory_id, item.lot_id, item.quantity - 1)} className="w-5 h-5 flex items-center justify-center text-primary hover:bg-slate-50 rounded"><Minus className="w-3 h-3" /></button>
+                            <button aria-label="Decrease quantity" onClick={() => updateQuantity(item.inventory_id, item.lot_id, item.quantity - 1)} className="w-5 h-5 flex items-center justify-center text-primary hover:bg-slate-50 rounded"><Minus className="w-3 h-3" /></button>
                            <span className="text-xs font-bold text-slate-900">{item.quantity}</span>
-                            <button onClick={() => updateQuantity(item.inventory_id, item.lot_id, item.quantity + 1)} className="w-5 h-5 flex items-center justify-center text-primary hover:bg-slate-50 rounded"><Plus className="w-3 h-3" /></button>
+                            <button aria-label="Increase quantity" onClick={() => updateQuantity(item.inventory_id, item.lot_id, item.quantity + 1)} className="w-5 h-5 flex items-center justify-center text-primary hover:bg-slate-50 rounded"><Plus className="w-3 h-3" /></button>
                          </div>
                          <div className="text-sm font-bold text-slate-900 text-right">{formatCurrency(unitPrice * item.quantity)}</div>
                          <div className="flex items-center justify-end">
