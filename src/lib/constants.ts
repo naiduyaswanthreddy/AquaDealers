@@ -1,4 +1,4 @@
-import { Home, Users, Receipt, Package, Menu, CheckCircle2, AlertTriangle, XCircle, Truck, Zap, Car, ClipboardList, Building, MoreHorizontal, Plus, type LucideIcon } from 'lucide-react';
+import { Home, Users, Receipt, Package, Menu, CheckCircle2, AlertTriangle, XCircle, Truck, Zap, Car, ClipboardList, Building, MoreHorizontal, Plus, Wrench, Megaphone, type LucideIcon } from 'lucide-react';
 import type { StaffFeatureKey } from '@/lib/staffAccess';
 
 /* ─── Crop Statuses ─────────────────────────── */
@@ -38,10 +38,17 @@ export const EXPENSE_CATEGORIES = [
   { value: 'staff', label: 'Staff Salary', icon: Users },
   { value: 'electricity', label: 'Electricity', icon: Zap },
   { value: 'vehicle', label: 'Vehicle', icon: Car },
+  { value: 'maintenance', label: 'Maintenance & Repair', icon: Wrench },
+  { value: 'marketing', label: 'Marketing & Ads', icon: Megaphone },
+  { value: 'packaging', label: 'Packaging Material', icon: Package },
+  { value: 'government_fees', label: 'Government / Tax Fees', icon: Receipt },
   { value: 'other', label: 'Other', icon: ClipboardList },
 ] as const;
 
 export type ExpenseCategoryValue = (typeof EXPENSE_CATEGORIES)[number]['value'];
+
+export const getExpenseCategoryLabel = (value: string): string =>
+  EXPENSE_CATEGORIES.find((c) => c.value === value)?.label ?? value;
 
 export interface NavItem {
   path: string;

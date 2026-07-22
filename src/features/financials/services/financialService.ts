@@ -89,32 +89,18 @@ export const financialService = {
   },
 
   async recordExpense(payload: ExpenseInsert): Promise<void> {
-    // 1. Insert expense record, capturing the id for compensating rollback
-    const { data: expRecord, error: expError } = await supabase
-      .from('expenses')
-      .insert(payload)
-      .select('id')
-      .single();
-
-    if (expError) throw expError;
-
-    // 2. Add entry to cash book; roll back the expense row if this fails
-    const { error: cbError } = await supabase
-      .from('cash_book')
-      .insert({
+    const { error } = await supabase.rpc('record_expense_v1', {
+      p_payload: {
         dealer_id: payload.dealer_id,
-        branch_id: payload.branch_id,
-        entry_type: 'expense',
-        source: 'general_expense',
+        branch_id: payload.branch_id ?? null,
+        category: payload.category,
+        description: payload.description,
         amount: payload.amount,
-        notes: `[${payload.category}] ${payload.description}`,
-        entry_date: payload.expense_date,
-      });
-
-    if (cbError) {
-      await supabase.from('expenses').delete().eq('id', expRecord.id);
-      throw cbError;
-    }
+        paid_via: payload.paid_via ?? 'cash',
+        expense_date: payload.expense_date,
+      },
+    });
+    if (error) throw error;
   },
 
   // Cash Book
@@ -124,13 +110,6 @@ export const financialService = {
     startDate?: string,
     endDate?: string
   ): Promise<CashBookLedger> {
-    let openingQuery = supabase
-      .from('cash_book')
-      .select('entry_type, amount')
-      .eq('dealer_id', dealerId)
-      .order('entry_date', { ascending: true })
-      .order('created_at', { ascending: true });
-
     let rangeQuery = supabase
       .from('cash_book')
       .select('*')
@@ -139,12 +118,10 @@ export const financialService = {
       .order('created_at', { ascending: true });
 
     if (branchId) {
-      openingQuery = openingQuery.eq('branch_id', branchId);
       rangeQuery = rangeQuery.eq('branch_id', branchId);
     }
 
     if (startDate) {
-      openingQuery = openingQuery.lt('entry_date', startDate);
       rangeQuery = rangeQuery.gte('entry_date', startDate);
     }
 
@@ -152,23 +129,19 @@ export const financialService = {
       rangeQuery = rangeQuery.lte('entry_date', endDate);
     }
 
-    // Paginate the opening balance query: PostgREST caps at 1000 rows per request,
-    // so a single await would silently truncate for dealers with > 1000 prior entries.
-    const PAGE = 1000;
-    const allOpeningRows: { entry_type: string; amount: number }[] = [];
-    for (let from = 0; ; from += PAGE) {
-      const { data: page, error: pageErr } = await openingQuery.range(from, from + PAGE - 1);
-      if (pageErr) throw pageErr;
-      allOpeningRows.push(...(page || []));
-      if (!page || page.length < PAGE) break;
+    let openingBalance = 0;
+    if (startDate) {
+      const { data: ob, error: obErr } = await supabase.rpc('get_cash_book_opening_balance_v1', {
+        p_dealer_id: dealerId,
+        p_branch_id: branchId ?? null,
+        p_before_date: startDate,
+      });
+      if (obErr) throw obErr;
+      openingBalance = Number(ob ?? 0);
     }
 
-    const [{ data, error }] = await Promise.all([rangeQuery]);
+    const { data, error } = await rangeQuery;
     if (error) throw error;
-
-    const openingBalance = allOpeningRows.reduce((sum, entry) => {
-      return sum + (entry.entry_type === 'income' ? entry.amount : -entry.amount);
-    }, 0);
 
     return {
       entries: data as CashBookEntry[],
@@ -192,8 +165,7 @@ export const financialService = {
       .from('cash_book')
       .select('*')
       .eq('dealer_id', dealerId)
-      .lte('entry_date', date)
-      .order('entry_date', { ascending: true })
+      .eq('entry_date', date)
       .order('created_at', { ascending: true });
 
     let closingQuery = supabase
@@ -207,8 +179,23 @@ export const financialService = {
       closingQuery = closingQuery.eq('branch_id', branchId);
     }
 
-    const { data: cashEntries, error: cashError } = await cashQuery;
+    const [
+      { data: openingData, error: openingError },
+      { data: cashEntries, error: cashError },
+      { data: closing, error: closingError },
+    ] = await Promise.all([
+      supabase.rpc('get_cash_clarity_opening_v1', {
+        p_dealer_id: dealerId,
+        p_branch_id: branchId ?? null,
+        p_date: date,
+      }),
+      cashQuery,
+      closingQuery.maybeSingle(),
+    ]);
+
+    if (openingError) throw openingError;
     if (cashError) throw cashError;
+    if (closingError) throw closingError;
 
     const paymentIds = (cashEntries || [])
       .map((entry) => entry.reference_id)
@@ -217,7 +204,6 @@ export const financialService = {
     const [
       { data: payments, error: paymentsError },
       { data: supplierPayments, error: supplierPaymentsError },
-      { data: closing, error: closingError },
     ] = await Promise.all([
       paymentIds.length
         ? supabase.from('payments').select('id, method').in('id', paymentIds)
@@ -225,26 +211,20 @@ export const financialService = {
       paymentIds.length
         ? supabase.from('supplier_payments').select('id, method').in('id', paymentIds)
         : Promise.resolve({ data: [], error: null }),
-      closingQuery.maybeSingle(),
     ]);
 
     if (paymentsError) throw paymentsError;
     if (supplierPaymentsError) throw supplierPaymentsError;
-    if (closingError) throw closingError;
 
     const paymentMethods = new Map((payments || []).map((payment) => [payment.id, payment.method || 'cash']));
     const supplierPaymentMethods = new Map(
       (supplierPayments || []).map((payment) => [payment.id, payment.method || 'cash'])
     );
 
-    const classifiedEntries = ((cashEntries || []) as CashBookEntry[]).map((entry) =>
+    const openingCash = Number(openingData ?? 0);
+    const entries = ((cashEntries || []) as CashBookEntry[]).map((entry) =>
       classifyCashEntry(entry, paymentMethods, supplierPaymentMethods)
     );
-
-    const openingCash = classifiedEntries
-      .filter((entry) => entry.entry_date < date)
-      .reduce((sum, entry) => sum + entry.counterCashChange, 0);
-    const entries = classifiedEntries.filter((entry) => entry.entry_date === date);
 
     const cashIn = entries
       .filter((entry) => entry.displayType === 'cash_in')

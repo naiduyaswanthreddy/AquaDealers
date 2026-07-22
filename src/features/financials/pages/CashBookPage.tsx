@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ArrowDownRight, ArrowUpRight, BookOpen, Plus, Minus, Wallet, TrendingUp, Scale, Smartphone, Landmark, Save } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, BookOpen, Plus, Minus, Wallet, TrendingUp, Scale, Smartphone, Landmark, Save, Download } from 'lucide-react';
 import { useCashBook, useCloseCashDay, useDailyCashClarity } from '../hooks/useFinancials';
 import { CashEntryModal } from '../components/CashEntryModal';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
@@ -65,6 +65,26 @@ const CashBookPage: React.FC = () => {
     step: 15,
     resetDeps: [startDate, endDate, entries.length],
   });
+
+  const handleExportCSV = () => {
+    const headers = ['Date', 'Details', 'Source', 'In (+)', 'Out (-)', 'Running Balance'];
+    const rows = runningEntries.map((e) => [
+      e.entry_date,
+      (e.notes || '').replace(/,/g, ';'),
+      e.source?.replace(/_/g, ' ') || 'Manual',
+      e.entry_type === 'income' ? e.amount.toFixed(2) : '',
+      e.entry_type === 'expense' ? e.amount.toFixed(2) : '',
+      e.runningBalance.toFixed(2),
+    ]);
+    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cash-book-${startDate}-to-${endDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleCloseCash = async () => {
     if (!user?.id || !dailyCash) return;
@@ -287,7 +307,7 @@ const CashBookPage: React.FC = () => {
         </div>
 
         <div className="col-span-full rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_12px_32px_rgba(148,163,184,0.12)] sm:p-5 mt-2">
-          <div className="mb-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <DateRangeFilter
               startDate={startDate}
               endDate={endDate}
@@ -296,6 +316,16 @@ const CashBookPage: React.FC = () => {
                 setEndDate(end);
               }}
             />
+            {entries.length > 0 && (
+              <Button
+                variant="secondary"
+                onClick={handleExportCSV}
+                leftIcon={<Download className="w-4 h-4" />}
+                className="shrink-0"
+              >
+                Export CSV
+              </Button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
