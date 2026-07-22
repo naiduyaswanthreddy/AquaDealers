@@ -179,14 +179,14 @@ export function useTodaySoldItems() {
 /**
  * Hook to retrieve monthly sales trend.
  */
-export function useMonthlySalesTrend() {
+export function useMonthlySalesTrend(startDate?: string, endDate?: string) {
   const user = useAuthStore((state) => state.user);
   const activeBranchId = useBranchStore((state) => state.getActiveBranchId());
   const dealerId = user?.id || '';
 
   return useQuery({
-    queryKey: ['dashboard', 'monthly-sales-trend', dealerId, activeBranchId],
-    queryFn: () => getMonthlySalesTrend(dealerId, activeBranchId),
+    queryKey: ['dashboard', 'monthly-sales-trend', dealerId, activeBranchId, startDate, endDate],
+    queryFn: () => getMonthlySalesTrend(dealerId, activeBranchId, startDate, endDate),
     enabled: !!dealerId,
   });
 }

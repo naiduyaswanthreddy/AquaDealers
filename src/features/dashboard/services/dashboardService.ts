@@ -165,27 +165,36 @@ export async function getDuesSummary(
   dealerId: string,
   branchId?: string | null
 ): Promise<{ total: number; dueFarmersCount: number; series: number[] }> {
-  // Single query: top 8 due farmers for sparkline. Aggregate totals (total, count)
-  // come from get_dashboard_aggregates RPC — no need to recompute them here.
-  let query = supabase
-    .from('farmers')
-    .select('total_due')
-    .eq('dealer_id', dealerId)
-    .eq('is_active', true)
-    .gt('total_due', 0)
-    .order('total_due', { ascending: false })
-    .limit(8);
-
   void branchId;
 
-  const { data, error } = await query;
+  const [
+    { data, error },
+    { count, error: countErr },
+  ] = await Promise.all([
+    supabase
+      .from('farmers')
+      .select('total_due')
+      .eq('dealer_id', dealerId)
+      .eq('is_active', true)
+      .gt('total_due', 0)
+      .order('total_due', { ascending: false })
+      .limit(8),
+    supabase
+      .from('farmers')
+      .select('id', { count: 'exact', head: true })
+      .eq('dealer_id', dealerId)
+      .eq('is_active', true)
+      .gt('total_due', 0),
+  ]);
+
   if (error) throw error;
+  if (countErr) throw countErr;
 
   const values = (data ?? []).map(item => Number(item.total_due ?? 0));
   const total = values.reduce((sum, v) => sum + v, 0);
   const series = [...values].reverse();
 
-  return { total, dueFarmersCount: values.length, series };
+  return { total, dueFarmersCount: count ?? values.length, series };
 }
 
 /**
@@ -212,7 +221,11 @@ export async function getLowStockSummary(
   let query = supabase
     .from('inventory')
     .select('quantity_in_stock, min_stock_alert')
-    .eq('dealer_id', dealerId);
+    .eq('dealer_id', dealerId)
+    .filter('quantity_in_stock', 'lt', 'min_stock_alert')
+    .gt('min_stock_alert', 0)
+    .order('quantity_in_stock', { ascending: true })
+    .limit(500);
 
   if (branchId) {
     query = query.eq('branch_id', branchId);
@@ -221,20 +234,14 @@ export async function getLowStockSummary(
   const { data, error } = await query;
   if (error) throw error;
 
-  const shortages = (data ?? [])
-    .map((item) => {
-      const quantity = Number(item.quantity_in_stock);
-      const minAlert = Number(item.min_stock_alert);
-
-      if (quantity >= minAlert) return null;
-
-      return {
-        shortage: Math.max(minAlert - quantity, 0),
-        isCritical: quantity <= 0 || (minAlert > 0 && quantity / minAlert <= 0.35),
-      };
-    })
-    .filter((item): item is { shortage: number; isCritical: boolean } => item !== null)
-    .sort((a, b) => b.shortage - a.shortage);
+  const shortages = (data ?? []).map((item) => {
+    const quantity = Number(item.quantity_in_stock);
+    const minAlert = Number(item.min_stock_alert);
+    return {
+      shortage: Math.max(minAlert - quantity, 0),
+      isCritical: quantity <= 0 || (minAlert > 0 && quantity / minAlert <= 0.35),
+    };
+  });
 
   return {
     lowStockCount: shortages.length,
@@ -264,26 +271,41 @@ export async function getCashSummary(
   branchId?: string | null,
   days: number = 7
 ): Promise<{ currentBalance: number; previousBalance: number; series: number[] }> {
+  // ponytail: 90-day rolling window. Opening balance before cutoff comes from RPC;
+  // only the window rows are fetched, so this stays O(window) not O(all-time).
+  const cutoffDate = shiftLocalDate(-90);
+  const dateLabels = getLastLocalDateStrings(days);
+  const seriesStartDate = dateLabels[0];
+  const yesterdayDate = shiftLocalDate(-1);
+
   let query = supabase
     .from('cash_book')
     .select('entry_type, amount, entry_date')
     .eq('dealer_id', dealerId)
+    .gte('entry_date', cutoffDate)
     .order('entry_date', { ascending: true });
 
   if (branchId) {
     query = query.eq('branch_id', branchId);
   }
 
-  const { data, error } = await query;
-  if (error) throw error;
+  const [{ data, error }, { data: obData, error: obErr }] = await Promise.all([
+    query,
+    supabase.rpc('get_cash_book_opening_balance_v1', {
+      p_dealer_id: dealerId,
+      p_branch_id: branchId ?? null,
+      p_before_date: cutoffDate,
+    }),
+  ]);
 
-  const dateLabels = getLastLocalDateStrings(days);
-  const seriesStartDate = dateLabels[0];
-  const yesterdayDate = shiftLocalDate(-1);
+  if (error) throw error;
+  if (obErr) throw obErr;
+
+  const openingAtCutoff = Number(obData ?? 0);
   const dailyNetMap = new Map<string, number>();
 
-  let currentBalance = 0;
-  let previousBalance = 0;
+  let balanceSinceCutoff = 0;
+  let balanceUpToYesterday = 0;
   let openingBalanceBeforeSeries = 0;
 
   for (const entry of data ?? []) {
@@ -291,28 +313,24 @@ export async function getCashSummary(
     const signedAmount = entry.entry_type === 'income' ? amount : -amount;
     const entryDate = entry.entry_date;
 
-    currentBalance += signedAmount;
-
-    if (entryDate <= yesterdayDate) {
-      previousBalance += signedAmount;
-    }
-
+    balanceSinceCutoff += signedAmount;
+    if (entryDate <= yesterdayDate) balanceUpToYesterday += signedAmount;
     if (entryDate < seriesStartDate) {
       openingBalanceBeforeSeries += signedAmount;
-    } else if (entryDate >= seriesStartDate) {
+    } else {
       dailyNetMap.set(entryDate, (dailyNetMap.get(entryDate) ?? 0) + signedAmount);
     }
   }
 
-  let runningBalance = openingBalanceBeforeSeries;
+  let runningBalance = openingAtCutoff + openingBalanceBeforeSeries;
   const series = dateLabels.map((dateLabel) => {
     runningBalance += dailyNetMap.get(dateLabel) ?? 0;
     return runningBalance;
   });
 
   return {
-    currentBalance,
-    previousBalance,
+    currentBalance: openingAtCutoff + balanceSinceCutoff,
+    previousBalance: openingAtCutoff + balanceUpToYesterday,
     series,
   };
 }
@@ -373,23 +391,20 @@ export async function getCollectTodayFarmers(dealerId: string, branchId?: string
  * Get Low Stock items: returns full list of inventory items with product info below min stock
  */
 export async function getLowStockItems(dealerId: string, branchId?: string | null) {
-  // Direct client-side filtering to avoid 404 console errors from missing RPC
   let query = supabase
     .from('inventory')
     .select('*, products(*)')
     .eq('dealer_id', dealerId)
-    .limit(200);
+    .filter('quantity_in_stock', 'lt', 'min_stock_alert')
+    .gt('min_stock_alert', 0)
+    .order('quantity_in_stock', { ascending: true })
+    .limit(50);
 
   if (branchId) query = query.eq('branch_id', branchId);
-  const { data: fallbackData, error: fallbackError } = await query;
+  const { data, error } = await query;
+  if (error) throw error;
 
-  if (fallbackError) throw fallbackError;
-
-  return (
-    fallbackData
-      ?.filter((item) => Number(item.quantity_in_stock) < Number(item.min_stock_alert))
-      .map((item) => ({ ...item, product: item.products })) ?? []
-  );
+  return (data ?? []).map((item) => ({ ...item, product: item.products }));
 }
 
 
@@ -504,10 +519,24 @@ export async function getRecentTransactions(
     .slice(0, limit);
 }
 
-export async function getMonthlySalesTrend(dealerId: string, branchId?: string | null) {
-  const dateLabels = getLastLocalDateStrings(30); // local-date strings, not UTC
-  const startStr = dateLabels[0];
-  const endStr = dateLabels[dateLabels.length - 1];
+export async function getMonthlySalesTrend(
+  dealerId: string,
+  branchId?: string | null,
+  startDate?: string,
+  endDate?: string
+) {
+  const today = getLocalDateString();
+  const endStr = endDate ?? today;
+  // Build date labels for the requested range (up to 90 days max)
+  const startStr = startDate ?? shiftLocalDate(-29, new Date(`${endStr}T12:00:00`));
+  const start = new Date(`${startStr}T12:00:00`);
+  const end = new Date(`${endStr}T12:00:00`);
+  const dayCount = Math.min(Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1, 90);
+  const dateLabels = Array.from({ length: dayCount }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    return getLocalDateString(d);
+  });
 
   let query = supabase
     .from('bills')
@@ -527,7 +556,6 @@ export async function getMonthlySalesTrend(dealerId: string, branchId?: string |
   const totalsByDate = new Map<string, number>();
   const series = dateLabels.map((dStr) => {
     totalsByDate.set(dStr, 0);
-    // Parse the local date to get a display label — use T12:00:00 so setDate shifts stay in the same calendar day
     const d = new Date(`${dStr}T12:00:00`);
     return { date: dStr, displayDate: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), amount: 0 };
   });
@@ -542,95 +570,36 @@ export async function getMonthlySalesTrend(dealerId: string, branchId?: string |
 }
 
 export async function getTopSoldProducts(dealerId: string, branchId?: string | null) {
-  const startStr = shiftLocalDate(-30); // local date, not UTC
-
-  let query = supabase
-    .from('bill_items')
-    .select(`
-      quantity,
-      product_id,
-      products(name, type, unit),
-      bills!inner(bill_date, status, dealer_id, branch_id)
-    `)
-    .eq('bills.dealer_id', dealerId)
-    .eq('bills.status', 'active')
-    .gte('bills.bill_date', startStr);
-
-  if (branchId) {
-    query = query.eq('bills.branch_id', branchId);
-  }
-
-  const { data, error } = await query;
+  const startStr = shiftLocalDate(-30);
+  const { data, error } = await supabase.rpc('get_top_sold_products_v1', {
+    p_dealer_id: dealerId,
+    p_branch_id: branchId ?? null,
+    p_start_date: startStr,
+    p_limit: 5,
+  });
   if (error) throw error;
-
-  const productMap = new Map<string, any>();
-
-  for (const item of data ?? []) {
-    const pId = item.product_id;
-    if (!pId || !item.products) continue;
-
-    if (!productMap.has(pId)) {
-      const prod = Array.isArray(item.products) ? item.products[0] : item.products;
-      if (!prod) continue;
-      productMap.set(pId, {
-        id: pId,
-        name: prod.name,
-        type: prod.type,
-        unit: prod.unit || 'units',
-        quantity: 0
-      });
-    }
-    const p = productMap.get(pId);
-    p.quantity += Number(item.quantity || 0);
-  }
-
-  return Array.from(productMap.values())
-    .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 5); // top 5
+  return (data ?? []).map((row: any) => ({
+    id: row.product_id,
+    name: row.product_name,
+    type: row.product_type,
+    unit: row.unit || 'units',
+    quantity: Number(row.total_qty),
+  }));
 }
 
 export async function getTodaySoldItems(dealerId: string, branchId?: string | null) {
-  const todayStr = getLocalDateString(); // local date, not UTC
-
-  let query = supabase
-    .from('bill_items')
-    .select(`
-      quantity,
-      product_id,
-      products(name, type, unit),
-      bills!inner(bill_date, status, dealer_id, branch_id)
-    `)
-    .eq('bills.dealer_id', dealerId)
-    .eq('bills.status', 'active')
-    .gte('bills.bill_date', todayStr);
-
-  if (branchId) {
-    query = query.eq('bills.branch_id', branchId);
-  }
-
-  const { data, error } = await query;
+  const todayStr = getLocalDateString();
+  const { data, error } = await supabase.rpc('get_today_sold_items_v1', {
+    p_dealer_id: dealerId,
+    p_branch_id: branchId ?? null,
+    p_date: todayStr,
+  });
   if (error) throw error;
-
-  const productMap = new Map<string, any>();
-
-  for (const item of data ?? []) {
-    const pId = item.product_id;
-    if (!pId || !item.products) continue;
-
-    if (!productMap.has(pId)) {
-      const prod = Array.isArray(item.products) ? item.products[0] : item.products;
-      if (!prod) continue;
-      productMap.set(pId, {
-        id: pId,
-        name: prod.name,
-        type: prod.type,
-        unit: prod.unit || 'units',
-        quantity: 0
-      });
-    }
-
-    productMap.get(pId)!.quantity += Number(item.quantity || 0);
-  }
-
-  return Array.from(productMap.values()).sort((a, b) => b.quantity - a.quantity);
+  return (data ?? []).map((row: any) => ({
+    id: row.product_id,
+    name: row.product_name,
+    type: row.product_type,
+    unit: row.unit || 'units',
+    quantity: Number(row.total_qty),
+  }));
 }

@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { useTopSoldProducts } from '../hooks/useDashboardData';
 import { Skeleton } from '@/components/ui';
 import { Package } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatQuantity } from '@/lib/utils';
 
-export const TopSoldProducts: React.FC = () => {
+const TopSoldProductsComponent: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: topProducts, isLoading } = useTopSoldProducts();
@@ -52,7 +52,7 @@ export const TopSoldProducts: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-5">
-          {topProducts.map((product, i) => (
+          {(topProducts as any[]).map((product, i) => (
             <div key={i} className="flex items-center gap-4">
               <div className="h-12 w-12 bg-slate-100 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden">
                 <Package className="h-6 w-6 text-slate-400" />
@@ -60,7 +60,7 @@ export const TopSoldProducts: React.FC = () => {
               <div className="flex-1 min-w-0">
                 <p className="text-[0.95rem] font-bold text-slate-800 truncate">{product.name}</p>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  {product.quantity.toLocaleString()} {product.unit}s
+                  {formatQuantity(product.quantity, product.unit)}
                 </p>
               </div>
             </div>
@@ -70,5 +70,6 @@ export const TopSoldProducts: React.FC = () => {
     </div>
   );
 };
-
+export const TopSoldProducts = React.memo(TopSoldProductsComponent);
+TopSoldProducts.displayName = 'TopSoldProducts';
 export default TopSoldProducts;
