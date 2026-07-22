@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { sanitizeSearchTerm } from '@/lib/utils';
 import {
   InventoryDetailData,
   InventoryItem,
@@ -196,35 +197,35 @@ export const inventoryService = {
     }
     
     if (options?.searchQuery) {
-      const search = options.searchQuery.toLowerCase();
-      query = query.or(`name.ilike.%${search}%,company.ilike.%${search}%`, { referencedTable: 'products' });
+      const search = sanitizeSearchTerm(options.searchQuery.toLowerCase());
+      if (search) query = query.or(`name.ilike.%${search}%,company.ilike.%${search}%`, { referencedTable: 'products' });
     }
 
     if (options?.productType && options.productType !== 'all') {
       query = query.eq('products.type', options.productType);
     }
 
-    // Since lowStock logic involves comparing quantity_in_stock <= min_stock_alert, 
-    // and both columns are on the inventory table, we can write a raw sql or filter it if we pull it.
-    // Supabase JS doesn't support comparing two columns directly without a view/rpc. 
-    // For now, we will return the query as is. If lowStockOnly is needed server-side, 
-    // it requires an RPC or raw SQL. We will filter client-side for this specific edge case or ignore.
-    
+    // Apply stock filters server-side so both the paginated results and the
+    // total count are correct. Client-side post-fetch filtering broke pagination
+    // (pages had fewer items than requested) and returned an unfiltered total.
+    //
+    // outOfStockOnly: single-column lte works natively in PostgREST.
+    // lowStockOnly: column-to-column comparison via .filter() — same technique
+    //   already used in dashboardService.getLowStockCount at dashboardService.ts.
+    //   gt('min_stock_alert', 0) excludes products with no alert threshold set.
+    if (options?.outOfStockOnly) {
+      query = query.lte('quantity_in_stock', 0);
+    } else if (options?.lowStockOnly) {
+      query = query.filter('quantity_in_stock', 'lt', 'min_stock_alert').gt('min_stock_alert', 0);
+    }
+
     query = query.range(from, to);
 
     const { data, count, error } = await query;
     if (error) throw error;
 
-    let results = (data || []).map(mapInventoryItem) as InventoryItem[];
-    
-    if (options?.outOfStockOnly) {
-      results = results.filter((item) => (item.quantity_in_stock || 0) <= 0);
-    } else if (options?.lowStockOnly) {
-      results = results.filter((item) => (item.quantity_in_stock || 0) <= (item.min_stock_alert || 0));
-    }
-
     return {
-      data: results,
+      data: (data || []).map(mapInventoryItem) as InventoryItem[],
       total: count || 0,
     };
   },
@@ -416,23 +417,27 @@ export const inventoryService = {
       .insert(product)
       .select()
       .single();
-      
+
     if (error) throw error;
-    
-    // Initialize empty inventory record
-    if (data) {
-      const { error: invError } = await supabase
-        .from('inventory')
-        .insert({
-          dealer_id: data.dealer_id,
-          product_id: data.id,
-          quantity_in_stock: 0,
-          medicine_discount_percentage: data.medicine_discount_percentage || 0,
-          min_stock_alert: 0
-        });
-      if (invError) console.error('Failed to create initial inventory record', invError);
+
+    // Initialize empty inventory record.
+    // If this fails, compensate by deleting the product so there is no orphan row
+    // that is invisible in inventory views but causes "inventory not found" during billing.
+    const { error: invError } = await supabase
+      .from('inventory')
+      .insert({
+        dealer_id: data.dealer_id,
+        product_id: data.id,
+        quantity_in_stock: 0,
+        medicine_discount_percentage: data.medicine_discount_percentage || 0,
+        min_stock_alert: 0
+      });
+
+    if (invError) {
+      await supabase.from('products').delete().eq('id', data.id);
+      throw new Error(`Failed to initialise inventory for product: ${invError.message}`);
     }
-    
+
     return data as Product;
   },
 
@@ -441,31 +446,25 @@ export const inventoryService = {
    */
   async createProducts(products: ProductInsert[]): Promise<Product[]> {
     if (!products.length) return [];
-    const { data, error } = await supabase
-      .from('products')
-      .insert(products)
-      .select();
-      
+    // Routed via SECURITY DEFINER RPC that bypasses the 30/min rate-limit trigger
+    // (fires per inventory row — one product × N branches trips it fast) and
+    // fans out empty inventory rows to every active branch of the caller's dealer.
+    const payload = products.map((p) => ({
+      type: p.type,
+      company: p.company ?? null,
+      name: p.name,
+      variant: (p as any).variant ?? null,
+      category: (p as any).category ?? null,
+      unit: p.unit ?? null,
+      hsn_code: (p as any).hsn_code ?? null,
+      gst_rate: p.gst_rate ?? 0,
+      default_price: (p as any).default_price ?? null,
+      track_expiry: (p as any).track_expiry ?? false,
+      medicine_discount_percentage: (p as any).medicine_discount_percentage ?? 0,
+    }));
+    const { data: count, error } = await supabase.rpc('bulk_create_products', { p_rows: payload });
     if (error) throw error;
-    
-    // Initialize empty inventory records for bulk created products
-    if (data && data.length > 0) {
-      const inventoryRecords = data.map(p => ({
-        dealer_id: p.dealer_id,
-        product_id: p.id,
-        quantity_in_stock: 0,
-        medicine_discount_percentage: p.medicine_discount_percentage || 0,
-        min_stock_alert: 0
-      }));
-      
-      const { error: invError } = await supabase
-        .from('inventory')
-        .insert(inventoryRecords);
-        
-      if (invError) console.error('Failed to create initial inventory records', invError);
-    }
-    
-    return data as Product[];
+    return new Array(Number(count) || 0).fill(null) as unknown as Product[];
   },
 
   /**
@@ -567,6 +566,8 @@ export const inventoryService = {
       newUnitPrice?: number | null;
     }[]
   ): Promise<void> {
+    const failures: string[] = [];
+
     for (const adj of adjustments) {
       if (adj.totalAdjustment <= 0) continue;
 
@@ -605,7 +606,16 @@ export const inventoryService = {
         p_payload: payload,
       });
 
-      if (error) throw error;
+      if (error) {
+        failures.push(`${adj.farmerName} (${adj.productName}): ${error.message}`);
+        continue;
+      }
+    }
+
+    if (failures.length > 0) {
+      throw new Error(
+        `Rate adjustment failed for ${failures.length} of ${adjustments.length} farmers:\n${failures.join('\n')}`
+      );
     }
   },
 
@@ -659,31 +669,13 @@ export const inventoryService = {
    * Delete a product and its associated inventory.
    * Attempt hard delete first. If foreign key constraints prevent it, fallback to soft delete.
    */
-  async deleteProduct(productId: string, dealerId: string): Promise<{ success: boolean; softDeleted?: boolean }> {
-    // Attempt hard delete from products (cascade should handle inventory if configured, otherwise we delete inventory first)
-    // Actually, inventory has a FK to products. Deleting product might fail if it's referenced in bills.
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', productId)
-      .eq('dealer_id', dealerId);
-
-    if (error) {
-      if (error.code === '23503') { // Foreign key constraint violation
-        // Fallback to soft delete
-        const { error: softDeleteError } = await supabase
-          .from('products')
-          .update({ is_active: false })
-          .eq('id', productId)
-          .eq('dealer_id', dealerId);
-
-        if (softDeleteError) throw softDeleteError;
-        return { success: true, softDeleted: true };
-      }
-      throw error;
-    }
-
-    return { success: true, softDeleted: false };
+  async deleteProduct(productId: string, _dealerId: string): Promise<{ success: boolean; softDeleted?: boolean }> {
+    // Server-side atomic delete. RPC cascades inventory + lots + movements when
+    // there's no history, falls back to soft delete when bills/purchases exist,
+    // and refuses if any branch still has stock (user must adjust to zero first).
+    const { data, error } = await supabase.rpc('delete_product', { p_product_id: productId });
+    if (error) throw error;
+    return { success: true, softDeleted: !!(data as any)?.softDeleted };
   },
 
   async updateProduct(productId: string, updates: Partial<Product>): Promise<Product> {

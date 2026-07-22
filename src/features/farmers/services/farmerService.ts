@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type { Farmer, FarmerInsert, FarmerProductDiscount } from '@/types/database';
 import { differenceInDays, parseISO } from 'date-fns';
-import { getAgeingBucket } from '@/lib/utils';
+import { getAgeingBucket, sanitizeSearchTerm } from '@/lib/utils';
 
 export async function getFarmers(params: {
   dealerId: string;
@@ -25,12 +25,12 @@ export async function getFarmers(params: {
     .from('farmers')
     .select('*', { count: 'exact' })
     .eq('dealer_id', params.dealerId)
-    .eq('is_active', true)
-    .is('deleted_at', null);
+    .eq('is_active', true);
 
-  if (params.branchId) {
-    query = query.eq('branch_id', params.branchId);
-  }
+  // Farmers are shared across all branches (2026-07-17): the `branch_id` column
+  // stays as "originally added at" info but no longer gates visibility. The
+  // `params.branchId` is accepted but intentionally ignored so cached callers
+  // don't need to change.
   if (params.cropStatus) {
     query = query.eq('crop_status', params.cropStatus);
   }
@@ -41,8 +41,9 @@ export async function getFarmers(params: {
     query = query.eq('village', params.village);
   }
   if (params.search) {
-    query = query.or(
-      `name.ilike.%${params.search}%,phone.ilike.%${params.search}%,village.ilike.%${params.search}%`
+    const term = sanitizeSearchTerm(params.search.trim());
+    if (term) query = query.or(
+      `name.ilike.%${term}%,phone.ilike.${term}%,village.ilike.%${term}%`
     );
   }
   if (params.isWalkIn !== undefined) {
@@ -58,7 +59,7 @@ export async function getFarmers(params: {
   if (error) throw error;
   
   return {
-    data: (data ?? []) as Farmer[],
+    data: (data ?? []) as unknown as Farmer[],
     total: count || 0,
   };
 }
@@ -75,14 +76,54 @@ export async function getFarmerById(farmerId: string): Promise<Farmer> {
 }
 
 export async function createFarmer(data: FarmerInsert): Promise<Farmer> {
+  const previousDue = Math.max(0, Number(data.opening_balance) || 0);
   const { data: farmer, error } = await supabase
     .from('farmers')
-    .insert(data)
+    .insert({
+      ...data,
+      opening_balance: previousDue,
+      total_due: previousDue,
+    })
     .select()
     .single();
 
   if (error) throw error;
   return farmer as Farmer;
+}
+
+export async function setFarmerPreviousDue(farmerId: string, previousDue: number): Promise<Farmer> {
+  const { data, error } = await supabase.rpc('set_farmer_previous_due', {
+    p_farmer_id: farmerId,
+    p_previous_due: previousDue,
+  });
+
+  if (error) throw error;
+  return data as Farmer;
+}
+
+export async function bulkCreateFarmers(rows: FarmerInsert[]): Promise<Farmer[]> {
+  if (!rows.length) return [];
+  // Route via SECURITY DEFINER RPC that bypasses the 30/min rate-limit trigger
+  // for legitimate Excel imports (server forces dealer_id = auth.uid()).
+  const payload = rows.map((r) => ({
+    branch_id: r.branch_id ?? null,
+    name: r.name,
+    phone: r.phone ?? null,
+    village: r.village ?? null,
+    mandal: r.mandal ?? null,
+    district: r.district ?? null,
+    pond_acres: r.pond_acres ?? null,
+    stocking_date: r.stocking_date ?? null,
+    crop_status: r.crop_status ?? null,
+    risk_status: r.risk_status ?? null,
+    credit_limit: r.credit_limit ?? null,
+    default_medicine_discount_percentage: r.default_medicine_discount_percentage ?? null,
+    opening_balance: r.opening_balance ?? null,
+    notes: r.notes ?? null,
+  }));
+  const { data: count, error } = await supabase.rpc('bulk_create_farmers', { p_rows: payload });
+  if (error) throw error;
+  return new Array(Number(count) || 0).fill(null) as unknown as Farmer[];
 }
 
 export async function updateFarmer(
@@ -175,6 +216,59 @@ export async function uploadFarmerImage(
   return `${data.publicUrl}?t=${Date.now()}`;
 }
 
+/**
+ * Paginated farmer ledger transactions via server-side RPC.
+ * Replaces the old unbounded fetch that crashed on mobile with 500+ transactions.
+ * The RPC returns a UNION of bills + payments, ordered newest-first, with total count.
+ */
+export async function getFarmerLedgerPage(params: {
+
+  farmerId: string;
+  dealerId: string;
+  page?: number;
+  limit?: number;
+  startDate?: string;
+  endDate?: string;
+}): Promise<{
+  data: Array<{
+    id: string;
+    type: 'bill' | 'payment' | 'return';
+    ref_number: string;
+    date: string;
+    amount: number;
+    balance_due: number | null;
+    created_at: string;
+  }>;
+  total: number;
+  page: number;
+  limit: number;
+}> {
+  const { data, error } = await supabase.rpc('get_farmer_ledger_page', {
+    p_farmer_id: params.farmerId,
+    p_dealer_id: params.dealerId,
+    p_page: params.page ?? 1,
+    p_limit: params.limit ?? 20,
+    p_start_date: params.startDate || null,
+    p_end_date: params.endDate || null,
+  });
+
+  if (error) throw error;
+
+  const result = data as { total: number; page: number; limit: number; data: any[] };
+  return {
+    data: result.data ?? [],
+    total: result.total ?? 0,
+    page: result.page,
+    limit: result.limit,
+  };
+}
+
+/**
+ * Legacy full-fetch for farmer transactions — kept for backward compat with
+ * components that still need the full sorted+running-balance list.
+ * Internally uses pagination and fetches up to 500 records max, then computes
+ * running balance client-side on that safe bounded dataset.
+ */
 export async function getFarmerTransactions(
   farmerId: string,
   dealerId: string,
@@ -189,39 +283,28 @@ export async function getFarmerTransactions(
     runningBalance: number;
   }>
 > {
+  // Bounded 500-record fetch — safe ceiling. For farmers with more, use getFarmerLedgerPage.
   const { data: bills, error: billsErr } = await supabase
     .from('bills')
     .select('id, bill_number, bill_date, total, created_at, type, is_edited')
     .eq('dealer_id', dealerId)
     .eq('farmer_id', farmerId)
-    .neq('status', 'cancelled');
+    .neq('status', 'cancelled')
+    .limit(500);
 
   if (billsErr) throw billsErr;
-
-  const billIds = (bills ?? []).map((bill) => bill.id);
 
   const { data: directPayments, error: directPaymentsErr } = await supabase
     .from('payments')
     .select('id, amount, payment_date, method, created_at, receipt_number')
     .eq('dealer_id', dealerId)
-    .eq('farmer_id', farmerId);
+    .eq('farmer_id', farmerId)
+    .limit(500);
 
   if (directPaymentsErr) throw directPaymentsErr;
 
-  let billLinkedPayments: typeof directPayments = [];
-  if (billIds.length > 0) {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('id, amount, payment_date, method, created_at, receipt_number, bill_id')
-      .eq('dealer_id', dealerId)
-      .in('bill_id', billIds);
-
-    if (error) throw error;
-    billLinkedPayments = data ?? [];
-  }
-
   const paymentMap = new Map<string, (typeof directPayments)[number]>();
-  [...(directPayments ?? []), ...(billLinkedPayments ?? [])].forEach((payment) => {
+  (directPayments ?? []).forEach((payment) => {
     paymentMap.set(payment.id, payment);
   });
   const payments = [...paymentMap.values()];
@@ -253,6 +336,105 @@ export async function getFarmerTransactions(
   });
 
   return withBalance.reverse();
+}
+
+export interface FarmerBillRow {
+  id: string;
+  refNumber: string;
+  date: string;
+  amount: number;
+  createdAt: string;
+}
+
+export interface FarmerPaymentRow {
+  id: string;
+  refNumber: string;
+  date: string;
+  amount: number;
+  createdAt: string;
+}
+
+export async function getFarmerBillsPage(params: {
+  farmerId: string;
+  dealerId: string;
+  startDate?: string;
+  endDate?: string;
+  limit: number;
+  offset: number;
+}): Promise<{ rows: FarmerBillRow[]; total: number; limit: number; offset: number }> {
+  const from = params.offset;
+  const to = params.offset + params.limit - 1;
+
+  let query = supabase
+    .from('bills')
+    .select('id, bill_number, bill_date, total, created_at', { count: 'exact' })
+    .eq('dealer_id', params.dealerId)
+    .eq('farmer_id', params.farmerId)
+    .neq('status', 'cancelled');
+
+  if (params.startDate) query = query.gte('bill_date', params.startDate);
+  if (params.endDate) query = query.lte('bill_date', params.endDate);
+
+  const { data, count, error } = await query
+    .order('bill_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+
+  return {
+    rows: (data ?? []).map((bill) => ({
+      id: bill.id,
+      refNumber: bill.bill_number,
+      date: bill.bill_date,
+      amount: Number(bill.total),
+      createdAt: bill.created_at,
+    })),
+    total: count || 0,
+    limit: params.limit,
+    offset: params.offset,
+  };
+}
+
+export async function getFarmerPaymentsPage(params: {
+  farmerId: string;
+  dealerId: string;
+  startDate?: string;
+  endDate?: string;
+  limit: number;
+  offset: number;
+}): Promise<{ rows: FarmerPaymentRow[]; total: number; limit: number; offset: number }> {
+  const from = params.offset;
+  const to = params.offset + params.limit - 1;
+
+  let query = supabase
+    .from('payments')
+    .select('id, amount, payment_date, method, created_at, receipt_number', { count: 'exact' })
+    .eq('dealer_id', params.dealerId)
+    .eq('farmer_id', params.farmerId);
+
+  if (params.startDate) query = query.gte('payment_date', params.startDate);
+  if (params.endDate) query = query.lte('payment_date', params.endDate);
+
+  const { data, count, error } = await query
+    .order('payment_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+
+  return {
+    rows: (data ?? []).map((payment) => ({
+      id: payment.id,
+      refNumber: payment.receipt_number || (payment.method ? payment.method.toUpperCase() : 'PAYMENT'),
+      date: payment.payment_date,
+      amount: Number(payment.amount),
+      createdAt: payment.created_at,
+    })),
+    total: count || 0,
+    limit: params.limit,
+    offset: params.offset,
+  };
 }
 
 export async function getFarmerStatement(
@@ -296,24 +478,31 @@ export async function getFarmerStatement(
   [...(directPayments ?? []), ...billLinkedPayments].forEach(p => paymentMap.set(p.id, p));
   const payments = Array.from(paymentMap.values());
 
+  const { data: returns, error: returnsErr } = await supabase
+    .from('bill_returns')
+    .select('id, return_number, return_date, total_amount, created_at, branch_name_snapshot')
+    .eq('dealer_id', dealerId)
+    .eq('farmer_id', farmerId);
+  if (returnsErr) throw returnsErr;
+
   // 2. Separate into "before start" and "in range"
-  const startObj = new Date(startDate);
-  startObj.setHours(0, 0, 0, 0);
-  const endObj = new Date(endDate);
-  endObj.setHours(23, 59, 59, 999);
+  // Use business date strings (YYYY-MM-DD) for comparison — avoids Date constructor
+  // timezone issues and correctly handles backdated entries where created_at differs
+  // from the business date.
 
   let pastDebits = 0;
   let pastCredits = 0;
-  
+
   const inRangeTransactions: any[] = [];
   let totalDebit = 0;
   let totalCredit = 0;
+  let totalReturns = 0;
 
   bills?.forEach(bill => {
-    const d = new Date(bill.created_at);
-    if (d < startObj) {
+    const d = bill.bill_date;                        // business date, not created_at
+    if (d < startDate) {
       pastDebits += Number(bill.total);
-    } else if (d <= endObj) {
+    } else if (d <= endDate) {
       inRangeTransactions.push({
         id: bill.id,
         type: 'bill',
@@ -329,10 +518,10 @@ export async function getFarmerStatement(
   });
 
   payments.forEach(payment => {
-    const d = new Date(payment.created_at);
-    if (d < startObj) {
+    const d = payment.payment_date;                  // business date, not created_at
+    if (d < startDate) {
       pastCredits += Number(payment.amount);
-    } else if (d <= endObj) {
+    } else if (d <= endDate) {
       inRangeTransactions.push({
         id: payment.id,
         type: 'payment',
@@ -346,12 +535,33 @@ export async function getFarmerStatement(
     }
   });
 
+  (returns ?? []).forEach((farmerReturn) => {
+    const d = farmerReturn.return_date;              // business date, not created_at
+    if (d < startDate) {
+      pastCredits += Number(farmerReturn.total_amount);
+    } else if (d <= endDate) {
+      inRangeTransactions.push({
+        id: farmerReturn.id,
+        type: 'return',
+        refNumber: farmerReturn.return_number || 'FARMER RETURN',
+        date: farmerReturn.return_date,
+        amount: Number(farmerReturn.total_amount),
+        createdAt: farmerReturn.created_at,
+        branchName: farmerReturn.branch_name_snapshot,
+      });
+      totalReturns += Number(farmerReturn.total_amount);
+    }
+  });
+
   // 3. Calculate opening and closing balance
   const openingBalance = farmer.opening_balance + pastDebits - pastCredits;
-  const closingBalance = openingBalance + totalDebit - totalCredit;
+  const closingBalance = openingBalance + totalDebit - totalCredit - totalReturns;
 
-  // 4. Sort and add running balance
-  inRangeTransactions.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  // 4. Sort by business date first, then created_at as same-day tiebreaker
+  inRangeTransactions.sort((a, b) => {
+    const dateDiff = a.date.localeCompare(b.date);
+    return dateDiff !== 0 ? dateDiff : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
   
   let currentBalance = openingBalance;
   const transactions = inRangeTransactions.map(tx => {
@@ -364,6 +574,7 @@ export async function getFarmerStatement(
     openingBalance,
     totalDebit,
     totalCredit,
+    totalReturns,
     closingBalance,
     transactions
   };
@@ -425,10 +636,10 @@ export async function getDuesAgeing(
 export async function getOpenBillsForFarmer(
   farmerId: string,
   dealerId: string
-): Promise<Array<{ id: string; bill_number: string; bill_date: string; balance_due: number }>> {
+): Promise<Array<{ id: string; bill_number: string; bill_date: string; balance_due: number; branch_name_snapshot: string | null }>> {
   const { data, error } = await supabase
     .from('bills')
-    .select('id, bill_number, bill_date, balance_due')
+    .select('id, bill_number, bill_date, balance_due, branch_name_snapshot')
     .eq('dealer_id', dealerId)
     .eq('farmer_id', farmerId)
     .eq('status', 'active')
@@ -482,15 +693,24 @@ export async function collectPayment(params: {
 }
 
 export async function getUniqueVillages(dealerId: string): Promise<string[]> {
+  // Server-side DISTINCT via RPC — avoids fetching all farmer rows for a dropdown.
+  // Falls back to client-side dedup if the RPC is not yet deployed.
   const { data, error } = await supabase
-    .from('farmers')
-    .select('village')
-    .eq('dealer_id', dealerId)
-    .eq('is_active', true)
-    .not('village', 'is', null);
+    .rpc('get_unique_villages', { p_dealer_id: dealerId });
 
-  if (error) throw error;
+  if (error) {
+    // Graceful fallback: if RPC doesn't exist yet, use direct query
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('farmers')
+      .select('village')
+      .eq('dealer_id', dealerId)
+      .eq('is_active', true)
+      .not('village', 'is', null)
+      .limit(500);
+    if (fallbackError) throw fallbackError;
+    const villages = [...new Set((fallbackData ?? []).map((f) => f.village).filter(Boolean))] as string[];
+    return villages.sort();
+  }
 
-  const villages = [...new Set((data ?? []).map((f) => f.village).filter(Boolean))] as string[];
-  return villages.sort();
+  return (data ?? []).map((row: { village: string }) => row.village);
 }

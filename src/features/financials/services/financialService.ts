@@ -65,7 +65,6 @@ export const financialService = {
       .from('expenses')
       .select('*', { count: 'exact' })
       .eq('dealer_id', dealerId)
-      .is('deleted_at', null)
       .order('expense_date', { ascending: false })
       .order('created_at', { ascending: false });
 
@@ -90,14 +89,16 @@ export const financialService = {
   },
 
   async recordExpense(payload: ExpenseInsert): Promise<void> {
-    // 1. Insert expense record
-    const { error: expError } = await supabase
+    // 1. Insert expense record, capturing the id for compensating rollback
+    const { data: expRecord, error: expError } = await supabase
       .from('expenses')
-      .insert(payload);
-    
+      .insert(payload)
+      .select('id')
+      .single();
+
     if (expError) throw expError;
 
-    // 2. Add entry to cash book
+    // 2. Add entry to cash book; roll back the expense row if this fails
     const { error: cbError } = await supabase
       .from('cash_book')
       .insert({
@@ -110,7 +111,10 @@ export const financialService = {
         entry_date: payload.expense_date,
       });
 
-    if (cbError) throw cbError;
+    if (cbError) {
+      await supabase.from('expenses').delete().eq('id', expRecord.id);
+      throw cbError;
+    }
   },
 
   // Cash Book
@@ -124,7 +128,6 @@ export const financialService = {
       .from('cash_book')
       .select('entry_type, amount')
       .eq('dealer_id', dealerId)
-      .is('deleted_at', null)
       .order('entry_date', { ascending: true })
       .order('created_at', { ascending: true });
 
@@ -132,7 +135,6 @@ export const financialService = {
       .from('cash_book')
       .select('*')
       .eq('dealer_id', dealerId)
-      .is('deleted_at', null)
       .order('entry_date', { ascending: true })
       .order('created_at', { ascending: true });
 
@@ -185,7 +187,6 @@ export const financialService = {
       .select('*')
       .eq('dealer_id', dealerId)
       .lte('entry_date', date)
-      .is('deleted_at', null)
       .order('entry_date', { ascending: true })
       .order('created_at', { ascending: true });
 
