@@ -139,75 +139,70 @@ export async function getSalesSeries(
 }
 
 /**
- * Get Total Outstanding Dues: sum of farmers.total_due
+ * Get Total Outstanding Dues — uses simple select to avoid PostgREST aggregate
+ * function syntax which is version-dependent. Computes sum client-side from
+ * the paginated result (limit 1000 to stay fast for most dealer sizes).
  */
 export async function getTotalDues(dealerId: string, branchId?: string | null): Promise<number> {
   let query = supabase
     .from('farmers')
     .select('total_due')
     .eq('dealer_id', dealerId)
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .gt('total_due', 0)
+    .limit(1000);
 
-  if (branchId) {
-    query = query.eq('branch_id', branchId);
-  }
+  // Farmers are dealer-scoped (shared across branches) — no branch filter.
+  void branchId;
 
   const { data, error } = await query;
   if (error) throw error;
 
-  return data?.reduce((sum, item) => sum + Number(item.total_due), 0) ?? 0;
+  return (data ?? []).reduce((sum, f) => sum + Number(f.total_due ?? 0), 0);
 }
 
 export async function getDuesSummary(
   dealerId: string,
   branchId?: string | null
 ): Promise<{ total: number; dueFarmersCount: number; series: number[] }> {
+  // Single query: top 8 due farmers for sparkline. Aggregate totals (total, count)
+  // come from get_dashboard_aggregates RPC — no need to recompute them here.
   let query = supabase
     .from('farmers')
     .select('total_due')
     .eq('dealer_id', dealerId)
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .gt('total_due', 0)
+    .order('total_due', { ascending: false })
+    .limit(8);
 
-  if (branchId) {
-    query = query.eq('branch_id', branchId);
-  }
+  void branchId;
 
   const { data, error } = await query;
   if (error) throw error;
 
-  const dueValues = (data ?? [])
-    .map((item) => Number(item.total_due))
-    .filter((value) => value > 0)
-    .sort((a, b) => b - a);
+  const values = (data ?? []).map(item => Number(item.total_due ?? 0));
+  const total = values.reduce((sum, v) => sum + v, 0);
+  const series = [...values].reverse();
 
-  return {
-    total: dueValues.reduce((sum, value) => sum + value, 0),
-    dueFarmersCount: dueValues.length,
-    series: dueValues.slice(0, 7).reverse(),
-  };
+  return { total, dueFarmersCount: values.length, series };
 }
 
 /**
- * Get Low Stock Count: count of inventory where qty < min_stock_alert
+ * Get Low Stock Count — server-side filtered COUNT, no full inventory scan.
  */
 export async function getLowStockCount(dealerId: string, branchId?: string | null): Promise<number> {
   let query = supabase
     .from('inventory')
-    .select('id, quantity_in_stock, min_stock_alert')
-    .eq('dealer_id', dealerId);
+    .select('id', { count: 'exact', head: true })
+    .eq('dealer_id', dealerId)
+    .filter('quantity_in_stock', 'lt', 'min_stock_alert');
 
-  if (branchId) {
-    query = query.eq('branch_id', branchId);
-  }
+  if (branchId) query = query.eq('branch_id', branchId);
 
-  const { data, error } = await query;
+  const { count, error } = await query;
   if (error) throw error;
-
-  const lowStockItems = data?.filter(
-    (item) => Number(item.quantity_in_stock) < Number(item.min_stock_alert)
-  ) ?? [];
-
-  return lowStockItems.length;
+  return count ?? 0;
 }
 
 export async function getLowStockSummary(
@@ -249,27 +244,19 @@ export async function getLowStockSummary(
 }
 
 /**
- * Get Cash in Hand: calculated from cash_book entries
+ * Get Cash in Hand — uses the existing RPC for server-side aggregation.
+ * Avoids fetching all cash_book rows just to SUM them client-side.
  */
 export async function getCashBalance(dealerId: string, branchId?: string | null): Promise<number> {
-  let query = supabase
-    .from('cash_book')
-    .select('entry_type, amount')
-    .eq('dealer_id', dealerId);
-
-  if (branchId) {
-    query = query.eq('branch_id', branchId);
-  }
-
-  const { data, error } = await query;
+  const today = getLocalDateString();
+  const { data, error } = await supabase.rpc('get_cash_summary_rpc', {
+    p_dealer_id: dealerId,
+    p_branch_id: branchId ?? null,
+    p_days: 1,
+    p_end_date: today,
+  });
   if (error) throw error;
-
-  return (
-    data?.reduce((balance, entry) => {
-      const amt = Number(entry.amount);
-      return entry.entry_type === 'income' ? balance + amt : balance - amt;
-    }, 0) ?? 0
-  );
+  return Number((data as any)?.currentBalance ?? 0);
 }
 
 export async function getCashSummary(
@@ -336,16 +323,13 @@ export async function getCashSummary(
  * or where dues/aging are overdue (calculated from stocking date > 60 days). Limit 5.
  */
 export async function getCollectTodayFarmers(dealerId: string, branchId?: string | null) {
-  let query = supabase
+  void branchId; // Farmers are shared across branches — no branch filter.
+  const query = supabase
     .from('farmers')
     .select('*')
     .eq('dealer_id', dealerId)
     .eq('is_active', true)
     .gt('total_due', 0);
-
-  if (branchId) {
-    query = query.eq('branch_id', branchId);
-  }
 
   const { data, error } = await query;
   if (error) throw error;
@@ -388,27 +372,25 @@ export async function getCollectTodayFarmers(dealerId: string, branchId?: string
  * Get Low Stock items: returns full list of inventory items with product info below min stock
  */
 export async function getLowStockItems(dealerId: string, branchId?: string | null) {
+  // Direct client-side filtering to avoid 404 console errors from missing RPC
   let query = supabase
     .from('inventory')
     .select('*, products(*)')
-    .eq('dealer_id', dealerId);
+    .eq('dealer_id', dealerId)
+    .limit(200);
 
-  if (branchId) {
-    query = query.eq('branch_id', branchId);
-  }
+  if (branchId) query = query.eq('branch_id', branchId);
+  const { data: fallbackData, error: fallbackError } = await query;
 
-  const { data, error } = await query;
-  if (error) throw error;
+  if (fallbackError) throw fallbackError;
 
   return (
-    data
+    fallbackData
       ?.filter((item) => Number(item.quantity_in_stock) < Number(item.min_stock_alert))
-      .map((item) => ({
-        ...item,
-        product: item.products,
-      })) ?? []
+      .map((item) => ({ ...item, product: item.products })) ?? []
   );
 }
+
 
 /**
  * Get Expiring Medicines: returns medicine inventory batches expiring within 30 days
@@ -464,7 +446,7 @@ export async function getRecentTransactions(
   // 1. Fetch recent bills
   let billsQuery = supabase
     .from('bills')
-    .select('id, bill_number, bill_date, total, created_at, type, farmer_id, farmers(name)')
+    .select('id, bill_number, bill_date, total, created_at, type, farmer_id, branch_name_snapshot, farmers(name)')
     .eq('dealer_id', dealerId)
     .eq('status', 'active')
     .order('created_at', { ascending: false })
@@ -477,7 +459,7 @@ export async function getRecentTransactions(
   // 2. Fetch recent payments
   let paymentsQuery = supabase
     .from('payments')
-    .select('id, amount, payment_date, created_at, farmer_id, farmers(name)')
+    .select('id, amount, payment_date, created_at, farmer_id, branch_name_snapshot, farmers(name)')
     .eq('dealer_id', dealerId)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -501,6 +483,7 @@ export async function getRecentTransactions(
     createdAt: b.created_at,
     amount: Number(b.total),
     farmerName: b.farmers?.name || 'Walk-in Farmer',
+    branchName: b.branch_name_snapshot ?? null,
   }));
 
   const formattedPayments = (payments ?? []).map((p: any) => ({
@@ -511,6 +494,7 @@ export async function getRecentTransactions(
     createdAt: p.created_at,
     amount: Number(p.amount),
     farmerName: p.farmers?.name || 'Walk-in Farmer',
+    branchName: p.branch_name_snapshot ?? null,
   }));
 
   // Combine, sort by created_at desc, and slice
@@ -520,13 +504,9 @@ export async function getRecentTransactions(
 }
 
 export async function getMonthlySalesTrend(dealerId: string, branchId?: string | null) {
-  // Get date 30 days ago
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - 29); // 30 days including today
-  
-  const startStr = startDate.toISOString().split('T')[0];
-  const endStr = endDate.toISOString().split('T')[0];
+  const dateLabels = getLastLocalDateStrings(30); // local-date strings, not UTC
+  const startStr = dateLabels[0];
+  const endStr = dateLabels[dateLabels.length - 1];
 
   let query = supabase
     .from('bills')
@@ -544,36 +524,24 @@ export async function getMonthlySalesTrend(dealerId: string, branchId?: string |
   if (error) throw error;
 
   const totalsByDate = new Map<string, number>();
-  
-  // Initialize last 30 days with 0
-  const series = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dStr = d.toISOString().split('T')[0];
-    const displayDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const series = dateLabels.map((dStr) => {
     totalsByDate.set(dStr, 0);
-    series.push({ date: dStr, displayDate, amount: 0 });
-  }
+    // Parse the local date to get a display label — use T12:00:00 so setDate shifts stay in the same calendar day
+    const d = new Date(`${dStr}T12:00:00`);
+    return { date: dStr, displayDate: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), amount: 0 };
+  });
 
   for (const item of data ?? []) {
-    const billDate = item.bill_date;
-    if (totalsByDate.has(billDate)) {
-      totalsByDate.set(billDate, totalsByDate.get(billDate)! + Number(item.total));
+    if (totalsByDate.has(item.bill_date)) {
+      totalsByDate.set(item.bill_date, totalsByDate.get(item.bill_date)! + Number(item.total));
     }
   }
 
-  return series.map(item => ({
-    ...item,
-    amount: totalsByDate.get(item.date) || 0
-  }));
+  return series.map((item) => ({ ...item, amount: totalsByDate.get(item.date) || 0 }));
 }
 
 export async function getTopSoldProducts(dealerId: string, branchId?: string | null) {
-  // Fetch top sold products from bill_items for the last 30 days
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - 30);
-  const startStr = startDate.toISOString().split('T')[0];
+  const startStr = shiftLocalDate(-30); // local date, not UTC
 
   let query = supabase
     .from('bill_items')
@@ -621,9 +589,7 @@ export async function getTopSoldProducts(dealerId: string, branchId?: string | n
 }
 
 export async function getTodaySoldItems(dealerId: string, branchId?: string | null) {
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayStr = todayStart.toISOString().split('T')[0];
+  const todayStr = getLocalDateString(); // local date, not UTC
 
   let query = supabase
     .from('bill_items')

@@ -5,6 +5,7 @@ import type {
   BookCashLine,
   BookFarmerSummary,
   BookPayment,
+  BookReturn,
   BookProductSummary,
   BookStockPositionRow,
   BookStockReceipt,
@@ -67,8 +68,11 @@ function summarizeProducts(bills: BookBill[]): BookProductSummary[] {
       entry.billCount += 1;
       entry.farmerKeys.add(farmerKey);
       if (Number(bill.balance_due || 0) > 0) {
+        // Guard: accumulate unpaidAmount once per bill, not once per item
+        if (!entry.unpaidBills.has(bill.id)) {
+          entry.unpaidAmount += Number(bill.balance_due || 0);
+        }
         entry.unpaidBills.add(bill.id);
-        entry.unpaidAmount += Number(bill.balance_due || 0);
       }
     }
   }
@@ -143,6 +147,7 @@ export const dailyBookService = {
 
     const [
       billsRes,
+      returnsRes,
       paymentsRes,
       expensesRes,
       purchasesRes,
@@ -158,7 +163,14 @@ export const dailyBookService = {
           .eq('dealer_id', dealerId)
           .eq('bill_date', date)
           .neq('status', 'cancelled')
-          .is('deleted_at', null)
+          .order('created_at', { ascending: true }) as any
+      ),
+      branchFilter(
+        supabase
+          .from('bill_returns')
+          .select('id, return_number, return_date, total_amount, notes, created_at, farmers:farmer_id(name)')
+          .eq('dealer_id', dealerId)
+          .eq('return_date', date)
           .order('created_at', { ascending: true }) as any
       ),
       branchFilter(
@@ -175,7 +187,6 @@ export const dailyBookService = {
           .select('*')
           .eq('dealer_id', dealerId)
           .eq('expense_date', date)
-          .is('deleted_at', null)
           .order('created_at', { ascending: true }) as any
       ),
       branchFilter(
@@ -194,19 +205,20 @@ export const dailyBookService = {
           .eq('entry_date', date)
           .order('created_at', { ascending: true }) as any
       ),
-      supabase
-        .from('supplier_payments')
-        .select('id, amount, method, payment_date')
-        .eq('dealer_id', dealerId)
-        .eq('payment_date', date),
+      branchFilter(
+        supabase
+          .from('supplier_payments')
+          .select('id, amount, method, payment_date')
+          .eq('dealer_id', dealerId)
+          .eq('payment_date', date) as any
+      ),
       branchFilter(
         supabase
           .from('bills')
           .select('total')
           .eq('dealer_id', dealerId)
           .eq('bill_date', yesterday)
-          .neq('status', 'cancelled')
-          .is('deleted_at', null) as any
+          .neq('status', 'cancelled') as any
       ),
       branchFilter(
         supabase
@@ -217,12 +229,13 @@ export const dailyBookService = {
       ),
     ]);
 
-    for (const res of [billsRes, paymentsRes, expensesRes, purchasesRes, cashRes, supplierPaymentsRes, yesterdayRes, openingRes]) {
+    for (const res of [billsRes, paymentsRes, returnsRes, expensesRes, purchasesRes, cashRes, supplierPaymentsRes, yesterdayRes, openingRes]) {
       if ((res as any).error) throw (res as any).error;
     }
 
     const bills = ((billsRes as any).data || []) as BookBill[];
     const rawPayments = ((paymentsRes as any).data || []) as Omit<BookPayment, 'isSameDaySale'>[];
+    const returns = ((returnsRes as any).data || []) as BookReturn[];
     const expenses = ((expensesRes as any).data || []) as Expense[];
     const stockReceipts = ((purchasesRes as any).data || []) as BookStockReceipt[];
     const cashEntries = ((cashRes as any).data || []) as CashBookEntry[];
@@ -276,6 +289,7 @@ export const dailyBookService = {
       date,
       bills,
       payments,
+      returns,
       expenses,
       stockReceipts,
       cashEntries,
@@ -292,6 +306,7 @@ export const dailyBookService = {
         creditGiven: creditBills.reduce((sum, b) => sum + Number(b.balance_due || 0), 0),
         creditFarmers: new Set(creditBills.map((b) => b.farmer_id || b.id)).size,
         receivedTotal: payments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
+        returnsTotal: returns.reduce((sum, item) => sum + Number(item.total_amount || 0), 0),
         oldCollections,
         expensesTotal: expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0),
         supplierPaid: supplierPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
@@ -318,7 +333,6 @@ export const dailyBookService = {
         .eq('farmer_id', farmerId)
         .eq('bill_date', date)
         .neq('status', 'cancelled')
-        .is('deleted_at', null)
         .order('created_at', { ascending: true }),
       supabase
         .from('bills')
@@ -327,7 +341,6 @@ export const dailyBookService = {
         .eq('farmer_id', farmerId)
         .lt('bill_date', date)
         .neq('status', 'cancelled')
-        .is('deleted_at', null)
         .order('bill_date', { ascending: false })
         .limit(5),
     ]);
@@ -358,8 +371,10 @@ export const dailyBookService = {
     branchId: string | null,
     date: string
   ): Promise<BookStockPositionRow[]> {
-    const nextMidnight = new Date(`${date}T00:00:00`);
-    nextMidnight.setDate(nextMidnight.getDate() + 1);
+    // Use Date constructor with numeric parts — avoids ISO-string parsing ambiguity
+    // where some older iOS WebViews treat 'YYYY-MM-DDT00:00:00' as UTC instead of local.
+    const [_y, _m, _d] = date.split('-').map(Number);
+    const nextMidnight = new Date(_y, _m - 1, _d + 1);
 
     // PostgREST caps a single response at 1000 rows; truncation would silently
     // corrupt counts, so every list below is paged to completion.
@@ -430,7 +445,6 @@ export const dailyBookService = {
             .eq('dealer_id', dealerId)
             .gte('bill_date', date)
             .neq('status', 'cancelled')
-            .is('deleted_at', null)
             .order('created_at', { ascending: true })
             .range(from, to);
           if (branchId) q = q.eq('branch_id', branchId);
