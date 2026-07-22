@@ -6,6 +6,20 @@ import type { BillingPayload, CreateBillResult } from '../types';
 import type { SignatureStroke } from '@/types/database';
 
 const OFFLINE_BILLS_KEY = 'offline_pending_bills_v1';
+const PENDING_SIGS_KEY  = 'offline_pending_signatures_v1';
+
+type PendingSig = {
+  billId: string;
+  dealerId: string;
+  branchId: string | null;
+  signerName: string | null;
+  strokes: SignatureStroke[];
+};
+
+const readPendingSigs = (): Promise<PendingSig[]> =>
+  idbGet<PendingSig[]>(PENDING_SIGS_KEY).then((v) => v || []);
+
+const writePendingSigs = (sigs: PendingSig[]) => idbSet(PENDING_SIGS_KEY, sigs);
 
 export interface OfflineBill {
   clientRef: string;
@@ -89,6 +103,26 @@ export const useOfflineBillStore = create<OfflineBillState>((set, get) => ({
 
     set({ isSyncing: true });
     try {
+      // Flush signatures that failed on a previous sync attempt before touching bills.
+      const pendingSigs = await readPendingSigs();
+      const stillPending: PendingSig[] = [];
+      for (const sig of pendingSigs) {
+        try {
+          await billingService.saveBillSignature({
+            dealerId: sig.dealerId,
+            branchId: sig.branchId,
+            billId: sig.billId,
+            signerName: sig.signerName,
+            signatureData: sig.strokes,
+          });
+        } catch {
+          stillPending.push(sig);
+        }
+      }
+      if (stillPending.length !== pendingSigs.length) {
+        await writePendingSigs(stillPending);
+      }
+
       let bills = await readQueue();
 
       for (const bill of bills) {
@@ -123,7 +157,16 @@ export const useOfflineBillStore = create<OfflineBillState>((set, get) => ({
               signatureData: bill.signatureStrokes,
             });
           } catch (signatureError) {
-            console.error('Failed to sync offline bill signature:', signatureError);
+            // Bill synced successfully; persist strokes to retry on next sync.
+            console.error('Failed to sync offline bill signature, queuing for retry:', signatureError);
+            const sigs = await readPendingSigs();
+            await writePendingSigs([...sigs, {
+              billId: result.bill_id,
+              dealerId: bill.payload.dealer_id,
+              branchId: bill.payload.branch_id ?? null,
+              signerName: bill.signerName,
+              strokes: bill.signatureStrokes!,
+            }]);
           }
         }
 

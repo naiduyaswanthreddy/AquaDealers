@@ -152,15 +152,21 @@ export const financialService = {
       rangeQuery = rangeQuery.lte('entry_date', endDate);
     }
 
-    const [{ data: openingData, error: openingError }, { data, error }] = await Promise.all([
-      openingQuery,
-      rangeQuery,
-    ]);
+    // Paginate the opening balance query: PostgREST caps at 1000 rows per request,
+    // so a single await would silently truncate for dealers with > 1000 prior entries.
+    const PAGE = 1000;
+    const allOpeningRows: { entry_type: string; amount: number }[] = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error: pageErr } = await openingQuery.range(from, from + PAGE - 1);
+      if (pageErr) throw pageErr;
+      allOpeningRows.push(...(page || []));
+      if (!page || page.length < PAGE) break;
+    }
 
-    if (openingError) throw openingError;
+    const [{ data, error }] = await Promise.all([rangeQuery]);
     if (error) throw error;
 
-    const openingBalance = (openingData || []).reduce((sum, entry) => {
+    const openingBalance = allOpeningRows.reduce((sum, entry) => {
       return sum + (entry.entry_type === 'income' ? entry.amount : -entry.amount);
     }, 0);
 

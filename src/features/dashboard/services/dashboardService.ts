@@ -324,14 +324,15 @@ export async function getCashSummary(
  */
 export async function getCollectTodayFarmers(dealerId: string, branchId?: string | null) {
   void branchId; // Farmers are shared across branches — no branch filter.
-  const query = supabase
+  const { data, error } = await supabase
     .from('farmers')
     .select('*')
     .eq('dealer_id', dealerId)
     .eq('is_active', true)
-    .gt('total_due', 0);
-
-  const { data, error } = await query;
+    .gt('total_due', 0)
+    // ponytail: 200-row cap; client-side sorts then slices to 5. Raise if dealers
+    // routinely have > 200 farmers due simultaneously and some harvesteds are missed.
+    .limit(200);
   if (error) throw error;
 
   const today = new Date();
