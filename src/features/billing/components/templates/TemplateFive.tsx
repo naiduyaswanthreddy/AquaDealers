@@ -79,6 +79,12 @@ export const TemplateFive: React.FC<BillTemplateProps> = ({ bill, dealer, settin
                 <span>{formatCurrency(0)}</span>
               </div>
             )}
+            {bill?.settlement_discount_amount > 0 && (
+              <div className="flex justify-between py-1 border-b border-dashed border-black text-emerald-700">
+                <span>DISCOUNT:</span>
+                <span>-{formatCurrency(bill.settlement_discount_amount)}</span>
+              </div>
+            )}
             <div className="flex justify-between py-1 border-b border-dashed border-black">
               <span>PAID:</span>
               <span>{formatCurrency(bill?.amount_paid)}</span>
@@ -112,7 +118,7 @@ export const TemplateFive: React.FC<BillTemplateProps> = ({ bill, dealer, settin
           <div className="text-center">
             <div className="w-40 border-b border-black mb-2 h-16 flex items-end justify-center pb-1">
               {billSignature?.signature_data ? (
-                <SignatureRenderer strokes={billSignature.signature_data} className="h-full w-full" />
+                <SignatureRenderer strokes={billSignature.signature_data} className="h-full w-full" captureWidth={billSignature.canvas_width} captureHeight={billSignature.canvas_height} />
               ) : null}
             </div>
             <p className="font-bold">CUSTOMER SIGN</p>

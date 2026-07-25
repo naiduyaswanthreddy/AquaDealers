@@ -107,6 +107,12 @@ export const TemplateTwo: React.FC<BillTemplateProps> = ({ bill, dealer, setting
                 <td className="py-2 px-3 text-slate-600 font-bold">Discount</td>
                 <td className="py-2 px-3 text-right font-medium">{bill?.discount_amount > 0 ? `-${formatCurrency(bill.discount_amount)}` : formatCurrency(0)}</td>
               </tr>
+              {bill?.settlement_discount_amount > 0 && (
+                <tr className="border-b border-slate-300">
+                  <td className="py-2 px-3 text-emerald-600 font-bold">Settlement Discount</td>
+                  <td className="py-2 px-3 text-right font-medium text-emerald-600">-{formatCurrency(bill.settlement_discount_amount)}</td>
+                </tr>
+              )}
               <tr className="border-b border-slate-300">
                 <td className="py-2 px-3 text-slate-600 font-bold">Tax (CGST/SGST)</td>
                 <td className="py-2 px-3 text-right font-medium">{formatCurrency((bill?.cgst_amount || 0) + (bill?.sgst_amount || 0))}</td>
@@ -114,7 +120,7 @@ export const TemplateTwo: React.FC<BillTemplateProps> = ({ bill, dealer, setting
 
               <tr className="bg-slate-100 border-b border-slate-400">
                 <td className="py-2 px-3 font-bold text-lg">Grand Total</td>
-                <td className="py-2 px-3 text-right font-bold text-lg">{formatCurrency(bill?.total || bill?.total_amount)}</td>
+                <td className="py-2 px-3 text-right font-bold text-lg">{formatCurrency((bill?.total || bill?.total_amount || 0) - (bill?.settlement_discount_amount || 0))}</td>
               </tr>
               <tr className="border-b border-slate-300">
                 <td className="py-2 px-3 text-slate-600 font-bold text-sm">Amount Paid</td>
@@ -136,7 +142,7 @@ export const TemplateTwo: React.FC<BillTemplateProps> = ({ bill, dealer, setting
         <div className="text-center w-1/3">
           {billSignature?.signature_data?.length ? (
             <div className="h-16 w-32 mx-auto mb-2">
-              <SignatureRenderer strokes={billSignature.signature_data} className="h-full w-full" />
+              <SignatureRenderer strokes={billSignature.signature_data} className="h-full w-full" captureWidth={billSignature.canvas_width} captureHeight={billSignature.canvas_height} />
             </div>
           ) : (
             <div className="border-b border-slate-400 w-32 mx-auto mb-2"></div>

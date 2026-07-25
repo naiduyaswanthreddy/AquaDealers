@@ -127,6 +127,12 @@ export const TemplateOne: React.FC<BillTemplateProps> = ({ bill, dealer, setting
               <p>Discount</p>
               <p className="font-medium">{bill?.discount_amount > 0 ? `-${formatCurrency(bill.discount_amount)}` : formatCurrency(0)}</p>
             </div>
+            {bill?.settlement_discount_amount > 0 && (
+              <div className="flex justify-between mb-3 text-emerald-600">
+                <p>Settlement Discount</p>
+                <p className="font-medium">-{formatCurrency(bill.settlement_discount_amount)}</p>
+              </div>
+            )}
             <div className="flex justify-between mb-3 text-slate-600">
               <p>Tax (CGST/SGST)</p>
               <p className="font-medium">{formatCurrency((bill?.cgst_amount || 0) + (bill?.sgst_amount || 0))}</p>
@@ -135,7 +141,7 @@ export const TemplateOne: React.FC<BillTemplateProps> = ({ bill, dealer, setting
             <div className="flex justify-between text-lg font-bold pt-3 border-t border-slate-200 mt-3">
               <p>Grand Total</p>
               <p className="text-slate-800">
-                {formatCurrency(bill?.total || bill?.total_amount)}
+                {formatCurrency((bill?.total || bill?.total_amount || 0) - (bill?.settlement_discount_amount || 0))}
               </p>
             </div>
             <div className="flex justify-between text-slate-600 pt-3 mt-3 border-t border-slate-200 text-sm">
@@ -159,7 +165,7 @@ export const TemplateOne: React.FC<BillTemplateProps> = ({ bill, dealer, setting
         <div className="flex flex-col items-start justify-end w-1/3">
           {billSignature?.signature_data?.length ? (
             <div className="h-16 w-32 mb-2">
-              <SignatureRenderer strokes={billSignature.signature_data} className="h-full w-full" />
+              <SignatureRenderer strokes={billSignature.signature_data} className="h-full w-full" captureWidth={billSignature.canvas_width} captureHeight={billSignature.canvas_height} />
             </div>
           ) : (
             <div className="border-b border-slate-400 w-32 mb-2"></div>

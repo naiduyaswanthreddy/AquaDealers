@@ -36,6 +36,8 @@ export interface BillingPayload {
   sgst_amount: number;
   igst_amount: number;
   discount_amount: number;
+  settlement_discount_amount?: number;
+  settlement_discount_reason?: string | null;
   total: number;
   amount_paid: number;
   payment_type?: string | null;
@@ -47,7 +49,13 @@ export interface BillingPayload {
   type?: 'sale' | 'adjustment';
   is_historical?: boolean;
   reduce_stock?: boolean;
-  items: Omit<CartItem, 'max_quantity' | 'unit' | 'product_type' | 'base_unit_price'>[];
+  /** Idempotency key — set client-side (UUID v4) to prevent duplicate bills on double-submit. */
+  idempotency_key?: string | null;
+  /** Proof of Delivery fields */
+  is_verified?: boolean;
+  verification_method?: string | null;
+  delivery_pin?: string | null;
+  items: Omit<CartItem, 'max_quantity' | 'unit' | 'product_type'>[];
 }
 
 export interface CreateBillResult {

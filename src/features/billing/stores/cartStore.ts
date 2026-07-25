@@ -13,6 +13,7 @@ type DraftFields = {
   farmerCreditLimit: number;
   gstEnabled: boolean;
   discountAmount: number;
+  settlementDiscountAmount: number;
   amountPaid: number;
   paymentType: string;
   upiRef: string;
@@ -48,6 +49,7 @@ interface CartState extends DraftFields {
   setGstEnabled: (enabled: boolean) => void;
   initializeGstEnabled: (enabled: boolean) => void;
   setDiscount: (amount: number) => void;
+  setSettlementDiscount: (amount: number) => void;
   setAmountPaid: (amount: number) => void;
   setPaymentType: (type: string) => void;
   setUpiRef: (ref: string) => void;
@@ -70,6 +72,7 @@ const emptyDraftFields = (): DraftFields => ({
   farmerCreditLimit: 0,
   gstEnabled: true,
   discountAmount: 0,
+  settlementDiscountAmount: 0,
   amountPaid: 0,
   paymentType: 'cash',
   upiRef: '',
@@ -94,6 +97,7 @@ const toActiveFields = (draft: BillingDraft): DraftFields => ({
   farmerCreditLimit: draft.farmerCreditLimit,
   gstEnabled: draft.gstEnabled,
   discountAmount: draft.discountAmount,
+  settlementDiscountAmount: draft.settlementDiscountAmount,
   amountPaid: draft.amountPaid,
   paymentType: draft.paymentType,
   upiRef: draft.upiRef,
@@ -224,6 +228,7 @@ export const useCartStore = create<CartState>()(
         setGstEnabled: (gstEnabled) => updateActiveDraft((draft) => ({ ...draft, gstEnabled })),
         initializeGstEnabled: (gstEnabled) => updateActiveDraft((draft) => ({ ...draft, gstEnabled }), 'preserve'),
         setDiscount: (discountAmount) => updateActiveDraft((draft) => ({ ...draft, discountAmount })),
+        setSettlementDiscount: (settlementDiscountAmount) => updateActiveDraft((draft) => ({ ...draft, settlementDiscountAmount })),
         setAmountPaid: (amountPaid) => updateActiveDraft((draft) => ({ ...draft, amountPaid })),
         setPaymentType: (paymentType) => updateActiveDraft((draft) => ({ ...draft, paymentType })),
         setUpiRef: (upiRef) => updateActiveDraft((draft) => ({ ...draft, upiRef })),
@@ -231,7 +236,7 @@ export const useCartStore = create<CartState>()(
         setNotes: (notes) => updateActiveDraft((draft) => ({ ...draft, notes })),
         setBillDate: (billDate) => updateActiveDraft((draft) => ({ ...draft, billDate })),
         initializeBillDate: (billDate) => updateActiveDraft((draft) => ({ ...draft, billDate }), 'preserve'),
-        clearItems: () => updateActiveDraft((draft) => ({ ...draft, items: [], farmerId: null, farmerName: null, farmerTotalDue: 0, farmerCreditLimit: 0, discountAmount: 0, amountPaid: 0, paymentType: 'cash', upiRef: '', chequeNumber: '', notes: '' })),
+        clearItems: () => updateActiveDraft((draft) => ({ ...draft, items: [], farmerId: null, farmerName: null, farmerTotalDue: 0, farmerCreditLimit: 0, discountAmount: 0, settlementDiscountAmount: 0, amountPaid: 0, paymentType: 'cash', upiRef: '', chequeNumber: '', notes: '' })),
         clearCart: () => updateActiveDraft((draft) => ({ ...draft, ...emptyDraftFields(), step: 'items' }), 'reset'),
       };
     },

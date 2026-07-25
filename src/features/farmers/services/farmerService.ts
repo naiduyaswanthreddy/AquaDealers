@@ -101,8 +101,8 @@ export async function setFarmerPreviousDue(farmerId: string, previousDue: number
   return data as Farmer;
 }
 
-export async function bulkCreateFarmers(rows: FarmerInsert[]): Promise<Farmer[]> {
-  if (!rows.length) return [];
+export async function bulkCreateFarmers(rows: FarmerInsert[]): Promise<void> {
+  if (!rows.length) return;
   // Route via SECURITY DEFINER RPC that bypasses the 30/min rate-limit trigger
   // for legitimate Excel imports (server forces dealer_id = auth.uid()).
   const payload = rows.map((r) => ({
@@ -121,9 +121,8 @@ export async function bulkCreateFarmers(rows: FarmerInsert[]): Promise<Farmer[]>
     opening_balance: r.opening_balance ?? null,
     notes: r.notes ?? null,
   }));
-  const { data: count, error } = await supabase.rpc('bulk_create_farmers', { p_rows: payload });
+  const { error } = await supabase.rpc('bulk_create_farmers', { p_rows: payload });
   if (error) throw error;
-  return new Array(Number(count) || 0).fill(null) as unknown as Farmer[];
 }
 
 export async function updateFarmer(
@@ -286,7 +285,7 @@ export async function getFarmerTransactions(
   // Bounded 500-record fetch — safe ceiling. For farmers with more, use getFarmerLedgerPage.
   const { data: bills, error: billsErr } = await supabase
     .from('bills')
-    .select('id, bill_number, bill_date, total, created_at, type, is_edited')
+    .select('id, bill_number, bill_date, total, settlement_discount_amount, created_at, type, is_edited')
     .eq('dealer_id', dealerId)
     .eq('farmer_id', farmerId)
     .neq('status', 'cancelled')
@@ -303,11 +302,7 @@ export async function getFarmerTransactions(
 
   if (directPaymentsErr) throw directPaymentsErr;
 
-  const paymentMap = new Map<string, (typeof directPayments)[number]>();
-  (directPayments ?? []).forEach((payment) => {
-    paymentMap.set(payment.id, payment);
-  });
-  const payments = [...paymentMap.values()];
+  const payments = directPayments ?? [];
 
   const combined = [
     ...(bills ?? []).map((bill) => ({
@@ -315,7 +310,7 @@ export async function getFarmerTransactions(
       type: (bill.type === 'adjustment' ? 'adjustment' : 'bill') as 'adjustment' | 'bill',
       refNumber: bill.bill_number,
       date: bill.bill_date,
-      amount: Number(bill.total),
+      amount: Number(bill.total) - Number(bill.settlement_discount_amount || 0),
       createdAt: bill.created_at,
       is_edited: bill.is_edited,
     })),
@@ -699,7 +694,7 @@ export async function getUniqueVillages(dealerId: string): Promise<string[]> {
     .rpc('get_unique_villages', { p_dealer_id: dealerId });
 
   if (error) {
-    // Graceful fallback: if RPC doesn't exist yet, use direct query
+    console.error('[getUniqueVillages] RPC failed, falling back to direct query:', error);
     const { data: fallbackData, error: fallbackError } = await supabase
       .from('farmers')
       .select('village')

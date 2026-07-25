@@ -89,6 +89,12 @@ export const TemplateThree: React.FC<BillTemplateProps> = ({ bill, dealer, setti
                 <p className="font-medium">{formatCurrency(0)}</p>
               </div>
             )}
+            {bill?.settlement_discount_amount > 0 && (
+              <div className="flex justify-between py-2 text-emerald-600">
+                <p>Settlement Discount:</p>
+                <p className="font-medium">-{formatCurrency(bill.settlement_discount_amount)}</p>
+              </div>
+            )}
             <div className="flex justify-between py-2 text-slate-600">
               <p>Paid:</p>
               <p className="font-medium">{formatCurrency(bill?.amount_paid)}</p>
@@ -121,7 +127,7 @@ export const TemplateThree: React.FC<BillTemplateProps> = ({ bill, dealer, setti
           <div className="text-center">
             <div className="w-40 border-b-2 border-slate-300 mb-2 h-16 flex items-end justify-center pb-1">
               {billSignature?.signature_data ? (
-                <SignatureRenderer strokes={billSignature.signature_data} className="h-full w-full" />
+                <SignatureRenderer strokes={billSignature.signature_data} className="h-full w-full" captureWidth={billSignature.canvas_width} captureHeight={billSignature.canvas_height} />
               ) : null}
             </div>
             <p className="font-bold text-slate-800">Customer Signature</p>

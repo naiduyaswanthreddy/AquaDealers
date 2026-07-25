@@ -94,7 +94,8 @@ export type StaffFeatureKey =
   | 'reports'
   | 'settings'
   | 'branches'
-  | 'staffManagement';
+  | 'staffManagement'
+  | 'transactions';
 
 export interface StaffPermissions extends Record<StaffFeatureKey, StaffAccessMode> {}
 
@@ -103,7 +104,8 @@ export interface StaffMember {
   dealer_id: string;
   name: string;
   phone: string | null;
-  pin_hash: string;
+  pin_hash: string | null;
+  access_token: string;
   branch_ids: string[];
   permissions: StaffPermissions;
   is_active: boolean;
@@ -275,6 +277,8 @@ export interface Bill {
   sgst_amount: number;
   igst_amount: number;
   discount_amount: number;
+  settlement_discount_amount: number;
+  settlement_discount_reason: string | null;
   total: number;
   amount_paid: number;
   balance_due: number;
@@ -290,6 +294,10 @@ export interface Bill {
   shared_at?: string | null;
   credit_override_used?: boolean;
   credit_override_reason?: string | null;
+  is_historical?: boolean;
+  is_edited?: boolean;
+  is_verified?: boolean;
+  delivery_pin?: string | null;
   created_at: string;
 }
 
