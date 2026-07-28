@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Loader2 } from 'lucide-react';
-import { cn, formatCurrency } from '@/lib/utils';
+import { cn, formatCurrency, formatQuantity } from '@/lib/utils';
 
 /** Uppercase ruled section header with the teal left border. */
 export const BookSection: React.FC<{ title: string; className?: string }> = ({ title, className }) => (
@@ -124,8 +124,7 @@ export const bookActionClass = (color: keyof typeof ACTION_COLORS): string =>
 
 /** "4 × 25kg" when the unit is a pack size, "30 bags" when it's a word. */
 export const formatQty = (quantity: number, unit?: string | null): string => {
-  const u = (unit || 'units').trim();
-  return /^\d/.test(u) ? `${quantity} × ${u}` : `${quantity} ${u}`;
+  return formatQuantity(quantity, unit);
 };
 
 /** Whole-rupee display for summary lines — paise only add noise in the daybook. */

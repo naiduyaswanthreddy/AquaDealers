@@ -19,8 +19,6 @@ export const getInventoryDiscountPercentage = (item: InventoryItem) =>
 
 export const getInventoryDisplayPrice = (item: InventoryItem) => {
   const basePrice = getInventoryBasePrice(item);
-  if (!isMedicineProduct(item.product.type)) return basePrice;
-
   const discount = getInventoryDiscountPercentage(item);
   return Number((basePrice * (1 - discount / 100)).toFixed(2));
 };

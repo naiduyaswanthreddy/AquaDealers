@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { inventoryKeys } from '../hooks/useInventory';
+import { formatQuantity } from '@/lib/utils';
 
 interface DeleteProductModalProps {
   item: InventoryItem;
@@ -66,7 +67,7 @@ export const DeleteProductModal: React.FC<DeleteProductModalProps> = ({ item, on
           <div>
             <h4 className="text-sm font-bold text-amber-800">What may be affected</h4>
             <ul className="mt-2 space-y-1 text-xs font-medium text-amber-700">
-              <li>Current stock: {item.quantity_in_stock} {item.product.unit}</li>
+              <li>Current stock: {formatQuantity(item.quantity_in_stock, item.product.unit)}</li>
               <li>Lots/batches: {item.inventory_lots?.length || 0}</li>
               <li>Purchase and bill history will be preserved.</li>
               <li>If history exists, the product will be archived instead of permanently deleted.</li>

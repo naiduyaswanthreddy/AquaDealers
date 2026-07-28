@@ -7,14 +7,16 @@ type ListLoadMoreProps = {
   onLoadMore: () => void;
   label?: string;
   className?: string;
+  isLoading?: boolean;
 };
 
 export const ListLoadMore: React.FC<ListLoadMoreProps> = ({
   shown,
   total,
   onLoadMore,
-  label = 'Load more',
+  label = 'Load next records',
   className = '',
+  isLoading = false,
 }) => {
   if (total <= shown) return null;
 
@@ -26,7 +28,7 @@ export const ListLoadMore: React.FC<ListLoadMoreProps> = ({
         Showing <span className="font-black text-slate-900">{shown}</span> of{' '}
         <span className="font-black text-slate-900">{total}</span>
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={onLoadMore}>
+      <Button type="button" variant="outline" size="sm" onClick={onLoadMore} loading={isLoading} disabled={isLoading} aria-label={`Load the next records; ${shown} of ${total} currently shown`}>
         {label}
       </Button>
     </div>

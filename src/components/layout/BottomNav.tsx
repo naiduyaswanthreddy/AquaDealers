@@ -75,13 +75,13 @@ export const BottomNav: React.FC = () => {
                   className={({ isActive }) =>
                     cn(
                       'focus-ring mt-auto flex h-full flex-col items-center justify-end gap-1 rounded-xl pb-1 text-[0.78rem] font-bold tracking-[0.06em] uppercase transition-all',
-                      isActive ? 'text-blue-600 font-extrabold' : 'text-text-secondary hover:text-blue-600'
+                      isActive ? 'text-primary font-extrabold' : 'text-text-secondary hover:text-primary'
                     )
                   }
                 >
                   {({ isActive }) => (
                     <>
-                      <Icon className={cn('mb-0.5 h-[1.45rem] w-[1.45rem]', isActive ? 'stroke-[2.5] text-blue-600' : 'stroke-[2] text-text-secondary')} />
+                      <Icon className={cn('mb-0.5 h-[1.45rem] w-[1.45rem]', isActive ? 'stroke-[2.5] text-primary' : 'stroke-[2] text-text-secondary')} />
                       <span>{t(`nav.${label.toLowerCase()}`, label) as string}</span>
                     </>
                   )}

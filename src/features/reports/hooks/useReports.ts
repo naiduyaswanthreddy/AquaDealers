@@ -44,17 +44,4 @@ export function useDashboardMetrics(startDate?: string, endDate?: string) {
   });
 }
 
-export function useGSTReport(month: number, year: number) {
-  const { user } = useAuthStore();
-  const { activeBranch, isAllBranches } = useBranchStore();
-  const branchId = isAllBranches ? null : (activeBranch?.id || null);
 
-  return useQuery({
-    queryKey: reportKeys.gst(user?.id || '', branchId, { month, year }),
-    queryFn: async () => {
-      if (!user) throw new Error('User not found');
-      return reportsService.getGSTReport(user.id, branchId, month, year);
-    },
-    enabled: !!user?.id,
-  });
-}

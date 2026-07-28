@@ -13,12 +13,13 @@ const TotalLine: React.FC<{ label: string; value: number; strong?: boolean; bala
   balance,
 }) => (
   <div className={cn('flex items-baseline justify-between py-1', strong && 'border-t border-[color:var(--book-rule)] pt-2')}>
-    <span className={cn('text-xs font-bold uppercase tracking-[0.1em]', strong ? 'text-[color:var(--book-ink)]' : 'text-[color:var(--book-ink-soft)]')}>
+    <span className={cn('text-[0.72rem] font-bold uppercase tracking-[0.08em]', strong ? 'text-[color:var(--book-ink)]' : 'text-[color:var(--book-ink-soft)]')}>
       {label}
     </span>
     <span
       className={cn(
-        'book-num text-sm font-black',
+        'book-num font-black',
+        strong ? 'text-base' : 'text-sm',
         balance && (value > 0 ? 'text-[color:var(--book-red)]' : 'text-[color:var(--book-green)]')
       )}
     >
@@ -76,19 +77,19 @@ export const BookBillPage: React.FC = () => {
           ) : null}
 
           {/* Item table: ITEM · QTY · RATE · AMOUNT, like a printed invoice */}
-          <div className={cn(BILL_GRID, 'border-b border-[color:var(--book-rule)] pb-1.5 pt-2 text-[0.62rem] font-black uppercase tracking-[0.12em] text-[color:var(--book-ink-soft)]')}>
+          <div className={cn(BILL_GRID, 'border-b border-[color:var(--book-rule)] pb-2 pt-2.5 text-[0.68rem] font-black uppercase tracking-[0.1em] text-[color:var(--book-ink-soft)]')}>
             <span>Item</span>
             <span className="text-right">Qty</span>
             <span className="text-right">Rate</span>
             <span className="text-right">Amount</span>
           </div>
           {(bill.bill_items || []).map((item) => (
-            <div key={item.id} className={cn(BILL_GRID, 'book-dashed py-2.5', isCancelled && 'line-through')}>
+            <div key={item.id} className={cn(BILL_GRID, 'book-dashed py-3', isCancelled && 'line-through')}>
               <span className="truncate text-sm font-extrabold">
                 {item.products?.name || item.product_name_snapshot || 'Item'}
               </span>
-              <span className="book-num text-right text-xs">{item.quantity}</span>
-              <span className="book-num text-right text-xs">{formatCurrency(Number(item.unit_price))}</span>
+              <span className="book-num text-right text-sm font-semibold">{item.quantity}</span>
+              <span className="book-num text-right text-sm font-semibold">{formatCurrency(Number(item.unit_price))}</span>
               <span className="book-num text-right text-sm font-bold">{formatCurrency(Number(item.total_price))}</span>
             </div>
           ))}

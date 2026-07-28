@@ -95,25 +95,21 @@ export const FarmerProductDiscounts: React.FC<FarmerProductDiscountsProps> = ({
               return (
                 <div
                   key={discount.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 sm:grid sm:grid-cols-[minmax(0,1fr)_7rem_7rem_6rem] sm:items-center"
+                  className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3"
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-black text-slate-900">{product?.name || 'Unknown product'}</div>
                     <div className="truncate text-xs font-semibold text-slate-500">{product?.company || 'No company'}</div>
                   </div>
-                  <div className="flex items-center justify-between sm:block sm:text-right">
-                    <span className="text-xs font-bold text-slate-400 sm:hidden">Discount</span>
-                    <span className="text-sm font-black text-emerald-700">{discount.discount_percentage}%</span>
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-black text-emerald-700">{discount.discount_percentage}%</div>
+                    <div className="text-xs font-bold text-slate-500">{formatCurrency(discountedPrice)}</div>
                   </div>
-                  <div className="flex items-center justify-between sm:block sm:text-right">
-                    <span className="text-xs font-bold text-slate-400 sm:hidden">Approx rate</span>
-                    <span className="text-sm font-bold text-slate-700">{formatCurrency(discountedPrice)}</span>
-                  </div>
-                  <div className="flex gap-2 sm:justify-end">
+                  <div className="flex shrink-0 gap-2">
                     <button
                       type="button"
                       onClick={() => openEdit(discount.product_id, Number(discount.discount_percentage || 0))}
-                      className="min-h-11 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-100 sm:flex-none"
+                      className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 hover:bg-slate-100"
                     >
                       Edit
                     </button>
@@ -121,7 +117,7 @@ export const FarmerProductDiscounts: React.FC<FarmerProductDiscountsProps> = ({
                       type="button"
                       disabled={isDeleting}
                       onClick={() => deleteDiscount({ farmerId, discountId: discount.id })}
-                      className="flex min-h-11 w-11 items-center justify-center rounded-xl border border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100 disabled:opacity-50"
+                      className="flex min-h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100 disabled:opacity-50"
                       aria-label="Delete discount"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -148,12 +144,6 @@ export const FarmerProductDiscounts: React.FC<FarmerProductDiscountsProps> = ({
         className="max-w-xl"
       >
         <div className="space-y-4">
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search medicine..."
-            label="Search"
-          />
           <SearchableSelect
             value={selectedProductId}
             onChange={setSelectedProductId}

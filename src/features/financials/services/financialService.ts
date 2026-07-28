@@ -143,8 +143,27 @@ export const financialService = {
     const { data, error } = await rangeQuery;
     if (error) throw error;
 
+    const entries = (data || []) as CashBookEntry[];
+
+    // Enrich with farmer names in 2 parallel queries
+    const saleIds = entries.filter(e => e.source === 'sale').map(e => e.reference_id).filter(Boolean) as string[];
+    const paymentIds = entries.filter(e => e.source === 'farmer_payment').map(e => e.reference_id).filter(Boolean) as string[];
+
+    const [salesRows, paymentRows] = await Promise.all([
+      saleIds.length ? supabase.from('bills').select('id, farmer_name_snapshot').in('id', saleIds).then(r => r.data || []) : Promise.resolve([]),
+      paymentIds.length ? supabase.from('payments').select('id, farmers!farmer_id(name)').in('id', paymentIds).then(r => r.data || []) : Promise.resolve([]),
+    ]);
+
+    const saleNameMap = new Map<string, string | null>((salesRows as { id: string; farmer_name_snapshot: string | null }[]).map(b => [b.id, b.farmer_name_snapshot]));
+    const paymentNameMap = new Map<string, string | null>((paymentRows as unknown as { id: string; farmers: { name: string } | null }[]).map(p => [p.id, p.farmers?.name ?? null]));
+
+    for (const e of entries) {
+      if (e.source === 'sale' && e.reference_id) e.farmer_name = saleNameMap.get(e.reference_id) ?? null;
+      else if (e.source === 'farmer_payment' && e.reference_id) e.farmer_name = paymentNameMap.get(e.reference_id) ?? null;
+    }
+
     return {
-      entries: data as CashBookEntry[],
+      entries,
       openingBalance,
     };
   },

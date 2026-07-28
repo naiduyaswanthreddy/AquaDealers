@@ -1,6 +1,7 @@
 import {
   FileBarChart,
   GitBranch,
+  History,
   Home,
   Package,
   PiggyBank,
@@ -31,7 +32,8 @@ export type StaffFeatureKey =
   | 'reports'
   | 'settings'
   | 'branches'
-  | 'staffManagement';
+  | 'staffManagement'
+  | 'transactions';
 
 export interface StaffFeatureDefinition {
   key: StaffFeatureKey;
@@ -59,6 +61,14 @@ export interface StaffDealerProfileInput {
 export interface StaffPermissions extends Record<StaffFeatureKey, StaffAccessMode> {}
 
 export const STAFF_FEATURES: StaffFeatureDefinition[] = [
+  {
+    key: 'transactions',
+    label: 'Transactions',
+    description: 'Review business activity and undo eligible transactions.',
+    route: '/transactions',
+    icon: History,
+    color: 'bg-amber-100 text-amber-700',
+  },
   {
     key: 'newBill',
     label: 'Add Bill',
@@ -171,6 +181,7 @@ export const STAFF_DEFAULT_PERMISSIONS: StaffPermissions = {
   settings: 'hidden',
   branches: 'hidden',
   staffManagement: 'hidden',
+  transactions: 'visible',
 };
 
 export const STAFF_NAV_ITEMS: StaffNavDefinition[] = [

@@ -126,7 +126,7 @@ export const reportsService = {
 
     let openBillsQuery = supabase
       .from('bills')
-      .select('id, farmer_name_snapshot, balance_due, bill_date, bill_number')
+      .select('id, farmer_name_snapshot, balance_due, bill_date, bill_number, branch_name_snapshot')
       .eq('dealer_id', dealerId)
       .neq('status', 'cancelled')
       .gt('balance_due', 0)
@@ -160,7 +160,7 @@ export const reportsService = {
       cashBookQuery = cashBookQuery.eq('branch_id', branchId);
       openingCashQuery = openingCashQuery.eq('branch_id', branchId);
       paymentsQuery = paymentsQuery.eq('branch_id', branchId);
-      farmersQuery = farmersQuery.eq('branch_id', branchId);
+      // Farmers shared across branches — skip farmersQuery branch filter.
       openBillsQuery = openBillsQuery.eq('branch_id', branchId);
       openPurchasesQuery = openPurchasesQuery.eq('branch_id', branchId);
     }
@@ -298,6 +298,7 @@ export const reportsService = {
     const totalSales = billsList.reduce((sum, bill) => sum + toNumber(bill.total), 0);
     const pendingSales = billsList.reduce((sum, bill) => sum + toNumber(bill.balance_due), 0);
     const totalCollections = billsList.reduce((sum, bill) => sum + toNumber(bill.amount_paid), 0);
+    const totalSettlementDiscount = billsList.reduce((sum, bill) => sum + toNumber((bill as any).settlement_discount_amount), 0);
     const totalExpenses = expenseRows.reduce((sum, row) => sum + row.amount, 0);
     const totalPurchases = purchaseRows.reduce((sum, row) => sum + row.amount, 0);
     const outstandingDues = farmerList.reduce((sum, farmer) => sum + toNumber(farmer.total_due), 0);
@@ -318,6 +319,7 @@ export const reportsService = {
         pendingAmount: bill.balance_due,
         baseDate: bill.bill_date,
         reference: bill.bill_number,
+        branch: (bill as any).branch_name_snapshot || undefined,
       }))
     );
 
@@ -373,6 +375,7 @@ export const reportsService = {
           currencySummary('Total Sales', totalSales),
           currencySummary('Collections', totalCollections),
           currencySummary('Pending', pendingSales),
+          ...(totalSettlementDiscount > 0 ? [currencySummary('Settlement Discounts', totalSettlementDiscount)] : []),
         ],
         exportBaseName: `sales_register_${period.year}_${String(period.month).padStart(2, '0')}`,
       },
@@ -458,20 +461,7 @@ export const reportsService = {
         exportBaseName: `bank_reconciliation_${period.year}_${String(period.month).padStart(2, '0')}`,
         note: DEFAULT_BANK_RECONCILIATION_NOTE,
       },
-      gst: {
-        title: 'GST Pack',
-        description: 'GST review pack for GSTR-1, GSTR-3B, and ITC checks.',
-        summaries: [
-          numberSummary('Month', period.month),
-          numberSummary('Year', period.year),
-          currencySummary('Output GST', outputTotal),
-          currencySummary('Input GST', inputTotal),
-          currencySummary('Net GST Payable', gstTotals.netGSTPayable),
-        ],
-        outputRows: gstTotals.outputRows,
-        inputRows: gstTotals.inputRows,
-        exportBaseName: `gst_pack_${period.year}_${String(period.month).padStart(2, '0')}`,
-      },
+
       profitAndLoss: {
         title: 'Profit & Loss',
         description: 'Monthly profitability snapshot from recorded business data.',
@@ -493,6 +483,7 @@ export const reportsService = {
           { key: 'ageDays', label: 'Age (Days)', align: 'right', type: 'number' },
           { key: 'agingBucket', label: 'Aging Bucket' },
           { key: 'reference', label: 'Reference' },
+          { key: 'branch', label: 'Branch' },
         ]),
         rows: receivableRows,
         summaries: [
@@ -570,7 +561,7 @@ export const reportsService = {
       billsQuery = billsQuery.eq('branch_id', branchId);
       expensesQuery = expensesQuery.eq('branch_id', branchId);
       purchasesQuery = purchasesQuery.eq('branch_id', branchId);
-      farmersQuery = farmersQuery.eq('branch_id', branchId);
+      // Farmers shared across branches — skip farmersQuery branch filter.
     }
 
     if (startDate) {
@@ -612,30 +603,5 @@ export const reportsService = {
     };
   },
 
-  async getGSTReport(
-    dealerId: string,
-    branchId: string | null,
-    month: number,
-    year: number
-  ): Promise<GSTReportData> {
-    const pack = await reportsService.getMonthlyFinancePack(dealerId, branchId, month, year);
-    const outputTaxable = pack.gst.outputRows.find((row) => row.label === 'Taxable Sales')?.value || 0;
-    const outputTotal = pack.gst.outputRows.find((row) => row.label === 'Output GST')?.value || 0;
-    const inputTaxable = pack.gst.inputRows.find((row) => row.label === 'Taxable Purchases')?.value || 0;
-    const inputTotal = pack.gst.inputRows.find((row) => row.label === 'Input GST')?.value || 0;
 
-    return {
-      month,
-      year,
-      outputTaxable,
-      outputCGST: outputTotal / 2,
-      outputSGST: outputTotal / 2,
-      outputTotal,
-      inputTaxable,
-      inputCGST: inputTotal / 2,
-      inputSGST: inputTotal / 2,
-      inputTotal,
-      netGSTPayable: outputTotal - inputTotal,
-    };
-  },
 };

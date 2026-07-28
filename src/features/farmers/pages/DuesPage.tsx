@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, CalendarClock, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { Button, EmptyState, SearchBar, Skeleton } from '@/components/ui';
 import { FilterBar } from '@/components/layout/FilterBar';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -89,10 +89,8 @@ export const DuesPage: React.FC = () => {
     [allFarmers, todayStr]
   );
 
-  const listRef = React.useRef<HTMLDivElement>(null);
-  const rowVirtualizer = useVirtualizer({
+  const rowVirtualizer = useWindowVirtualizer({
     count: farmersWithDues.length,
-    getScrollElement: () => listRef.current,
     estimateSize: () => 100, // Adjust estimated size of DuesFarmerRow
     overscan: 5,
   });
@@ -124,7 +122,6 @@ export const DuesPage: React.FC = () => {
   return (
     <PageShell width="wide">
       <PageHeader
-        eyebrow={t('nav.financials', 'Financials')}
         title={t('dashboard.outstandingDues', 'Outstanding Dues')}
         description={t('farmers.duesDescription', 'Monitor and manage pending payments from farmers.')}
         action={
@@ -225,52 +222,54 @@ export const DuesPage: React.FC = () => {
         </SectionCard>
       )}
 
-      <SectionCard
-        title={`${farmersWithDues.length} ${t('farmers.farmerWithDues', 'farmer with dues')}${farmersWithDues.length === 1 ? '' : 's'}`}
-        description={hasFilters ? t('farmers.filteredResults', 'Filtered results') : t('farmers.rankedDues', 'Farmers ranked by highest outstanding balance')}
-      >
-        {isLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 rounded-2xl" />
-            ))}
-          </div>
-        ) : !farmersWithDues.length ? (
-          <EmptyState
-            icon={Users}
-            title={hasFilters ? t('common.noMatches', 'No matches found') : t('farmers.noDues', 'No outstanding dues!')}
-            description={
-              hasFilters
-                ? t('farmers.tryChangingSearch', 'Try changing your search or ageing filter.')
-                : t('farmers.allCleared', 'All your farmers have cleared their balances.')
-            }
-          />
-        ) : (
-          <div ref={listRef} className="max-h-[60dvh] overflow-y-auto pr-1">
-            <div className="relative" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const farmer = farmersWithDues[virtualRow.index];
-                const ageingRow = ageingByFarmer.get(farmer.id);
-                return (
-                  <div
-                    key={virtualRow.key}
-                    className="absolute left-0 top-0 w-full"
-                    style={{ height: `${virtualRow.size}px`, transform: `translateY(${virtualRow.start}px)` }}
-                  >
-                    <div className="pb-3">
-                      <DuesFarmerRow
-                        farmer={farmer}
-                        oldestDueDays={ageingRow ? ageingRow.oldest_due_days : null}
-                        onFollowUp={setFollowUpFarmer}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </SectionCard>
+      <div className="flex flex-col gap-1 mb-4 px-1 mt-6">
+        <h2 className="text-lg font-black text-slate-900">
+          {farmersWithDues.length} {t('farmers.farmerWithDues', 'farmer with dues')}{farmersWithDues.length === 1 ? '' : 's'}
+        </h2>
+        <p className="text-sm font-medium text-slate-500">
+          {hasFilters ? t('farmers.filteredResults', 'Filtered results') : t('farmers.rankedDues', 'Farmers ranked by highest outstanding balance')}
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3 px-1">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Skeleton key={index} className="h-24 rounded-2xl" />
+          ))}
+        </div>
+      ) : !farmersWithDues.length ? (
+        <EmptyState
+          icon={Users}
+          title={hasFilters ? t('common.noMatches', 'No matches found') : t('farmers.noDues', 'No outstanding dues!')}
+          description={
+            hasFilters
+              ? t('farmers.tryChangingSearch', 'Try changing your search or ageing filter.')
+              : t('farmers.allCleared', 'All your farmers have cleared their balances.')
+          }
+        />
+      ) : (
+        <div className="relative px-1" style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const farmer = farmersWithDues[virtualRow.index];
+            const ageingRow = ageingByFarmer.get(farmer.id);
+            return (
+              <div
+                key={virtualRow.key}
+                className="absolute left-0 top-0 w-full"
+                style={{ height: `${virtualRow.size}px`, transform: `translateY(${virtualRow.start}px)` }}
+              >
+                <div className="pb-3">
+                  <DuesFarmerRow
+                    farmer={farmer}
+                    oldestDueDays={ageingRow ? ageingRow.oldest_due_days : null}
+                    onFollowUp={setFollowUpFarmer}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {followUpFarmer && (
         <FollowUpModal

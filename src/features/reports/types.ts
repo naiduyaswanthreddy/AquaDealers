@@ -88,6 +88,7 @@ export interface AgingRow {
   ageDays: number;
   agingBucket: string;
   reference: string;
+  branch?: string;
 }
 
 export interface ReportTableModel<TRow extends object> {
@@ -108,14 +109,6 @@ export interface MonthlyFinancePack {
   expenses: ReportTableModel<ExpenseRegisterRow>;
   cashBook: ReportTableModel<CashBookReportRow>;
   bankReconciliation: ReportTableModel<BankReconciliationRow>;
-  gst: {
-    title: string;
-    description: string;
-    summaries: ReportSummaryItem[];
-    outputRows: GSTSummaryRow[];
-    inputRows: GSTSummaryRow[];
-    exportBaseName: string;
-  };
   profitAndLoss: {
     title: string;
     description: string;

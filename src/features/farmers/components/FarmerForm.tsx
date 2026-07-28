@@ -11,7 +11,7 @@ import RiskStatusPicker from './RiskStatusPicker';
 import { parseISO } from 'date-fns';
 import type { Farmer } from '@/types/database';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
-import imageCompression from 'browser-image-compression';
+import { compressImage } from '@/lib/imageUtils';
 import { Camera, Image as ImageIcon } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 
@@ -28,6 +28,7 @@ const farmerSchema = z.object({
   crop_status: z.string().default('growing'),
   risk_status: z.string().default('reliable'),
   credit_limit: z.string().optional().or(z.literal('')),
+  opening_balance: z.string().optional().or(z.literal('')),
   default_medicine_discount_percentage: z.string().optional().or(z.literal('')),
   branch_id: z.string().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
@@ -65,15 +66,7 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
 
     try {
       setIsCompressing(true);
-      const options = {
-        maxSizeMB: 0.05,
-        maxWidthOrHeight: 500,
-        useWebWorker: true,
-        fileType: "image/webp",
-        initialQuality: 0.6,
-      };
-      
-      const compressedFile = await imageCompression(file, options);
+      const compressedFile = await compressImage(file);
       setImageFile(compressedFile);
       setImagePreview(URL.createObjectURL(compressedFile));
     } catch (error) {
@@ -103,6 +96,7 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
       crop_status: defaultValues?.crop_status || 'growing',
       risk_status: defaultValues?.risk_status || 'reliable',
       credit_limit: defaultValues?.credit_limit?.toString() || '',
+      opening_balance: defaultValues?.opening_balance?.toString() || '',
       default_medicine_discount_percentage: defaultValues?.default_medicine_discount_percentage?.toString() || '',
       branch_id: defaultValues?.branch_id || branches.find((b) => b.is_main)?.id || '',
       notes: defaultValues?.notes || '',
@@ -126,6 +120,7 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
       crop_status: data.crop_status,
       risk_status: data.risk_status,
       credit_limit: data.credit_limit ? Number(data.credit_limit) : 0,
+      opening_balance: data.opening_balance ? Number(data.opening_balance) : 0,
       default_medicine_discount_percentage: hasFarmerDiscountFeature
         ? Math.min(Math.max(Number(data.default_medicine_discount_percentage) || 0, 0), 100)
         : 0,
@@ -287,6 +282,18 @@ export const FarmerForm: React.FC<FarmerFormProps> = ({
         placeholder="e.g. 50000"
         type="number"
       />
+
+      {mode === 'create' && (
+        <Input
+          {...register('opening_balance')}
+          label="Previous Due (₹)"
+          placeholder="Amount already owed before using the app"
+          type="number"
+          min="0"
+          step="0.01"
+          helperText="Adds this existing debt to the farmer's current due."
+        />
+      )}
 
       {hasFarmerDiscountFeature ? (
         <Input

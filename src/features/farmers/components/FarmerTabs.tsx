@@ -21,8 +21,8 @@ export const FarmerTabs: React.FC<FarmerTabsProps> = ({ activeTab, onChange }) =
   ];
 
   return (
-    <div className="mt-2 rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,#f8fbff_0%,#eef5fb_100%)] p-2 shadow-[0_14px_36px_rgba(148,163,184,0.16)]">
-      <div className="grid grid-cols-5 gap-1 sm:gap-2">
+    <div className="mt-2 rounded-[24px] border border-primary/20 bg-primary/5 p-1.5 shadow-[0_14px_36px_rgba(var(--color-primary),0.05)]">
+      <div className="grid grid-cols-5 lg:grid-cols-4 gap-1 sm:gap-2">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const Icon = tab.icon;
@@ -30,7 +30,7 @@ export const FarmerTabs: React.FC<FarmerTabsProps> = ({ activeTab, onChange }) =
           <button
             key={tab.id}
             onClick={() => onChange(tab.id)}
-            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-2 py-2.5 text-center transition-all ${
+            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-2 py-1.5 text-center transition-all ${tab.id === 'details' ? 'lg:hidden ' : ''}${
               isActive
                 ? 'bg-primary text-white shadow-[0_14px_28px_rgba(20,103,159,0.28)] ring-1 ring-primary/20'
                 : 'text-slate-500 hover:bg-white/70 hover:text-slate-700'

@@ -1,18 +1,23 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users, IndianRupee, TrendingUp, TrendingDown, Banknote } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { Button, EmptyState, SearchBar, Skeleton } from '@/components/ui';
 import { ListLoadMore } from '@/components/ui/ListLoadMore';
 import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader } from '@/components/layout/PageHeader';
 import FarmerCard from '../components/FarmerCard';
-import { useFarmers } from '../hooks/useFarmers';
 import { getFarmers } from '../services/farmerService';
 import { formatCurrency } from '@/lib/utils';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
+import { useStaffStore } from '@/stores/staffStore';
+import { getStaffFeatureMode } from '@/lib/staffAccess';
 import type { Farmer } from '@/types/database';
+import { useDashboardStats } from '@/features/dashboard/hooks/useDashboardData';
 
 export const FarmerListPage: React.FC = () => {
   const { t } = useTranslation();
@@ -21,34 +26,27 @@ export const FarmerListPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'farmers' | 'walkIn'>('farmers');
   const user = useAuthStore((s) => s.user);
   const activeBranchId = useBranchStore((s) => s.getActiveBranchId());
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const canAddFarmer = getStaffFeatureMode('addFarmer', currentStaff?.permissions, !!currentStaff) === 'visible';
 
-  // We still fetch a limited set for the global stats if needed, or we can use an aggregate endpoint.
-  // For now, we rely on useFarmers fetching top 1000 for total stats, while paged uses infinite scroll.
-  const { data: allFarmersForStats = [], isLoading: statsLoading } = useFarmers({
-    search: search || undefined,
-    isWalkIn: activeTab === 'walkIn',
-  });
-
+  // Single paginated fetch — total comes from server COUNT, no second query needed.
+  // Previously there was a dual-fetch (useFarmers limit:1000 for stats + paginated),
+  // which caused 2 DB queries on every page visit. Now we use one query only.
   const hasFilters = useMemo(() => !!search, [search]);
 
-  // Dynamic statistics calculations
-  const totalFarmers = allFarmersForStats.length;
-  const totalDues = useMemo(() => {
-    return allFarmersForStats.reduce((sum, f) => sum + Number(f.total_due || 0), 0);
-  }, [allFarmersForStats]);
-
+  // Farmers are shared across all branches — don't filter by activeBranchId.
   const fetchFarmersPage = React.useCallback(async ({ page, limit }: { page: number; limit: number }) => {
     if (!user?.id) throw new Error('No dealer ID');
     return getFarmers({
       dealerId: user.id,
-      branchId: activeBranchId,
       page,
       limit,
       search: search || undefined,
       isWalkIn: activeTab === 'walkIn',
       sortBy: 'total_due',
     });
-  }, [user?.id, activeBranchId, search, activeTab]);
+  }, [user?.id, search, activeTab]);
+  void activeBranchId;
 
   const pagedFarmers = useLoadMoreList<Farmer>({
     initialLimit: 10,
@@ -57,64 +55,114 @@ export const FarmerListPage: React.FC = () => {
     dependencies: [fetchFarmersPage],
   });
 
-  const isLoading = statsLoading || pagedFarmers.isLoading;
+  // Total farmer count comes from the server-side COUNT on the paged query
+  const totalFarmers = pagedFarmers.totalCount ?? 0;
+  const isLoading = pagedFarmers.isLoading;
+
+  // totalDues from dashboard stats cache (staleTime: 5min)
+  const { data: dashStats } = useDashboardStats();
+  const totalDues = dashStats?.totalDues ?? 0;
+
+  // Extra KPI stats: advance given + this/prev month sales
+  const { data: farmerStats } = useQuery({
+    queryKey: ['farmerPageStats', user?.id],
+    queryFn: async () => {
+      const today = new Date();
+      const firstOfMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+      const firstOfLast = new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().slice(0, 10);
+      const lastOfLast = new Date(today.getFullYear(), today.getMonth(), 0).toISOString().slice(0, 10);
+      const [farmersRes, thisRes, prevRes] = await Promise.all([
+        supabase.from('farmers').select('opening_balance').eq('dealer_id', user!.id).gt('opening_balance', 0),
+        supabase.from('bills').select('total').eq('dealer_id', user!.id).neq('status', 'cancelled').gte('bill_date', firstOfMonth),
+        supabase.from('bills').select('total').eq('dealer_id', user!.id).neq('status', 'cancelled').gte('bill_date', firstOfLast).lte('bill_date', lastOfLast),
+      ]);
+      const advanceGiven = (farmersRes.data ?? []).reduce((s, f) => s + Number(f.opening_balance), 0);
+      const thisMonthSales = (thisRes.data ?? []).reduce((s, b) => s + Number(b.total), 0);
+      const prevMonthSales = (prevRes.data ?? []).reduce((s, b) => s + Number(b.total), 0);
+      return { advanceGiven, thisMonthSales, prevMonthSales };
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60_000,
+  });
+
+  const salesPct = farmerStats?.prevMonthSales
+    ? Math.round(((( farmerStats.thisMonthSales ?? 0) - farmerStats.prevMonthSales) / farmerStats.prevMonthSales) * 100)
+    : null;
 
   return (
     <PageShell width="full">
-      {/* Redesigned Hero Background */}
-      <section className="dashboard-hero flex flex-col gap-4 pb-14">
-        <div className="flex w-full items-start justify-between">
-          <div className="dashboard-hero__content">
-            <h1 className="dashboard-hero__title mt-1">{t('nav.farmers', 'Farmers')}</h1>
-          </div>
-          <div>
-            <button
-              type="button"
-              onClick={() => navigate('/farmers/new')}
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-[24px] border border-solid border-white/22 px-5 text-[0.82rem] font-semibold text-white backdrop-blur-md transition-all duration-200 hover:bg-white/25 active:scale-[0.98]"
-              style={{ background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.22)' }}
-            >
-              <Plus className="h-4 w-4 stroke-[2.8] text-white" />
-              <span className="pr-1">{t('common.add', 'Add')}</span>
-            </button>
-          </div>
-        </div>
+      <PageHeader
+        title={t('nav.farmers', 'Farmers')}
+        action={
+          canAddFarmer && (
+            <Button onClick={() => navigate('/farmers/new')} leftIcon={<Plus className="h-4.5 w-4.5" />}>
+              {t('common.add', 'Add')}
+            </Button>
+          )
+        }
+      />
 
-        {/* Side-by-side translucent summary cards */}
-        <div className="flex gap-4 w-full mt-2">
-          <div className="bg-white/10 border border-white/14 rounded-2xl p-4 flex-1 backdrop-blur-md shadow-inner flex flex-col">
-            <span className="text-[10px] font-extrabold tracking-wider text-white/70 uppercase">
-              {t('farmers.totalFarmers', 'TOTAL FARMERS')}
-            </span>
-            <span className="text-2xl font-black text-white mt-1">
-              {totalFarmers}
-            </span>
-          </div>
-          <div 
-            className="rounded-2xl p-4 flex-1 backdrop-blur-md shadow-inner flex flex-col relative overflow-hidden group cursor-pointer"
-            onClick={() => navigate('/farmers/dues')}
-          >
-            <div className="absolute inset-0 bg-white/20 transition-colors group-hover:bg-white/25 z-0" />
-            <div className="absolute inset-0 border border-white/30 rounded-2xl z-0" />
-            
-            <div className="relative z-10 flex items-center justify-between">
-              <span className="text-[10px] font-extrabold tracking-wider text-white/90 uppercase">
-                {t('farmers.totalDues', 'TOTAL DUES')}
-              </span>
-              <span className="flex items-center gap-0.5 text-[10px] font-bold text-white/80 uppercase tracking-wide group-hover:translate-x-0.5 transition-transform">
-                View All
-                <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" /></svg>
-              </span>
+      {/* KPI grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full mb-6">
+        {/* Total Farmers */}
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)] flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[0.68rem] font-bold uppercase tracking-wider text-slate-500">{t('farmers.totalFarmers', 'Total Farmers')}</span>
+            <div className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+              <Users className="h-4.5 w-4.5" />
             </div>
-            <span className="relative z-10 text-2xl font-black text-white mt-1">
-              {formatCurrency(totalDues)}
-            </span>
           </div>
+          <span className="text-2xl font-black text-slate-900 leading-tight">{totalFarmers}</span>
         </div>
-      </section>
 
-      {/* Floating search pill */}
-      <div className="relative z-10 -mt-13 mb-1.5 px-1">
+        {/* Total Dues */}
+        <div
+          onClick={() => navigate('/farmers/dues')}
+          className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)] flex flex-col gap-2 cursor-pointer hover:shadow-md transition-shadow group"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[0.68rem] font-bold uppercase tracking-wider text-slate-500">{t('farmers.totalDues', 'Total Dues')}</span>
+            <div className="h-8 w-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+              <IndianRupee className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <span className="text-lg font-black text-slate-900 leading-tight break-all">{formatCurrency(totalDues)}</span>
+        </div>
+
+        {/* Advance Given */}
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)] flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[0.68rem] font-bold uppercase tracking-wider text-slate-500">Advance Given</span>
+            <div className="h-8 w-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+              <Banknote className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <span className="text-lg font-black text-slate-900 leading-tight break-all">
+            {farmerStats ? formatCurrency(farmerStats.advanceGiven) : '—'}
+          </span>
+        </div>
+
+        {/* This Month Sales */}
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)] flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[0.68rem] font-bold uppercase tracking-wider text-slate-500">This Month Sales</span>
+            <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <TrendingUp className="h-4.5 w-4.5" />
+            </div>
+          </div>
+          <span className="text-lg font-black text-slate-900 leading-tight break-all">
+            {farmerStats ? formatCurrency(farmerStats.thisMonthSales) : '—'}
+          </span>
+          {salesPct !== null && (
+            <span className={`flex items-center gap-1 text-[0.68rem] font-bold ${salesPct >= 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+              {salesPct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+              {Math.abs(salesPct)}% vs last month
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="mb-4 px-1">
         <SearchBar
           value={search}
           onChange={setSearch}
@@ -186,7 +234,7 @@ export const FarmerListPage: React.FC = () => {
                 : t('farmers.addFirstFarmer', 'Add your first farmer to start billing and tracking dues.')
             }
             action={
-              !hasFilters ? (
+              !hasFilters && canAddFarmer ? (
                 <Button onClick={() => navigate('/farmers/new')} leftIcon={<Plus className="h-4.5 w-4.5" />}>
                   {t('common.add', 'Add')}
                 </Button>

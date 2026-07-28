@@ -490,6 +490,14 @@ export const SeoLandingPage: React.FC<SeoLandingPageProps> = ({ pageKey }) => {
             </a>
           </div>
         </div>
+        
+        <div className="mx-auto max-w-7xl mt-12 pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-medium text-slate-500">
+          <div>&copy; {new Date().getFullYear()} AquaDealers. All rights reserved.</div>
+          <div className="flex items-center gap-6">
+            <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-slate-300 transition-colors">Terms of Service</Link>
+          </div>
+        </div>
       </section>
     </main>
   );

@@ -109,7 +109,7 @@ export function buildSalesRegisterRows(
       paymentStatus: inferPaymentStatus(bill),
       paymentMode: inferPaymentMode(bill, paymentsByBillId),
       transactionId: inferTransactionId(bill, paymentsByBillId),
-      branch: branchName,
+      branch: (bill as any).branch_name_snapshot || branchName,
     };
   });
 }
@@ -137,7 +137,7 @@ export function buildPurchaseRegisterRows(
       gstAmount: toMoney(purchase.gst_amount),
       paymentMode: purchase.is_paid ? (payment?.method || 'Paid') : 'Credit',
       taxFlag: toMoney(purchase.gst_amount) > 0 ? 'GST Eligible' : 'No GST',
-      branch: branchName,
+      branch: (purchase as any).branch_name_snapshot || branchName,
     };
   });
 }
@@ -149,7 +149,7 @@ export function buildExpenseRows(expenses: Expense[], branchName = 'Main branch'
     description: expense.description || '—',
     amount: toMoney(expense.amount),
     paymentMode: expense.paid_via || 'cash',
-    branch: branchName,
+    branch: (expense as any).branch_name_snapshot || branchName,
   }));
 }
 
@@ -212,7 +212,7 @@ export function buildGSTSummaries(outputTotal: number, inputTotal: number, outpu
 }
 
 export function buildAgingRows<T extends { id: string; name: string }>(
-  records: Array<T & { pendingAmount: number; baseDate: string; reference: string }>,
+  records: Array<T & { pendingAmount: number; baseDate: string; reference: string; branch?: string }>,
   defaultDueDays = DEFAULT_AGING_DAYS
 ): AgingRow[] {
   const today = new Date();
@@ -228,6 +228,7 @@ export function buildAgingRows<T extends { id: string; name: string }>(
       ageDays,
       agingBucket: getAgingBucket(ageDays),
       reference: record.reference,
+      branch: record.branch,
     };
   });
 }

@@ -264,7 +264,9 @@ BEGIN
     AND is_active = true
     AND pin_hash = p_pin_hash
     AND (
-      COALESCE(array_length(branch_ids, 1), 0) = 0
+      branch_ids IS NULL 
+      OR branch_ids = '{}'::uuid[] 
+      OR array_length(branch_ids, 1) IS NULL
       OR v_branch_id = ANY(branch_ids)
     )
   ORDER BY created_at ASC

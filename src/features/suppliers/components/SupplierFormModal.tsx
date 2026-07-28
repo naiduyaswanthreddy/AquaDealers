@@ -8,9 +8,8 @@ import { SupplierItem, SupplierInsert } from '../types';
 import { Modal } from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import { toast } from 'sonner';
-import imageCompression from 'browser-image-compression';
 import { supabase } from '@/lib/supabase';
-import { deleteOldImage } from '@/lib/imageUtils';
+import { compressImage, deleteOldImage } from '@/lib/imageUtils';
 
 interface SupplierFormModalProps {
   supplier?: SupplierItem | null;
@@ -52,13 +51,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = ({ supplier, 
 
     try {
       setIsCompressingPhoto(true);
-      const compressedFile = await imageCompression(file, {
-        maxSizeMB: 0.05,
-        maxWidthOrHeight: 500,
-        useWebWorker: true,
-        fileType: 'image/webp',
-        initialQuality: 0.6,
-      });
+      const compressedFile = await compressImage(file);
       setPhotoFile(compressedFile);
       setPhotoPreview(URL.createObjectURL(compressedFile));
     } catch (error) {

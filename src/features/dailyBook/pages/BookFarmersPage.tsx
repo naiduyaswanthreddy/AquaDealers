@@ -43,26 +43,38 @@ export const BookFarmersPage: React.FC = () => {
               }
               accent={farmer.unpaidToday > 0 ? 'unpaid' : 'paid'}
             >
-              <div className="text-sm font-extrabold uppercase">
+              {/* Name + village */}
+              <div className="text-base font-extrabold text-[color:var(--book-ink)]">
                 {farmer.name}
-                {farmer.village ? <span className="font-semibold normal-case"> · {farmer.village}</span> : null}
+                {farmer.village ? <span className="text-sm font-semibold text-[color:var(--book-ink-soft)]"> · {farmer.village}</span> : null}
               </div>
-              <div className="book-num mt-0.5 text-xs">
-                {bookMoney(farmer.total)} · {farmer.billCount} {farmer.billCount === 1 ? 'bill' : 'bills'} ·{' '}
+
+              {/* Bill total + count + paid status */}
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                <span className="book-num text-sm font-bold text-[color:var(--book-ink)]">
+                  {bookMoney(farmer.total)}
+                </span>
+                <span className="text-sm text-[color:var(--book-ink-soft)]">
+                  {farmer.billCount} {farmer.billCount === 1 ? 'bill' : 'bills'}
+                </span>
                 {farmer.unpaidToday > 0 ? (
-                  <span className="font-bold text-[color:var(--book-red)]">
+                  <span className="book-num text-sm font-bold text-[color:var(--book-red)]">
                     ✗ {bookMoney(farmer.unpaidToday)} due today
                   </span>
                 ) : (
-                  <span className="font-bold text-[color:var(--book-green)]">✓ Paid</span>
+                  <span className="text-sm font-bold text-[color:var(--book-green)]">✓ Paid</span>
                 )}
               </div>
-              <div className="book-num mt-0.5 text-xs text-[color:var(--book-ink-soft)]">
-                First visited: {bookTime(farmer.firstBillAt)}
+
+              {/* Visit time */}
+              <div className="mt-0.5 text-[0.72rem] text-[color:var(--book-ink-soft)]">
+                Visited: {bookTime(farmer.firstBillAt)}
               </div>
+
+              {/* Total outstanding dues */}
               {farmer.farmerId && farmer.outstanding > 0 ? (
-                <div className="book-num mt-0.5 text-xs font-bold text-[#b45309]">
-                  Total outstanding: {bookMoney(farmer.outstanding)}
+                <div className="book-num mt-1 text-sm font-bold text-[#b45309]">
+                  ⚠ Total outstanding: {bookMoney(farmer.outstanding)}
                 </div>
               ) : null}
             </BookRow>

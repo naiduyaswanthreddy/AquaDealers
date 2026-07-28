@@ -30,6 +30,7 @@ export interface BookCrumb {
 
 interface BookPageProps {
   title: string;
+  subtitle?: string;
   date: string;
   crumbs?: BookCrumb[];
   shareText?: string;
@@ -44,6 +45,7 @@ interface BookPageProps {
  */
 export const BookPage: React.FC<BookPageProps> = ({
   title,
+  subtitle,
   date,
   crumbs,
   shareText,
@@ -130,6 +132,7 @@ export const BookPage: React.FC<BookPageProps> = ({
                 <h1 className="book-serif truncate text-lg font-bold uppercase tracking-[0.14em] text-[color:var(--book-accent)]">
                   {title}
                 </h1>
+                {subtitle ? <div className="mt-0.5 truncate text-[11px] font-semibold text-[color:var(--book-ink-soft)]">{subtitle}</div> : null}
                 <button
                   type="button"
                   onClick={() => setCalendarOpen(true)}

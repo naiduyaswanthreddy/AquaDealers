@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button, EmptyState, Input } from '@/components/ui';
 import { SectionCard } from '@/components/layout/SectionCard';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatQuantity } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
 import { useCreateBill } from '../hooks/useBilling';
@@ -27,6 +27,7 @@ export const CartSidebar: React.FC = () => {
     discountAmount,
     amountPaid,
     paymentType,
+    settlementDiscountAmount,
     updateQuantity,
     updateItemDiscount,
     removeItem,
@@ -34,6 +35,7 @@ export const CartSidebar: React.FC = () => {
     setDiscount,
     setAmountPaid,
     setPaymentType,
+    setSettlementDiscount,
     clearCart,
   } = useCartStore();
 
@@ -69,16 +71,17 @@ export const CartSidebar: React.FC = () => {
     };
   }, [discountAmount, gstEnabled, items]);
 
-  const projectedDue = Math.max(0, farmerTotalDue + totals.total - amountPaid);
+  const effectiveTotal = Math.max(0, totals.total - settlementDiscountAmount);
+  const projectedDue = Math.max(0, farmerTotalDue + effectiveTotal - amountPaid);
   const exceedsCreditLimit = !!farmerId && farmerCreditLimit > 0 && projectedDue > farmerCreditLimit;
 
   const handleCheckout = async () => {
     if (!items.length || !user?.id) return;
-    if (amountPaid > totals.total) {
+    if (amountPaid > effectiveTotal) {
       toast.error(t('billing.errorOverpaid', 'Amount paid cannot exceed the total.'));
       return;
     }
-    if (farmerId === null && amountPaid < totals.total) {
+    if (farmerId === null && amountPaid < effectiveTotal) {
       toast.error(t('billing.walkinFullPayment', 'Walk-in bills must be paid in full.'));
       return;
     }
@@ -105,6 +108,7 @@ export const CartSidebar: React.FC = () => {
         igst_amount: 0,
         discount_amount: totals.overallDiscount,
         total: totals.total,
+        settlement_discount_amount: settlementDiscountAmount || undefined,
         amount_paid: amountPaid,
         payment_type: amountPaid > 0 ? paymentType : null,
         credit_override_used: exceedsCreditLimit,
@@ -116,6 +120,7 @@ export const CartSidebar: React.FC = () => {
             product_name,
             hsn_code,
             quantity,
+            base_unit_price,
             unit_price: Number((base_unit_price * (1 - discount_percentage / 100)).toFixed(2)),
             discount_percentage,
             discount_source,
@@ -172,7 +177,7 @@ export const CartSidebar: React.FC = () => {
                   <div className="min-w-0">
                     <h3 className="truncate text-sm font-bold text-text-primary">{item.product_name}</h3>
                     <p className="mt-1 text-sm text-text-secondary">
-                      {formatCurrency(discountedUnitPrice)} x {item.quantity} {item.unit}
+                      {formatCurrency(discountedUnitPrice)} x {formatQuantity(item.quantity, item.unit)}
                     </p>
                     {item.batch_number ? (
                       <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -302,14 +307,26 @@ export const CartSidebar: React.FC = () => {
           placeholder="0"
           inputSize="sm"
         />
+        <Input
+          type="number"
+          label="Settlement Discount (optional)"
+          value={settlementDiscountAmount || ''}
+          onChange={(e) => {
+            const v = Math.min(Math.max(0, Number(e.target.value) || 0), totals.total);
+            setSettlementDiscount(v);
+            if (amountPaid > 0) setAmountPaid(Math.min(amountPaid, Math.max(0, totals.total - v)));
+          }}
+          placeholder="0"
+          inputSize="sm"
+        />
         <div className="flex items-center justify-between border-t border-border pt-3">
-          <span className="text-base font-bold text-text-primary">{t('billing.total', 'Total')}</span>
-          <span className="text-xl font-extrabold tracking-[-0.04em] text-primary">{formatCurrency(totals.total)}</span>
+          <span className="text-base font-bold text-text-primary">{settlementDiscountAmount > 0 ? 'Effective Total' : t('billing.total', 'Total')}</span>
+          <span className="text-xl font-extrabold tracking-[-0.04em] text-primary">{formatCurrency(effectiveTotal)}</span>
         </div>
       </div>
 
       <div className="space-y-3">
-        <Input type="number" label={t('billing.amountPaidNow', 'Amount paid now')} value={amountPaid || ''} onChange={(event) => setAmountPaid(Number(event.target.value))} placeholder="0" />
+        <Input type="number" label={t('billing.amountPaidNow', 'Amount paid now')} value={amountPaid || ''} onChange={(event) => setAmountPaid(Math.min(Number(event.target.value), effectiveTotal))} placeholder="0" />
         {amountPaid > 0 ? (
           <div className="grid grid-cols-3 gap-2">
             {['cash', 'upi', 'bank'].map((type) => (
@@ -330,7 +347,7 @@ export const CartSidebar: React.FC = () => {
         ) : null}
         <div className="flex items-center justify-between rounded-2xl bg-danger-light/55 px-4 py-3 text-sm font-bold text-danger">
           <span>{t('billing.balanceDue', 'Balance due')}</span>
-          <span>{formatCurrency(Math.max(0, totals.total - amountPaid))}</span>
+          <span>{formatCurrency(Math.max(0, effectiveTotal - amountPaid))}</span>
         </div>
         {exceedsCreditLimit ? (
           <div className="rounded-2xl border border-warning/30 bg-warning-light px-4 py-3 text-sm font-semibold text-warning">

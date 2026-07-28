@@ -6,11 +6,21 @@ import { getStaffSessionToken, getAdminSessionToken } from './sessionTokens';
 
 // VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY let tests and local stacks
 // (e.g. `supabase start`) point the app elsewhere without a code change.
+// NOTE: Supabase anon keys are PUBLIC keys by design (all security via RLS).
+// They are safe to ship in client bundles. See: https://supabase.com/docs/guides/api/api-keys
 const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL || 'https://xttuxtyjtqegjvirtpbr.supabase.co';
+  import.meta.env.VITE_SUPABASE_URL || 'https://fvcafioxkgbljcjomixs.supabase.co';
 const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dHV4dHlqdHFlZ2p2aXJ0cGJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDkyNDksImV4cCI6MjA5NTc4NTI0OX0.Wj5dvvzMX5VXNBo2DY2j_5jhsEPzHCC_OUmsZvjrU3A';
+  'sb_publishable_4xT4NDR8E-Zj5wqTrh-WsA_DLqEcVvn';
+
+// Warn in development if env vars are missing (production builds always have them via CI)
+if (import.meta.env.DEV && !import.meta.env.VITE_SUPABASE_URL) {
+  console.warn(
+    '[AquaDealers] VITE_SUPABASE_URL not set — falling back to hardcoded project URL.\n' +
+    'Create a .env.local file with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY for local dev.'
+  );
+}
 
 // Attaches the staff/admin session tokens (when present) so the database can
 // enforce staff RLS policies and admin RPC access server-side.

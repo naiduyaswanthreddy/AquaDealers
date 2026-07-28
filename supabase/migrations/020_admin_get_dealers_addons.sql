@@ -3,8 +3,12 @@
 -- Migration 020: Return custom_features in admin_get_dealers and cleanup
 -- =============================================================================
 
+-- Ensure the column exists (in fresh projects the timestamped 20260601000004
+-- migration that adds it runs AFTER this numbered one).
+ALTER TABLE dealers ADD COLUMN IF NOT EXISTS custom_features JSONB DEFAULT '[]'::jsonb;
+
 -- Clean up any incorrectly stringified custom_features from previous bug
-UPDATE dealers 
+UPDATE dealers
 SET custom_features = '[]'::jsonb
 WHERE jsonb_typeof(custom_features) = 'string';
 

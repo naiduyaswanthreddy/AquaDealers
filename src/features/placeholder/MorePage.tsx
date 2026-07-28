@@ -15,6 +15,9 @@ import {
   ReceiptText,
   ShieldCheck,
   TrendingUp,
+  ArrowLeftRight,
+  Undo2,
+  History,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -36,8 +39,11 @@ export const MorePage: React.FC = () => {
   type MenuItem = {
     path: string;
     label: string;
+    description?: string;
     icon: React.ElementType;
     color: string;
+    cardBg: string;
+    chevronBg: string;
     featureKey?: StaffFeatureKey;
   };
 
@@ -50,30 +56,43 @@ export const MorePage: React.FC = () => {
 
   const menuSections: { title: string; items: MenuItem[] }[] = [
     {
-      title: t('more.businessOperations', 'Business Operations'),
+      title: 'Money & Daily Operations',
       items: [
-        { path: '/book', label: t('nav.dailyBook', 'Daily Book'), icon: NotebookPen, color: 'bg-amber-100 text-amber-700', featureKey: 'reports' },
-        { path: '/cashbook', label: t('nav.cashbook', 'Cash Book'), icon: PiggyBank, color: 'bg-success-light text-success', featureKey: 'cashbook' },
-        { path: '/expenses', label: t('nav.shopExpenses', 'Shop Expenses'), icon: Wallet, color: 'bg-danger-light text-danger', featureKey: 'expenses' },
-        { path: '/suppliers', label: t('nav.suppliersRegistry', 'Suppliers Registry'), icon: Users2, color: 'bg-primary/10 text-primary', featureKey: 'suppliers' },
-        { path: '/bills', label: t('nav.allBills', 'All Bills'), icon: ReceiptText, color: 'bg-indigo-100 text-indigo-600', featureKey: 'billHistory' },
-        { path: '/inventory/rate-adjustment', label: 'Rate Diff Tool', icon: TrendingUp, color: 'bg-violet-100 text-violet-600' },
+        { path: '/book', label: t('nav.dailyBook', 'Daily Book'), description: 'Record and track all daily transactions easily', icon: NotebookPen, color: 'bg-amber-100 text-amber-700', cardBg: 'bg-amber-50 border-amber-200/60', chevronBg: 'bg-amber-100 text-amber-600', featureKey: 'reports' },
+        { path: '/cashbook', label: t('nav.cashbook', 'Cash Book'), description: 'Manage cash in hand and track cash flow', icon: PiggyBank, color: 'bg-success-light text-success', cardBg: 'bg-emerald-50 border-emerald-200/60', chevronBg: 'bg-emerald-100 text-emerald-600', featureKey: 'cashbook' },
+        { path: '/expenses', label: t('nav.shopExpenses', 'Shop Expenses'), description: 'Track and manage all shop expenses', icon: Wallet, color: 'bg-danger-light text-danger', cardBg: 'bg-rose-50 border-rose-200/60', chevronBg: 'bg-rose-100 text-rose-500', featureKey: 'expenses' },
+      ],
+    },
+    {
+      title: 'Goods & Supply Chain',
+      items: [
+        { path: '/suppliers', label: t('nav.suppliersRegistry', 'Suppliers Registry'), description: 'View and manage your suppliers list', icon: Users2, color: 'bg-primary/10 text-primary', cardBg: 'bg-blue-50 border-blue-200/60', chevronBg: 'bg-blue-100 text-blue-600', featureKey: 'suppliers' },
+        { path: '/transfers', label: 'Stock Transfers', description: 'Transfer stock between branches', icon: ArrowLeftRight, color: 'bg-sky-100 text-sky-700', cardBg: 'bg-sky-50 border-sky-200/60', chevronBg: 'bg-sky-100 text-sky-600', featureKey: 'inventory' },
+        { path: '/inventory/rate-adjustment', label: 'Rate Diff Tool', description: 'Adjust and compare product rates', icon: TrendingUp, color: 'bg-violet-100 text-violet-600', cardBg: 'bg-violet-50 border-violet-200/60', chevronBg: 'bg-violet-100 text-violet-600' },
+      ],
+    },
+    {
+      title: 'Records & Bills',
+      items: [
+        { path: '/bills', label: t('nav.allBills', 'All Bills'), description: 'View and manage all your bills', icon: ReceiptText, color: 'bg-indigo-100 text-indigo-600', cardBg: 'bg-indigo-50 border-indigo-200/60', chevronBg: 'bg-indigo-100 text-indigo-600', featureKey: 'billHistory' },
+        { path: '/returns', label: 'Returns', description: 'Handle product returns', icon: Undo2, color: 'bg-orange-100 text-orange-700', cardBg: 'bg-orange-50 border-orange-200/60', chevronBg: 'bg-orange-100 text-orange-600', featureKey: 'billHistory' },
+        { path: '/transactions', label: 'Transactions', description: 'Track all transactions', icon: History, color: 'bg-amber-100 text-amber-700', cardBg: 'bg-amber-50 border-amber-200/60', chevronBg: 'bg-amber-100 text-amber-600', featureKey: 'transactions' },
       ],
     },
     {
       title: t('more.settingsAdmin', 'Settings & Administration'),
       items: [
-        { path: '/reports', label: t('nav.reports', 'Reports'), icon: FileBarChart, color: 'bg-info-light text-primary', featureKey: 'reports' },
-        { path: '/branches', label: t('more.manageShops', 'Manage Shops'), icon: GitBranch, color: 'bg-surface text-text-primary', featureKey: 'branches' },
-        { path: '/settings', label: t('nav.appSettings', 'App Settings'), icon: Settings, color: 'bg-warning-light text-warning', featureKey: 'settings' },
-        { path: '/staff', label: t('more.staff', 'Staff'), icon: ShieldCheck, color: 'bg-emerald-100 text-emerald-700', featureKey: 'staffManagement' },
+        { path: '/reports', label: t('nav.reports', 'Reports'), description: 'View business reports and analytics', icon: FileBarChart, color: 'bg-info-light text-primary', cardBg: 'bg-blue-50 border-blue-200/60', chevronBg: 'bg-blue-100 text-blue-600', featureKey: 'reports' },
+        { path: '/branches', label: t('more.manageShops', 'Manage Shops'), description: 'Manage branches and shops', icon: GitBranch, color: 'bg-surface text-text-primary', cardBg: 'bg-slate-50 border-slate-200/60', chevronBg: 'bg-slate-100 text-slate-500', featureKey: 'branches' },
+        { path: '/settings', label: t('nav.appSettings', 'App Settings'), description: 'Configure app preferences', icon: Settings, color: 'bg-warning-light text-warning', cardBg: 'bg-yellow-50 border-yellow-200/60', chevronBg: 'bg-yellow-100 text-yellow-600', featureKey: 'settings' },
+        { path: '/staff', label: t('more.staff', 'Staff'), description: 'Manage staff and permissions', icon: ShieldCheck, color: 'bg-emerald-100 text-emerald-700', cardBg: 'bg-emerald-50 border-emerald-200/60', chevronBg: 'bg-emerald-100 text-emerald-600', featureKey: 'staffManagement' },
       ],
     },
   ];
 
   return (
     <PageShell width="full">
-      <PageHeader eyebrow={t('more.workspace', 'Workspace')} title={t('nav.more', 'More')} />
+      <PageHeader title={t('nav.more', 'More')} />
 
       {user ? (
         <div className="overflow-hidden rounded-[var(--card-radius)] bg-gradient-to-br from-primary to-primary-light p-[clamp(1rem,2.5vw,1.5rem)] text-white shadow-[var(--shadow-card)]">
@@ -126,40 +145,58 @@ export const MorePage: React.FC = () => {
 
       {menuSections.map((section) => (
         <SectionCard key={section.title} title={section.title}>
-          <div className="grid grid-cols-2 gap-3">
-            {section.items.map((item) => {
+          <div className={section.items.length === 3 ? 'grid grid-cols-2 lg:grid-cols-3 gap-3' : 'grid grid-cols-2 gap-3'}>
+            {section.items.map((item, idx) => {
               const Icon = item.icon;
               const mode = item.featureKey
                 ? getStaffFeatureMode(item.featureKey, currentStaff?.permissions, !!currentStaff)
                 : 'visible';
+              const isWide = section.items.length === 3 && idx === 0;
+              const spanClass = isWide ? 'col-span-2 lg:col-span-1' : '';
 
               if (mode === 'hidden') return null;
 
               if (mode === 'disabled') {
                 return (
-                  <div key={item.path} className="focus-ring flex flex-col items-start gap-3 rounded-2xl border border-border bg-white p-4 opacity-65">
-                    <div className="flex w-full items-start justify-between">
-                      <div className={`rounded-2xl p-3 ${item.color}`}>
-                        <Icon className="h-6 w-6" />
-                      </div>
-                      <Lock className="h-4 w-4 text-text-muted opacity-50" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-text-primary leading-tight">{item.label}</div>
-                      <div className="mt-1.5 text-[0.65rem] font-black uppercase tracking-wider text-text-muted">Restricted</div>
-                    </div>
+                  <div key={item.path} className={`focus-ring opacity-65 rounded-2xl border p-4 ${item.cardBg} ${spanClass} ${isWide ? 'flex flex-row items-center gap-4' : 'flex flex-col items-start gap-3'}`}>
+                    {isWide ? (
+                      <>
+                        <div className={`rounded-2xl p-4 ${item.color} flex-shrink-0`}><Icon className="h-8 w-8" /></div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-base font-bold text-slate-900 leading-tight">{item.label}</div>
+                        </div>
+                        <Lock className="h-5 w-5 text-slate-400 flex-shrink-0" />
+                      </>
+                    ) : (
+                      <>
+                        <div className={`rounded-2xl p-3 ${item.color}`}><Icon className="h-6 w-6" /></div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-bold text-slate-900 leading-tight">{item.label}</div>
+                                                  </div>
+                        <div className="text-[0.6rem] font-black uppercase tracking-wider text-slate-400">Restricted</div>
+                      </>
+                    )}
                   </div>
                 );
               }
 
               return (
-                <Link key={item.path} to={item.path} className="focus-ring flex flex-col items-start gap-3 rounded-2xl border border-border bg-white p-4 hover:border-primary/20 hover:shadow-sm transition-all active:scale-[0.98]">
-                  <div className={`rounded-2xl p-3 ${item.color}`}>
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-text-primary leading-tight">{item.label}</div>
-                  </div>
+                <Link key={item.path} to={item.path} className={`focus-ring rounded-2xl border transition-all active:scale-[0.98] hover:shadow-md p-4 ${item.cardBg} ${spanClass} ${isWide ? 'flex flex-row items-center gap-4' : 'flex flex-col items-start gap-3'}`}>
+                  {isWide ? (
+                    <>
+                      <div className={`rounded-2xl p-4 ${item.color} flex-shrink-0`}><Icon className="h-8 w-8" /></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-base font-bold text-slate-900 leading-tight">{item.label}</div>
+                                              </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className={`rounded-2xl p-3 ${item.color}`}><Icon className="h-6 w-6" /></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-slate-900 leading-tight">{item.label}</div>
+                                              </div>
+                    </>
+                  )}
                 </Link>
               );
             })}
@@ -196,7 +233,43 @@ export const MorePage: React.FC = () => {
       <Button variant="ghost" className="mt-2 text-rose-700 border border-rose-200 shadow-sm transition-colors font-bold" style={{ backgroundColor: '#ffe4e6' }} size="lg" fullWidth leftIcon={<LogOut className="h-5 w-5" />} onClick={handleLogout}>
         {t('more.logout', 'Logout from Shop')}
       </Button>
+
+      <VersionFooter />
     </PageShell>
+  );
+};
+
+interface VersionInfo { version: string; build: number; commit: string; builtAt: string; }
+
+const VersionFooter: React.FC = () => {
+  const [info, setInfo] = React.useState<VersionInfo | null>(null);
+  const [copied, setCopied] = React.useState(false);
+
+  React.useEffect(() => {
+    fetch('/version.json', { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => d && setInfo(d))
+      .catch(() => { /* silent — version is nice-to-have */ });
+  }, []);
+
+  const copy = async () => {
+    if (!info) return;
+    const line = `AquaDealer v${info.version} · build #${info.build} · ${info.commit} · ${info.builtAt}`;
+    try { await navigator.clipboard.writeText(line); setCopied(true); setTimeout(() => setCopied(false), 1500); }
+    catch { /* no-op */ }
+  };
+
+  if (!info) return null;
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title="Tap to copy build info"
+      className="mt-6 mx-auto block text-center text-[11px] font-semibold text-slate-400 hover:text-slate-600 transition-colors"
+    >
+      v{info.version} · build #{info.build} · <span className="font-mono">{info.commit}</span>
+      {copied && <span className="ml-2 text-emerald-600">copied ✓</span>}
+    </button>
   );
 };
 

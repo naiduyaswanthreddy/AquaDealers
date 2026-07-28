@@ -7,9 +7,8 @@ import Input from '@/components/ui/Input';
 import { useUpdateInventory, useUpdateProduct } from '../hooks/useInventory';
 import { toast } from 'sonner';
 import { ArrowDownLeft, ArrowUpRight, Camera, Image as ImageIcon } from 'lucide-react';
-import imageCompression from 'browser-image-compression';
 import { supabase } from '@/lib/supabase';
-import { deleteOldImage } from '@/lib/imageUtils';
+import { compressImage, deleteOldImage } from '@/lib/imageUtils';
 import { PlanGate } from '@/components/auth/PlanGate';
 
 interface EditInventoryForm {
@@ -35,6 +34,7 @@ interface EditInventoryModalProps {
     medicine_discount_percentage?: number;
     image_url?: string | null;
     product_name?: string;
+    mrp?: number | null;
   };
 }
 
@@ -65,15 +65,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
 
     try {
       setIsCompressing(true);
-      const options = {
-        maxSizeMB: 0.05, // ~50KB target
-        maxWidthOrHeight: 500,
-        useWebWorker: true,
-        fileType: "image/webp",
-        initialQuality: 0.6,
-      };
-      
-      const compressedFile = await imageCompression(file, options);
+      const compressedFile = await compressImage(file);
       setImageFile(compressedFile);
       setImagePreview(URL.createObjectURL(compressedFile));
     } catch (error) {
@@ -85,12 +77,12 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
     }
   };
 
-  // Reverse-calculate MRP from selling_price and discount
+  // Reverse-calculate MRP from selling_price and discount if MRP is not provided
   const initialDiscount = initialData.medicine_discount_percentage || 0;
   const initialSellingPrice = initialData.selling_price || 0;
-  const initialMrp = initialDiscount > 0 && initialDiscount < 100
+  const initialMrp = initialData.mrp || (initialDiscount > 0 && initialDiscount < 100
     ? Number((initialSellingPrice / (1 - initialDiscount / 100)).toFixed(2))
-    : initialSellingPrice;
+    : initialSellingPrice);
 
   const calculateCostPercentage = (mrp?: number, costPrice?: number | null) => {
     const numericMrp = Number(mrp) || 0;

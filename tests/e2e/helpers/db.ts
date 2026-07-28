@@ -4,10 +4,10 @@ import ws from 'ws';
 // Env is loaded by playwright.config.ts (dotenv on .env.e2e) before workers
 // spawn; the same defaults as the app apply when nothing is set.
 export const SUPABASE_URL =
-  process.env.VITE_SUPABASE_URL || 'https://xttuxtyjtqegjvirtpbr.supabase.co';
+  process.env.VITE_SUPABASE_URL || 'https://fvcafioxkgbljcjomixs.supabase.co';
 export const SUPABASE_ANON_KEY =
   process.env.VITE_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dHV4dHlqdHFlZ2p2aXJ0cGJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDkyNDksImV4cCI6MjA5NTc4NTI0OX0.Wj5dvvzMX5VXNBo2DY2j_5jhsEPzHCC_OUmsZvjrU3A';
+  'sb_publishable_4xT4NDR8E-Zj5wqTrh-WsA_DLqEcVvn';
 export const DEALER_EMAIL = process.env.E2E_DEALER_EMAIL || 'e2e.dealer@aquadealers.in';
 export const DEALER_PASSWORD = process.env.E2E_DEALER_PASSWORD || 'change-me-please';
 

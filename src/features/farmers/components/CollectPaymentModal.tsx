@@ -3,6 +3,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
 import { useCollectPayment, useFarmerOpenBills } from '../hooks/useFarmerLedger';
 import { Modal, Input, Select, Textarea, Button } from '@/components/ui';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { PAYMENT_METHODS } from '@/lib/constants';
 import { formatCurrency } from '@/lib/utils';
 import { IndianRupee } from 'lucide-react';
@@ -32,10 +33,12 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
   const { mutateAsync: collectPayment, isPending } = useCollectPayment();
   const { data: openBills = [] } = useFarmerOpenBills(isOpen ? farmerId : '');
 
+  const todayStr = new Date().toISOString().slice(0, 10);
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
   const [allocationMode, setAllocationMode] = useState<'oldest_first' | 'specific_bill'>('oldest_first');
   const [targetBillId, setTargetBillId] = useState('');
+  const [paymentDate, setPaymentDate] = useState(todayStr);
   const [upiRef, setUpiRef] = useState('');
   const [chequeNo, setChequeNo] = useState('');
   const [notes, setNotes] = useState('');
@@ -52,9 +55,11 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
     { value: 'oldest_first', label: 'Adjust oldest bills first' },
     { value: 'specific_bill', label: 'Adjust a specific bill' },
   ];
-  const billOptions = openBills.map((bill) => ({
+  const billOptions = openBills.map((bill: any) => ({
     value: bill.id,
-    label: `${bill.bill_number} • ${formatCurrency(bill.balance_due)}`,
+    label: bill.branch_name_snapshot
+      ? `${bill.bill_number} · ${bill.branch_name_snapshot} • ${formatCurrency(bill.balance_due)}`
+      : `${bill.bill_number} • ${formatCurrency(bill.balance_due)}`,
   }));
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,6 +82,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
         method,
         allocationMode,
         targetBillId: allocationMode === 'specific_bill' ? targetBillId : undefined,
+        paymentDate: paymentDate || undefined,
         upiRef: method === 'upi' ? upiRef : undefined,
         chequeNo: method === 'cheque' ? chequeNo : undefined,
         notes,
@@ -90,6 +96,7 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
       setTargetBillId('');
       setUpiRef('');
       setChequeNo('');
+      setPaymentDate(todayStr);
       setNotes('');
     } catch (err) {
       // Error is handled in the hook
@@ -119,6 +126,15 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
             autoFocus
           />
           <IndianRupee className="absolute left-3 top-[34px] w-4 h-4 text-text-muted" />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-text-primary mb-1">Payment Date</label>
+          <DatePicker
+            value={paymentDate}
+            onChange={setPaymentDate}
+            maxDate={todayStr}
+          />
         </div>
 
         <Select

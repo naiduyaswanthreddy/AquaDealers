@@ -16,12 +16,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: aquadealers-current
-            url: https://xttuxtyjtqegjvirtpbr.supabase.co
-            key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dHV4dHlqdHFlZ2p2aXJ0cGJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDkyNDksImV4cCI6MjA5NTc4NTI0OX0.Wj5dvvzMX5VXNBo2DY2j_5jhsEPzHCC_OUmsZvjrU3A
-          - name: aquadealers-legacy
-            url: https://fgrdcscbrtcewmoprnfr.supabase.co
-            key: sb_publishable_zk6VPJ4fks7YquigLMBjbg_hFz2LwJN
+          - name: aquadealers
+            url: https://fvcafioxkgbljcjomixs.supabase.co
+            key: sb_publishable_4xT4NDR8E-Zj5wqTrh-WsA_DLqEcVvn
     name: ping-supabase (${{ matrix.name }})
     steps:
       - name: Ping Supabase Database

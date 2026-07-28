@@ -172,11 +172,12 @@ export const inventoryService = {
   async getInventory(
     dealerId: string,
     branchId?: string | null,
-    options?: { 
-      page?: number; 
+    options?: {
+      page?: number;
       limit?: number;
       searchQuery?: string;
       productType?: string;
+      company?: string;
       lowStockOnly?: boolean;
       outOfStockOnly?: boolean;
     }
@@ -205,6 +206,10 @@ export const inventoryService = {
       query = query.eq('products.type', options.productType);
     }
 
+    if (options?.company && options.company !== 'all') {
+      query = query.eq('products.company', options.company);
+    }
+
     // Apply stock filters server-side so both the paginated results and the
     // total count are correct. Client-side post-fetch filtering broke pagination
     // (pages had fewer items than requested) and returned an unfiltered total.
@@ -216,7 +221,14 @@ export const inventoryService = {
     if (options?.outOfStockOnly) {
       query = query.lte('quantity_in_stock', 0);
     } else if (options?.lowStockOnly) {
-      query = query.filter('quantity_in_stock', 'lt', 'min_stock_alert').gt('min_stock_alert', 0);
+      const { data: lowStockRows } = await supabase.rpc('get_low_stock_inventory', {
+        p_dealer_id: dealerId,
+        p_branch_id: branchId ?? null,
+        p_limit: 500,
+      });
+      const ids = ((lowStockRows ?? []) as { id: string }[]).map((r) => r.id);
+      if (ids.length === 0) return { data: [], total: 0 };
+      query = query.in('id', ids);
     }
 
     query = query.range(from, to);

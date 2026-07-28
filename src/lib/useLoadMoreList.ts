@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 type FetchPageParams = {
   page: number;
@@ -55,26 +55,35 @@ export function useLoadMoreList<T>(
   const [asyncItems, setAsyncItems] = useState<T[]>([]);
   const [asyncPage, setAsyncPage] = useState(1);
   const [asyncTotal, setAsyncTotal] = useState(0);
-  const [asyncIsLoading, setAsyncIsLoading] = useState(false);
+  // Prevent the first async render from briefly showing an empty state.
+  const [asyncIsLoading, setAsyncIsLoading] = useState(isAsync);
   const [asyncError, setAsyncError] = useState<Error | null>(null);
+  const requestVersion = useRef(0);
 
   const loadData = useCallback(
     async (currentPage: number, append: boolean) => {
       if (!isAsync || !asyncOpts.fetchFn) return;
+      const version = ++requestVersion.current;
       setAsyncIsLoading(true);
       setAsyncError(null);
       try {
         const { data, total } = await asyncOpts.fetchFn({ page: currentPage, limit: asyncOpts.step || 10 });
+        // Ignore a slow earlier request after filters have already changed.
+        if (version !== requestVersion.current) return;
         if (append) {
-          setAsyncItems((prev) => [...prev, ...data]);
+          setAsyncItems((prev) => {
+            const existing = new Set(prev.map((item: any) => item?.id).filter(Boolean));
+            return [...prev, ...data.filter((item: any) => !item?.id || !existing.has(item.id))];
+          });
         } else {
           setAsyncItems(data);
         }
         setAsyncTotal(total);
       } catch (err) {
+        if (version !== requestVersion.current) return;
         setAsyncError(err instanceof Error ? err : new Error('Failed to fetch data'));
       } finally {
-        setAsyncIsLoading(false);
+        if (version === requestVersion.current) setAsyncIsLoading(false);
       }
     },
     [isAsync, asyncOpts.fetchFn, asyncOpts.step]

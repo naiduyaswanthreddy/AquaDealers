@@ -168,9 +168,10 @@ export async function getDuesSummary(
   void branchId;
 
   const [
-    { data, error },
+    { data: allDues, error },
     { count, error: countErr },
   ] = await Promise.all([
+    // Fetch ALL farmers with dues for an accurate total sum
     supabase
       .from('farmers')
       .select('total_due')
@@ -178,7 +179,7 @@ export async function getDuesSummary(
       .eq('is_active', true)
       .gt('total_due', 0)
       .order('total_due', { ascending: false })
-      .limit(8),
+      .limit(10000),
     supabase
       .from('farmers')
       .select('id', { count: 'exact', head: true })
@@ -190,9 +191,11 @@ export async function getDuesSummary(
   if (error) throw error;
   if (countErr) throw countErr;
 
-  const values = (data ?? []).map(item => Number(item.total_due ?? 0));
+  const values = (allDues ?? []).map(item => Number(item.total_due ?? 0));
+  // Sum all for the accurate total
   const total = values.reduce((sum, v) => sum + v, 0);
-  const series = [...values].reverse();
+  // Use only top 8 values (already sorted desc) for sparkline
+  const series = values.slice(0, 8).reverse();
 
   return { total, dueFarmersCount: count ?? values.length, series };
 }
@@ -201,40 +204,26 @@ export async function getDuesSummary(
  * Get Low Stock Count — server-side filtered COUNT, no full inventory scan.
  */
 export async function getLowStockCount(dealerId: string, branchId?: string | null): Promise<number> {
-  let query = supabase
-    .from('inventory')
-    .select('id', { count: 'exact', head: true })
-    .eq('dealer_id', dealerId)
-    .filter('quantity_in_stock', 'lt', 'min_stock_alert');
-
-  if (branchId) query = query.eq('branch_id', branchId);
-
-  const { count, error } = await query;
+  const { data, error } = await supabase.rpc('get_low_stock_count', {
+    p_dealer_id: dealerId,
+    p_branch_id: branchId ?? null,
+  });
   if (error) throw error;
-  return count ?? 0;
+  return (data as number) ?? 0;
 }
 
 export async function getLowStockSummary(
   dealerId: string,
   branchId?: string | null
 ): Promise<{ lowStockCount: number; criticalLowStockCount: number; series: number[] }> {
-  let query = supabase
-    .from('inventory')
-    .select('quantity_in_stock, min_stock_alert')
-    .eq('dealer_id', dealerId)
-    .filter('quantity_in_stock', 'lt', 'min_stock_alert')
-    .gt('min_stock_alert', 0)
-    .order('quantity_in_stock', { ascending: true })
-    .limit(500);
-
-  if (branchId) {
-    query = query.eq('branch_id', branchId);
-  }
-
-  const { data, error } = await query;
+  const { data, error } = await supabase.rpc('get_low_stock_summary', {
+    p_dealer_id: dealerId,
+    p_branch_id: branchId ?? null,
+    p_limit: 500,
+  });
   if (error) throw error;
 
-  const shortages = (data ?? []).map((item) => {
+  const shortages = ((data as { quantity_in_stock: number; min_stock_alert: number }[]) ?? []).map((item) => {
     const quantity = Number(item.quantity_in_stock);
     const minAlert = Number(item.min_stock_alert);
     return {
@@ -391,20 +380,20 @@ export async function getCollectTodayFarmers(dealerId: string, branchId?: string
  * Get Low Stock items: returns full list of inventory items with product info below min stock
  */
 export async function getLowStockItems(dealerId: string, branchId?: string | null) {
-  let query = supabase
-    .from('inventory')
-    .select('*, products(*)')
-    .eq('dealer_id', dealerId)
-    .filter('quantity_in_stock', 'lt', 'min_stock_alert')
-    .gt('min_stock_alert', 0)
-    .order('quantity_in_stock', { ascending: true })
-    .limit(50);
-
-  if (branchId) query = query.eq('branch_id', branchId);
-  const { data, error } = await query;
+  const { data, error } = await supabase.rpc('get_low_stock_inventory', {
+    p_dealer_id: dealerId,
+    p_branch_id: branchId ?? null,
+    p_limit: 50,
+  });
   if (error) throw error;
 
-  return (data ?? []).map((item) => ({ ...item, product: item.products }));
+  const rows = (data ?? []) as any[];
+  if (rows.length === 0) return [];
+
+  const productIds = [...new Set(rows.map((r: any) => r.product_id).filter(Boolean))];
+  const { data: products } = await supabase.from('products').select('*').in('id', productIds);
+  const productMap = new Map((products ?? []).map((p) => [p.id, p]));
+  return rows.map((item: any) => ({ ...item, product: productMap.get(item.product_id) ?? null }));
 }
 
 
@@ -585,6 +574,21 @@ export async function getTopSoldProducts(dealerId: string, branchId?: string | n
     unit: row.unit || 'units',
     quantity: Number(row.total_qty),
   }));
+}
+
+export async function getTopCustomers(dealerId: string, branchId?: string | null) {
+  let query = supabase
+    .from('farmers')
+    .select('id, name, total_due, village')
+    .eq('dealer_id', dealerId)
+    .eq('is_active', true)
+    .gt('total_due', 0)
+    .order('total_due', { ascending: false })
+    .limit(5);
+  if (branchId) query = query.eq('branch_id', branchId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as { id: string; name: string; total_due: number; village: string | null }[];
 }
 
 export async function getTodaySoldItems(dealerId: string, branchId?: string | null) {

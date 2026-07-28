@@ -4,9 +4,9 @@ import { BookEmpty, BookLoading, BookSection, bookMoney, formatQty } from '../co
 import { useDailyBook } from '../hooks/useDailyBook';
 
 const Line: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div className="flex items-baseline justify-between py-1">
+  <div className="flex items-baseline justify-between py-1.5">
     <span className="text-sm font-semibold text-[color:var(--book-ink-soft)]">{label}</span>
-    <span className="book-num text-sm font-bold">{value}</span>
+    <span className="book-num text-sm font-bold text-[color:var(--book-ink)]">{value}</span>
   </div>
 );
 
@@ -97,18 +97,27 @@ export const BookClosingPage: React.FC = () => {
               <BookSection title="Stock Moved" />
               <div className="book-dashed pb-2">
                 {stockMoves.map((move) => (
-                  <div key={move.name} className="book-num flex items-baseline justify-between py-1 text-xs">
-                    <span className="min-w-0 flex-1 truncate pr-2 font-semibold">{move.name}</span>
-                    <span>
-                      OUT {formatQty(move.out, move.unit)} · IN {move.in}
-                    </span>
+                  <div key={move.name} className="py-2.5 border-b border-dashed border-[color:var(--book-dash)] last:border-0">
+                    <div className="text-sm font-semibold text-[color:var(--book-ink)] mb-1">{move.name}</div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                      {move.out > 0 && (
+                        <span className="book-num text-sm font-bold text-[color:var(--book-red)]">
+                          ↓ Sold: {formatQty(move.out, move.unit)}
+                        </span>
+                      )}
+                      {move.in > 0 && (
+                        <span className="book-num text-sm font-bold text-[color:var(--book-green)]">
+                          ↑ Received: {formatQty(move.in, move.unit)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             </>
           ) : null}
 
-          <BookSection title="vs Yesterday" />
+          <BookSection title="Today vs Yesterday" />
           <div className="pb-2">
             <Line label="Yesterday" value={bookMoney(totals.yesterdaySales)} />
             <Line label="Today" value={bookMoney(totals.salesTotal)} />

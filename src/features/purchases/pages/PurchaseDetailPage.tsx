@@ -12,7 +12,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge, Button, EmptyState, Skeleton } from '@/components/ui';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime, formatQuantity } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { purchaseService } from '../services/purchaseService';
 
@@ -100,7 +100,7 @@ const PurchaseDetailPage: React.FC = () => {
           },
           {
             label: 'Quantity',
-            value: `${purchase.quantity} x ${product?.unit || 'units'}`,
+            value: formatQuantity(purchase.quantity, product?.unit),
             icon: PackageCheck,
             tone: 'bg-emerald-100 text-emerald-600',
           },
@@ -228,7 +228,7 @@ const PurchaseDetailPage: React.FC = () => {
                     Remaining
                   </div>
                   <div className="mt-2 text-sm font-bold text-slate-900">
-                    {linkedLot.remaining_quantity} {product?.unit || 'units'}
+                    {formatQuantity(linkedLot.remaining_quantity, product?.unit)}
                   </div>
                 </div>
                 <div className="rounded-[20px] bg-white px-3 py-3">

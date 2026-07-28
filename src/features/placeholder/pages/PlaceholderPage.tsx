@@ -32,7 +32,7 @@ export const PlaceholderPage: React.FC = () => {
   const location = useLocation();
   const pageName = location.pathname.split('/')[1];
   const title = pageName ? pageName.charAt(0).toUpperCase() + pageName.slice(1) : 'Feature';
-  const { branches, activeBranch, isAllBranches, setActiveBranch, setAllBranches, setBranches } = useBranchStore();
+  const { branches, activeBranch, isAllBranches, setActiveBranch, setAllBranches, setBranches, setBranchColor: persistBranchColor } = useBranchStore();
   const user = useAuthStore((state) => state.user);
   
   const planDefinitions = useSubscriptionStore(state => state.planDefinitions);
@@ -84,6 +84,22 @@ export const PlaceholderPage: React.FC = () => {
     setEditBranchIsActive(branch.is_active);
   };
 
+  const isMissingBranchColorColumnError = (error: any) =>
+    typeof error?.message === 'string' &&
+    error.message.includes("Could not find the 'color' column of 'branches' in the schema cache");
+
+  /** Attempt to patch the color column separately in case PostgREST schema cache is stale. */
+  const patchBranchColor = async (branchId: string, color: string | null) => {
+    try {
+      await supabase
+        .from('branches')
+        .update({ color })
+        .eq('id', branchId);
+    } catch {
+      // silently ignore — main save already succeeded
+    }
+  };
+
   const handleAddBranch = async () => {
     const trimmedName = branchName.trim();
     const trimmedAddress = branchAddress.trim();
@@ -102,19 +118,38 @@ export const PlaceholderPage: React.FC = () => {
     try {
       setIsSavingBranch(true);
 
-      const { data, error } = await supabase
+      const branchPayload = {
+        dealer_id: user.id,
+        name: trimmedName,
+        address: trimmedAddress || null,
+        phone: trimmedPhone || null,
+        color: branchColor,
+        is_main: branches.length === 0,
+        is_active: true,
+      };
+
+      let { data, error } = await supabase
         .from('branches')
-        .insert({
-          dealer_id: user.id,
-          name: trimmedName,
-          address: trimmedAddress || null,
-          phone: trimmedPhone || null,
-          color: branchColor,
-          is_main: branches.length === 0,
-          is_active: true,
-        })
+        .insert(branchPayload)
         .select()
         .single();
+
+      if (error && isMissingBranchColorColumnError(error)) {
+        const { color, ...payloadWithoutColor } = branchPayload;
+        const retry = await supabase
+          .from('branches')
+          .insert(payloadWithoutColor)
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+
+        if (!error && data) {
+          // Schema cache is stale but column exists — attempt silent color patch
+          await patchBranchColor(data.id, branchColor);
+          data = { ...data, color: branchColor };
+        }
+      }
 
       if (error) throw error;
       if (!data) throw new Error('Branch creation failed.');
@@ -166,20 +201,41 @@ export const PlaceholderPage: React.FC = () => {
         if (demoteError) throw demoteError;
       }
 
-      const { data, error } = await supabase
+      const branchUpdatePayload = {
+        name: trimmedName,
+        address: trimmedAddress || null,
+        phone: trimmedPhone || null,
+        color: editBranchColor,
+        is_active: editBranchIsActive,
+        is_main: editBranchIsMain || editingBranch.is_main,
+      };
+
+      let { data, error } = await supabase
         .from('branches')
-        .update({
-          name: trimmedName,
-          address: trimmedAddress || null,
-          phone: trimmedPhone || null,
-          color: editBranchColor,
-          is_active: editBranchIsActive,
-          is_main: editBranchIsMain || editingBranch.is_main,
-        })
+        .update(branchUpdatePayload)
         .eq('id', editingBranch.id)
         .eq('dealer_id', user.id)
         .select()
         .single();
+
+      if (error && isMissingBranchColorColumnError(error)) {
+        const { color, ...payloadWithoutColor } = branchUpdatePayload;
+        const retry = await supabase
+          .from('branches')
+          .update(payloadWithoutColor)
+          .eq('id', editingBranch.id)
+          .eq('dealer_id', user.id)
+          .select()
+          .single();
+        data = retry.data;
+        error = retry.error;
+
+        if (!error) {
+          // Schema cache is stale but column exists — attempt silent color patch
+          await patchBranchColor(editingBranch.id, editBranchColor);
+          if (data) data = { ...data, color: editBranchColor };
+        }
+      }
 
       if (error) throw error;
       if (!data) throw new Error('Branch update failed.');
@@ -195,6 +251,8 @@ export const PlaceholderPage: React.FC = () => {
       });
 
       setBranches(updatedBranches);
+      // Persist the color locally so refresh doesn't revert it
+      persistBranchColor(data.id, editBranchColor);
 
       const refreshedUpdatedBranch = updatedBranches.find((branch: Branch) => branch.id === data.id) || data;
       const refreshedActiveBranch = activeBranch?.id
@@ -486,54 +544,6 @@ export const PlaceholderPage: React.FC = () => {
             )}
           </SectionCard>
 
-          <SectionCard
-            title="Branch workspace"
-            description="This area is ready for branch-level controls, staff assignment, and branch-specific reporting."
-            className="space-y-4"
-          >
-            <div className="rounded-[1.25rem] bg-gradient-to-br from-primary to-primary-light p-5 text-white shadow-[0_14px_30px_rgba(20,103,159,0.14)]">
-              <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-white/75">
-                Active selection
-              </div>
-              <div className="mt-2 text-2xl font-black tracking-[-0.04em]">
-                {isAllBranches ? 'All branches' : activeBranch?.name || mainBranch?.name || 'Main branch'}
-              </div>
-              <p className="mt-2 max-w-md text-sm leading-6 text-white/85">
-                Bills, inventory, farmers, cashbook, and reports will reflect this branch selection across the app.
-              </p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-border bg-white p-4">
-                <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-text-muted">
-                  Main shop
-                </div>
-                <div className="mt-2 text-base font-extrabold text-text-primary">
-                  {mainBranch?.name || 'Not available'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-border bg-white p-4">
-                <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-text-muted">
-                  Branch count
-                </div>
-                <div className="mt-2 text-base font-extrabold text-text-primary">
-                  {branches.length}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-border bg-surface/40 p-4 text-sm leading-6 text-text-secondary">
-              <div className="flex items-start gap-3">
-                <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                <div>
-                  <div className="font-bold text-text-primary">What’s next</div>
-                  <p className="mt-1">
-                    Branch creation, editing, staff assignment, and branch-level analytics can be dropped into this layout without changing the page structure.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </SectionCard>
         </div>
 
         <Modal

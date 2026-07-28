@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useCartStore } from '../stores/cartStore';
 import { useCreateBill } from '../hooks/useBilling';
+import { useCheckout } from '../hooks/useCheckout';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
@@ -27,9 +28,6 @@ interface ReviewStepProps {
     billDate: string;
     isOffline?: boolean;
   }) => void;
-  upiRef: string;
-  chequeNumber: string;
-  notes: string;
 }
 
 const normalizeType = (type?: string | null) => {
@@ -59,18 +57,26 @@ const ProductIcon: React.FC<{ type?: string | null }> = ({ type }) => {
 export const ReviewStep: React.FC<ReviewStepProps> = ({
   onBack,
   onSuccess,
-  upiRef,
-  chequeNumber,
-  notes,
 }) => {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const { activeBranch } = useBranchStore();
   const { mutateAsync: createBill, isPending } = useCreateBill();
   const queueOfflineBill = useOfflineBillStore((s) => s.queueBill);
+  // Idempotency key: generated fresh per submit attempt, prevents double-submit duplicates.
+  // The DB has a UNIQUE index on (dealer_id, idempotency_key).
+  const idempotencyKeyRef = React.useRef<string | null>(null);
+  const generateIdempotencyKey = () => {
+    // crypto.randomUUID() is available in all modern browsers
+    const key = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    idempotencyKeyRef.current = key;
+    return key;
+  };
+  const [isSignModalOpen, setIsSignModalOpen] = React.useState(false);
   const [signatureStrokes, setSignatureStrokes] = React.useState<SignatureStroke[]>([]);
-  const [isSavingSignature, setIsSavingSignature] = React.useState(false);
-  const [duplicateWarning, setDuplicateWarning] = React.useState<{ show: boolean; farmerName: string; amount: number } | null>(null);
+  const [sigCanvasDims, setSigCanvasDims] = React.useState({ w: 600, h: 220 });
   const [fifoPreview, setFifoPreview] = React.useState<FifoBillPreview | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = React.useState(false);
   const {
@@ -83,18 +89,25 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     discountAmount,
     amountPaid,
     paymentType,
+    upiRef,
+    chequeNumber,
+    notes,
     billDate,
+    settlementDiscountAmount,
   } = useCartStore();
 
   const [showColumnSettings, setShowColumnSettings] = React.useState(false);
   const [columns, setColumns] = React.useState(() => {
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
     const saved = localStorage.getItem('receipt_columns');
+
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         return {
           ...parsed,
-          signature: parsed.signature ?? true,
+          // Always show signature on mobile, always hide on desktop by default
+          signature: !isDesktop,
         };
       } catch (e) {
         // Fallback if parsing fails
@@ -107,7 +120,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       gst: gstEnabled,
       mrp: false,
       expiry: false,
-      signature: true,
+      signature: !isDesktop,
     };
   });
 
@@ -126,7 +139,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     if (columns.gst && gstEnabled) cols.push({ id: 'gst', label: 'GST', width: '4.5rem', align: 'right' });
     cols.push({ id: 'qty', label: 'Qty', width: '3.5rem', align: 'center' });
     cols.push({ id: 'amount', label: 'Amount', width: '6rem', align: 'right' });
-    
+
     const gridTemplate = cols.map(c => c.width).join(' ');
     return { cols, gridTemplate };
   }, [columns, gstEnabled]);
@@ -159,234 +172,58 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     };
   }, [discountAmount, gstEnabled, items]);
 
+  const savingsAmount = useMemo(() => {
+    return items.reduce((acc, item) => {
+      if (!item.mrp || item.mrp <= 0) return acc;
+      const effectivePrice = item.base_unit_price * (1 - item.discount_percentage / 100);
+      const saved = (item.mrp - effectivePrice) * item.quantity;
+      return acc + (saved > 0 ? saved : 0);
+    }, 0);
+  }, [items]);
+
   const todayIso = React.useMemo(() => `${billDate}T00:00:00.000Z`, [billDate]);
   const displayDate = formatDateTime(todayIso);
-  const totals = useMemo(() => {
-    if (!fifoPreview) return clientTotals;
-    return {
-      subtotal: Number(fifoPreview.subtotal || 0),
-      gstAmount: Number(fifoPreview.gst_amount || 0),
-      total: Math.max(0, Number(fifoPreview.subtotal || 0) + Number(fifoPreview.gst_amount || 0) - discountAmount),
-      gstBreakdown: clientTotals.gstBreakdown,
-    };
-  }, [clientTotals, discountAmount, fifoPreview]);
-  const balanceDue = Math.max(0, totals.total - amountPaid);
-  const projectedDue = Math.max(0, farmerTotalDue + totals.total - amountPaid);
+  const totals = clientTotals;
+  const effectiveTotal = Math.max(0, totals.total - (settlementDiscountAmount || 0));
+  const balanceDue = Math.max(0, effectiveTotal - amountPaid);
+  const projectedDue = Math.max(0, farmerTotalDue + effectiveTotal - amountPaid);
   const exceedsCreditLimit = !!farmerId && farmerCreditLimit > 0 && projectedDue > farmerCreditLimit;
   const signatureEnabled = (user?.bill_signature_enabled ?? true) && columns.signature;
   const signatureRequired = signatureEnabled && (paymentType === 'credit' || balanceDue > 0);
-  const previewLines = fifoPreview?.lines?.length ? fifoPreview.lines : null;
 
-  const buildPayload = React.useCallback((overrideTotals?: {
-    subtotal: number;
-    gstAmount: number;
-    total: number;
-  }): BillingPayload | null => {
-    if (!user?.id) return null;
+  // When SignaturePad isn't rendered we show an explicit "Signed & Verified in person" checkbox
+  // so the dealer intentionally opts in to marking the bill verified.
+  const showDesktopVerifyCheckbox = !signatureEnabled;
+  const [desktopVerified, setDesktopVerified] = React.useState<boolean>(true);
+  const [mobileSignatureMode, setMobileSignatureMode] = React.useState<'sign' | 'verify_later'>('sign');
+  const previewLines = null;
 
-    const subtotal = overrideTotals?.subtotal ?? 0;
-    const gstAmount = overrideTotals?.gstAmount ?? 0;
-    const total = overrideTotals?.total ?? 0;
+  const {
+    handleCheckout,
+    buildPayload,
+    isSubmitting,
+    isSavingSignature,
+    duplicateWarning,
+    setDuplicateWarning,
+  } = useCheckout();
 
-    return {
-      dealer_id: user.id,
-      branch_id: activeBranch?.id,
-      farmer_id: farmerId,
-      farmer_name_snapshot: farmerName,
-      bill_date: todayIso,
-      subtotal,
-      gst_amount: gstAmount,
-      cgst_amount: gstAmount / 2,
-      sgst_amount: gstAmount / 2,
-      igst_amount: 0,
-      discount_amount: discountAmount,
-      total,
-      amount_paid: amountPaid,
-      payment_type: amountPaid > 0 ? paymentType : null,
-      credit_override_used: exceedsCreditLimit,
-      credit_override_reason: exceedsCreditLimit ? 'Dealer override from checkout' : null,
-      upi_ref: paymentType === 'upi' ? upiRef : null,
-      cheque_number: paymentType === 'other' ? chequeNumber : null,
-      notes: notes || null,
-      items: items.map(
-        ({ inventory_id, product_id, product_name, hsn_code, quantity, base_unit_price, discount_percentage, gst_rate, mrp, discount_source, discount_label, default_discount_percentage, farmer_discount_percentage }) => ({
-          inventory_id,
-          product_id,
-          product_name,
-          hsn_code,
-          quantity,
-          mrp,
-          unit_price: Number((base_unit_price * (1 - discount_percentage / 100)).toFixed(2)),
-          discount_percentage,
-          discount_source,
-          discount_label,
-          default_discount_percentage,
-          farmer_discount_percentage,
-          gst_rate: gstEnabled ? gst_rate : 0,
-        })
-      ),
-    };
-  }, [activeBranch?.id, amountPaid, chequeNumber, discountAmount, exceedsCreditLimit, farmerId, farmerName, gstEnabled, items, notes, paymentType, todayIso, upiRef, user?.id]);
-
-  React.useEffect(() => {
-    let cancelled = false;
-
-    const loadPreview = async () => {
-      const payload = buildPayload({
-        subtotal: clientTotals.subtotal,
-        gstAmount: clientTotals.gstAmount,
-        total: clientTotals.total,
-      });
-      if (!payload || payload.items.length === 0) {
-        setFifoPreview(null);
-        return;
-      }
-
-      setIsPreviewLoading(true);
-      try {
-        const preview = await billingService.previewFifoBill(payload);
-        if (!cancelled) setFifoPreview(preview);
-      } catch (error) {
-        console.error('Failed to preview FIFO bill:', error);
-        if (!cancelled) setFifoPreview(null);
-      } finally {
-        if (!cancelled) setIsPreviewLoading(false);
-      }
-    };
-
-    loadPreview();
-    return () => {
-      cancelled = true;
-    };
-  }, [buildPayload, clientTotals.subtotal, clientTotals.gstAmount, clientTotals.total]);
-
-  const saveOffline = async (payload: BillingPayload) => {
-    const clientRef = crypto.randomUUID();
-    const tempBillNumber = generateTempBillNumber();
-    await queueOfflineBill({
-      clientRef,
-      tempBillNumber,
-      payload,
-      signatureStrokes: signatureEnabled && signatureStrokes.length > 0 ? signatureStrokes : null,
-      signerName: farmerName || 'Walk-in Customer',
-      farmerName,
-      total: totals.total,
-      amountPaid,
-      balanceDue,
-    });
-    toast.success(t('billing.savedOffline', 'No internet — bill saved on this device and will sync automatically.'));
-    onSuccess({
-      billId: clientRef,
-      billNumber: tempBillNumber,
-      total: totals.total,
-      amountPaid,
-      balanceDue,
-      farmerName,
-      billDate: displayDate,
-      isOffline: true,
-    });
-  };
-
-  const handleCheckout = async (ignoreWarning = false) => {
-    if (!items.length || !user?.id) return;
-    if (amountPaid > totals.total) {
-      toast.error(t('billing.errorOverpaid', 'Amount paid cannot exceed the total.'));
-      return;
-    }
-    if (farmerId === null && amountPaid < totals.total) {
-      toast.error(t('billing.walkinFullPayment', 'Walk-in bills must be paid in full.'));
-      return;
-    }
-    if (signatureRequired && signatureStrokes.length === 0) {
-      toast.error('Customer signature is required for credit or pending bills.');
-      return;
-    }
-
-    if (!ignoreWarning && farmerId && navigator.onLine) {
-      try {
-        const billStart = new Date(`${billDate}T00:00:00.000Z`);
-        const billEnd = new Date(`${billDate}T23:59:59.999Z`);
-        
-        const { data: recentBills } = await supabase
-          .from('bills')
-          .select('total, created_at')
-          .eq('farmer_id', farmerId)
-          .eq('dealer_id', user.id)
-          .gte('created_at', billStart.toISOString())
-          .lte('created_at', billEnd.toISOString());
-
-        if (recentBills && recentBills.length > 0) {
-          const similarBill = recentBills.find(b => Math.abs(Number(b.total) - totals.total) <= 100);
-          if (similarBill) {
-            setDuplicateWarning({
-              show: true,
-              farmerName: farmerName || 'this farmer',
-              amount: Number(similarBill.total)
-            });
-            return;
-          }
-        }
-      } catch (err) {
-        console.error('Failed to check duplicate bills:', err);
-      }
-    }
-
-    const payload = buildPayload({
-      subtotal: totals.subtotal,
-      gstAmount: totals.gstAmount,
-      total: totals.total,
-    });
-    if (!payload) return;
-
-    if (navigator.vibrate) navigator.vibrate(50);
-
-    if (!navigator.onLine) {
-      try {
-        await saveOffline(payload);
-      } catch (error: any) {
-        toast.error(error.message || t('common.error', 'Something went wrong.'));
-      }
-      return;
-    }
-
-    try {
-      const result = await createBill(payload);
-
-      if (signatureEnabled && signatureStrokes.length > 0) {
-        setIsSavingSignature(true);
-        await billingService.saveBillSignature({
-          dealerId: user.id,
-          branchId: activeBranch?.id,
-          billId: result.bill_id,
-          signerName: farmerName || 'Walk-in Customer',
-          signatureData: signatureStrokes,
-        });
-      }
-
-      toast.success(t('billing.success', 'Bill created successfully.'));
-      onSuccess({
-        billId: result.bill_id,
-        billNumber: result.bill_number,
+  const onCheckoutClick = (ignoreWarning = false, mode: 'sign' | 'transport' | 'in_person' = 'sign') => {
+    handleCheckout({
+      totals: {
+        subtotal: totals.subtotal,
+        gstAmount: totals.gstAmount,
         total: totals.total,
-        amountPaid,
-        balanceDue,
-        farmerName,
-        billDate: displayDate,
-      });
-    } catch (error: any) {
-      if (isNetworkError(error)) {
-        try {
-          await saveOffline(payload);
-          return;
-        } catch (offlineError) {
-          console.error('Failed to save bill offline:', offlineError);
-        }
-      }
-      toast.error(error.message || t('common.error', 'Something went wrong.'));
-    } finally {
-      setIsSavingSignature(false);
-    }
+      },
+      signatureStrokes,
+      sigCanvasDims,
+      ignoreWarning,
+      mode,
+      onSuccess,
+    });
   };
+  const getCheckoutMode = (): 'sign' | 'transport' | 'in_person' =>
+    showDesktopVerifyCheckbox ? (desktopVerified ? 'in_person' : 'transport')
+      : signatureEnabled && mobileSignatureMode === 'verify_later' ? 'transport' : 'sign';
 
   return (
     <div className="flex flex-col gap-6 pb-32 lg:px-8 lg:pb-8 max-w-[64rem] mx-auto w-full">
@@ -495,7 +332,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           </div>
 
           {/* Desktop Table Header */}
-          <div 
+          <div
             className="hidden md:grid billing-review-table-head"
             style={{ gridTemplateColumns: columnConfig.gridTemplate }}
           >
@@ -533,7 +370,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
                 </div>
 
                 {/* Desktop View Item Row */}
-                <div 
+                <div
                   className="hidden md:grid billing-review-table-row"
                   style={{ gridTemplateColumns: columnConfig.gridTemplate }}
                 >
@@ -564,6 +401,13 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             <strong>{formatCurrency(totals.subtotal)}</strong>
           </div>
 
+          {savingsAmount > 0 && (
+            <div className="billing-review-tax-line text-emerald-600">
+              <span className="flex items-center gap-1">🏷️ Farmer Savings</span>
+              <span className="font-bold">-{formatCurrency(savingsAmount)}</span>
+            </div>
+          )}
+
           {gstEnabled ? (
             <>
               <div className="billing-review-tax-line">
@@ -584,9 +428,16 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             </div>
           ) : null}
 
+          {settlementDiscountAmount > 0 ? (
+            <div className="billing-review-tax-line text-emerald-600">
+              <span>Settlement Discount</span>
+              <span>-{formatCurrency(settlementDiscountAmount)}</span>
+            </div>
+          ) : null}
+
           <div className="billing-review-total-line billing-review-total-line--grand">
-            <span>Total</span>
-            <strong>{formatCurrency(totals.total)}</strong>
+            <span>{settlementDiscountAmount > 0 ? 'Effective Total' : 'Total'}</span>
+            <strong>{formatCurrency(effectiveTotal)}</strong>
           </div>
           <div className="billing-review-total-line">
             <span>Amount Paid</span>
@@ -601,27 +452,81 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
 
 
       {signatureEnabled ? (
-        <SignaturePad
-          value={signatureStrokes}
-          onChange={setSignatureStrokes}
-          required={signatureRequired}
-        />
+        <div className="billing-signature-section">
+          <div className="flex bg-slate-100 rounded-xl p-1 mb-4 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileSignatureMode('sign')}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mobileSignatureMode === 'sign' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Sign Now
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileSignatureMode('verify_later')}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mobileSignatureMode === 'verify_later' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Verify Later
+            </button>
+          </div>
+
+          {mobileSignatureMode === 'sign' ? (
+            <SignaturePad
+              value={signatureStrokes}
+              onChange={setSignatureStrokes}
+              required={signatureRequired}
+              onDimensionsCaptured={(w, h) => setSigCanvasDims({ w, h })}
+            />
+          ) : (
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 text-center animate-fade-in">
+              <div className="text-blue-700 font-black mb-1.5 text-lg">Verify Later Selected</div>
+              <div className="text-sm font-semibold text-blue-700/80">A 4-digit PIN will be generated. The customer can provide this PIN to you later to mark this bill as verified.</div>
+            </div>
+          )}
+        </div>
+      ) : showDesktopVerifyCheckbox ? (
+        <label className="billing-signature-card flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={desktopVerified}
+            onChange={(e) => setDesktopVerified(e.target.checked)}
+            className="mt-1 h-5 w-5 rounded border-slate-300 text-primary focus:ring-primary"
+          />
+          <div className="flex-1">
+            <div className="text-sm font-black text-slate-900">Signed &amp; Verified in person</div>
+            <div className="mt-0.5 text-xs text-slate-500">
+              {desktopVerified
+                ? 'Bill will be saved as verified — no delivery PIN needed.'
+                : 'Uncheck to save without verification. A 4-digit delivery PIN will be generated; enter it later to mark verified.'}
+            </div>
+          </div>
+        </label>
       ) : null}
 
       <footer className="billing-bottom-bar billing-bottom-bar--review">
-        <button type="button" onClick={onBack} className="billing-footer-icon billing-footer-icon--wide">
+        <button type="button" onClick={onBack} className="billing-footer-icon billing-footer-icon--wide shrink-0">
           <ArrowLeft className="h-5 w-5" />
           <span>Back</span>
         </button>
-        <button
-          type="button"
-          onClick={() => handleCheckout(false)}
-          disabled={items.length === 0 || isPending || isSavingSignature}
-          className="billing-save-button"
-        >
-          {isPending || isSavingSignature ? 'Saving...' : 'Save & Finish'}
-          <CheckCircle2 className="h-5 w-5" />
-        </button>
+        <div className="flex gap-2 w-full">
+          <button
+            type="button"
+            onClick={() => {
+              onCheckoutClick(false, getCheckoutMode());
+            }}
+            disabled={items.length === 0 || isSubmitting || isSavingSignature}
+            className={`billing-save-button flex-1 ${signatureEnabled && mobileSignatureMode === 'verify_later' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20' : ''}`}
+          >
+            {isSubmitting || isSavingSignature
+              ? 'Saving...'
+              : showDesktopVerifyCheckbox
+                ? (desktopVerified ? 'Save & Verify' : 'Save with PIN')
+                : (signatureEnabled && mobileSignatureMode === 'verify_later'
+                    ? 'Save & Verify Later'
+                    : 'Sign & Save')}
+            <CheckCircle2 className="h-5 w-5" />
+          </button>
+        </div>
       </footer>
       {/* Duplicate Warning Modal */}
       <Modal
@@ -631,7 +536,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       >
         <div className="p-4">
           <p className="text-slate-600 mb-6">
-            You already created a bill for <strong>{duplicateWarning?.farmerName}</strong> today for <strong>{duplicateWarning ? formatCurrency(duplicateWarning.amount) : ''}</strong>. 
+            You already created a bill for <strong>{duplicateWarning?.farmerName}</strong> today for <strong>{duplicateWarning ? formatCurrency(duplicateWarning.amount) : ''}</strong>.
             <br/><br/>
             Create another?
           </p>
@@ -639,13 +544,13 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             <Button variant="outline" onClick={() => setDuplicateWarning(null)}>
               Cancel
             </Button>
-            <Button 
-              variant="primary" 
+            <Button
+              variant="primary"
               onClick={() => {
                 setDuplicateWarning(null);
-                handleCheckout(true);
+                onCheckoutClick(true, getCheckoutMode());
               }}
-              loading={isPending}
+              loading={isSubmitting}
             >
               Yes, Create Another
             </Button>

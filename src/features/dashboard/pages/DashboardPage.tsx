@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { UniversalSearchModal } from '@/components/ui/UniversalSearchModal';
 import { SyncStatusIndicator } from '@/components/ui/SyncStatusIndicator';
 import { NotificationsDropdown } from '@/components/ui/NotificationsDropdown';
+import { useLowStockAlerts, useExpiringMedicinesAlerts, useDashboardStats } from '../hooks/useDashboardData';
 import CollectToday from '../components/CollectToday';
 import ExpiringMedicines from '../components/ExpiringMedicines';
 import LowStockAlert from '../components/LowStockAlert';
@@ -18,6 +19,9 @@ import TodaySnapshot from '../components/TodaySnapshot';
 import SalesTrend from '../components/SalesTrend';
 import TopSoldProducts from '../components/TopSoldProducts';
 import ItemsSoldToday from '../components/ItemsSoldToday';
+import TodayCashFlow from '../components/TodayCashFlow';
+import TopCustomers from '../components/TopCustomers';
+import InventoryHealth from '../components/InventoryHealth';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BranchDropdown — isolated component so its local state (isDropdownOpen)
@@ -114,6 +118,9 @@ BranchDropdown.displayName = 'BranchDropdown';
 
 const WIDGET_CONFIGS = [
   { key: 'sales_trend',         label: 'Sales Trend' },
+  { key: 'cash_flow',           label: "Today's Cash Flow" },
+  { key: 'top_customers',       label: 'Top Customers' },
+  { key: 'inventory_health',    label: 'Inventory Health' },
   { key: 'collect_today',       label: 'Collect Today' },
   { key: 'top_sold',            label: 'Top Sold Products' },
   { key: 'recent_transactions', label: 'Recent Transactions' },
@@ -142,15 +149,33 @@ export const DashboardPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const { data: _lowStock = [] } = useLowStockAlerts();
+  const { data: _expiring = [] } = useExpiringMedicinesAlerts();
+  const { data: _stats } = useDashboardStats();
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
-  const [hasUnreadNotifications, setHasUnreadNotifications] = React.useState(false);
   const [isCustomizeOpen, setIsCustomizeOpen] = React.useState(false);
+
+  const notifFingerprint = `${_lowStock.length}:${(_expiring as unknown[])?.length ?? 0}:${_stats?.dueFarmersCount ?? 0}`;
+  const notifAckKey = `notif_ack_fp_${user?.id}`;
+  const [ackedFingerprint, setAckedFingerprint] = React.useState(() => {
+    try { return localStorage.getItem(`notif_ack_fp_${user?.id}`) ?? ''; } catch { return ''; }
+  });
+  const hasUnreadNotifications = notifFingerprint !== '0:0:0' && notifFingerprint !== ackedFingerprint;
+
+  const handleMarkAllNotificationsRead = React.useCallback(() => {
+    setAckedFingerprint(notifFingerprint);
+    try { if (user?.id) localStorage.setItem(notifAckKey, notifFingerprint); } catch { /* ignore */ }
+  }, [notifFingerprint, notifAckKey, user?.id]);
+
   const [hiddenWidgets, setHiddenWidgets] = React.useState<Set<WidgetKey>>(loadHiddenWidgets);
   const customizeRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const handler = (e: MouseEvent) => {
+      // Mobile uses its own backdrop + X button — the sheet is outside customizeRef
+      // so this handler would fire on every checkbox tap and close the panel instantly.
+      if (window.innerWidth < 1024) return;
       if (customizeRef.current && !customizeRef.current.contains(e.target as Node)) {
         setIsCustomizeOpen(false);
       }
@@ -222,7 +247,7 @@ export const DashboardPage: React.FC = () => {
                 isOpen={isNotificationsOpen} 
                 onClose={() => setIsNotificationsOpen(false)} 
                 hasUnread={hasUnreadNotifications}
-                onMarkAllRead={() => setHasUnreadNotifications(false)}
+                onMarkAllRead={handleMarkAllNotificationsRead}
               />
             </div>
           </div>
@@ -294,7 +319,7 @@ export const DashboardPage: React.FC = () => {
                 isOpen={isNotificationsOpen}
                 onClose={() => setIsNotificationsOpen(false)}
                 hasUnread={hasUnreadNotifications}
-                onMarkAllRead={() => setHasUnreadNotifications(false)}
+                onMarkAllRead={handleMarkAllNotificationsRead}
               />
             </div>
           </div>
@@ -307,7 +332,7 @@ export const DashboardPage: React.FC = () => {
       {isCustomizeOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex items-end" onClick={() => setIsCustomizeOpen(false)}>
           <div
-            className="w-full rounded-t-2xl border-t border-slate-200 bg-white p-5 pb-safe shadow-2xl animate-slide-up"
+            className="w-full rounded-t-2xl border-t border-slate-200 bg-white p-5 pb-[5.5rem] shadow-2xl animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3">
@@ -340,16 +365,30 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-12 gap-6 items-start">
+          {/* Left column: 8/12 */}
           <div className="col-span-12 xl:col-span-8 flex flex-col gap-6">
             {show('sales_trend') && <SalesTrend />}
+
+            {/* Cash Flow + Top Customers row */}
+            {(show('cash_flow') || show('top_customers')) && (
+              <div className="grid grid-cols-2 gap-6">
+                {show('cash_flow') && <TodayCashFlow />}
+                {show('top_customers') && <TopCustomers />}
+              </div>
+            )}
+
+            {/* Collect Today + Top Sold Products row */}
             {(show('collect_today') || show('top_sold')) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-6">
                 {show('collect_today') && <CollectToday />}
                 {show('top_sold') && <TopSoldProducts />}
               </div>
             )}
           </div>
+
+          {/* Right column: 4/12 */}
           <div className="col-span-12 xl:col-span-4 flex flex-col gap-6">
+            {show('inventory_health') && <InventoryHealth />}
             {show('recent_transactions') && <RecentTransactions />}
             {show('low_stock') && <LowStockAlert />}
             {show('expiring') && <ExpiringMedicines />}
@@ -362,17 +401,17 @@ export const DashboardPage: React.FC = () => {
         <div className="w-[100vw] relative left-1/2 -translate-x-1/2 px-4 -mt-7 z-10">
           <StatCards />
         </div>
-        <TodaySnapshot />
+
         <div className="flex flex-col gap-5 mt-5">
-          <div className="space-y-5">
-            {show('today_items') && <ItemsSoldToday />}
-            {show('collect_today') && <CollectToday />}
-            {show('recent_transactions') && <RecentTransactions />}
-          </div>
-          <div className="space-y-5">
-            {show('low_stock') && <LowStockAlert />}
-            {show('expiring') && <ExpiringMedicines />}
-          </div>
+          {show('cash_flow') && <TodayCashFlow />}
+          {show('inventory_health') && <InventoryHealth />}
+          {show('top_customers') && <TopCustomers />}
+          {show('top_sold') && <TopSoldProducts />}
+          {show('today_items') && <ItemsSoldToday />}
+          {show('collect_today') && <CollectToday />}
+          {show('recent_transactions') && <RecentTransactions />}
+          {show('low_stock') && <LowStockAlert />}
+          {show('expiring') && <ExpiringMedicines />}
         </div>
       </div>
     </PageShell>

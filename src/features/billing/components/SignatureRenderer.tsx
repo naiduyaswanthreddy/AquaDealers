@@ -4,27 +4,31 @@ import { SignatureStroke } from '@/types/database';
 interface SignatureRendererProps {
   strokes: SignatureStroke[] | null | undefined;
   className?: string;
+  captureWidth?: number;
+  captureHeight?: number;
 }
 
-const VIEWBOX_WIDTH = 1000;
-const VIEWBOX_HEIGHT = 360;
-
-export const SignatureRenderer: React.FC<SignatureRendererProps> = ({ strokes, className }) => {
+export const SignatureRenderer: React.FC<SignatureRendererProps> = ({ strokes, className, captureWidth, captureHeight }) => {
   if (!strokes?.length) return null;
+
+  // Use actual capture dimensions for the viewBox so the aspect ratio matches
+  // what was drawn. Falls back to 1000×360 for old records without accurate dims.
+  const vw = captureWidth ?? 1000;
+  const vh = captureHeight ?? 360;
 
   return (
     <svg
-      viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
+      viewBox={`0 0 ${vw} ${vh}`}
       preserveAspectRatio="xMidYMid meet"
       className={className}
       role="img"
       aria-label="Customer signature"
     >
-      <rect width={VIEWBOX_WIDTH} height={VIEWBOX_HEIGHT} fill="#ffffff" />
+      <rect width={vw} height={vh} fill="#ffffff" />
       {strokes.map((stroke, index) => {
         if (!stroke.length) return null;
         const points = stroke
-          .map((point) => `${point.x * VIEWBOX_WIDTH},${point.y * VIEWBOX_HEIGHT}`)
+          .map((point) => `${point.x * vw},${point.y * vh}`)
           .join(' ');
 
         return (

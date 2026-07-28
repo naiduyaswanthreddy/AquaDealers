@@ -3,17 +3,17 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
-  CalendarDays,
   CheckCircle2,
   ChevronDown,
   Download,
+  LayoutList,
   PackageOpen,
   ReceiptIndianRupee,
   RefreshCw,
-  TrendingUp,
+  Table2,
 } from 'lucide-react';
 import { Button, DateRangeFilter, Skeleton } from '@/components/ui';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatQuantity } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useFarmerItemBills, useFarmerItems } from '../hooks/useFarmerItems';
 import { getFarmerItems } from '../services/farmerItemsService';
@@ -26,6 +26,7 @@ interface FarmerItemsTabProps {
   farmerId: string;
   farmerName: string;
   stockingDate?: string | null;
+  firstActivityDate?: string | null;
   onCollect: (bill: FarmerItemBill) => void;
 }
 
@@ -68,7 +69,7 @@ const ItemBillRows: React.FC<{
       <div className="overflow-x-auto">
         <table className="w-full min-w-[650px] text-left text-xs">
           <thead className="text-[10px] font-black uppercase text-slate-400">
-            <tr><th className="py-2">{t('farmers.itemsTab.date', 'Date')}</th><th className="text-right">{t('farmers.itemsTab.unitPrice', 'Unit Price')}</th><th className="text-right">{t('farmers.itemsTab.discount', 'Disc. %')}</th><th>{t('farmers.itemsTab.qty', 'Qty')}</th><th className="text-right">{t('farmers.itemsTab.amount', 'Amount')}</th><th className="text-center">{t('farmers.itemsTab.status', 'Status')}</th><th className="text-right">{t('farmers.itemsTab.actions', 'Actions')}</th></tr>
+            <tr><th className="py-2">{t('farmers.itemsTab.date', 'Date')}</th><th>Branch</th><th className="text-right">{t('farmers.itemsTab.unitPrice', 'Unit Price')}</th><th className="text-right">{t('farmers.itemsTab.discount', 'Disc. %')}</th><th>{t('farmers.itemsTab.qty', 'Qty')}</th><th className="text-right">{t('farmers.itemsTab.amount', 'Amount')}</th><th className="text-center">{t('farmers.itemsTab.status', 'Status')}</th><th className="text-right">{t('farmers.itemsTab.actions', 'Actions')}</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
             {data.map((bill) => {
@@ -80,6 +81,13 @@ const ItemBillRows: React.FC<{
               return (
                 <tr key={bill.bill_id}>
                   <td className="py-2.5 font-semibold text-slate-700">{formatDate(bill.bill_date)}</td>
+                  <td className="py-2.5">
+                    {(bill as any).branch_name_snapshot ? (
+                      <span className="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-sky-700 ring-1 ring-sky-200">
+                        {(bill as any).branch_name_snapshot}
+                      </span>
+                    ) : <span className="text-slate-300">—</span>}
+                  </td>
                   <td className="text-right font-semibold text-slate-700">{formatCurrency(bill.unit_price)}</td>
                   <td className="text-right font-semibold text-slate-700">{discountVal > 0 ? `${discountVal}%` : '-'}</td>
                   <td className="font-semibold text-slate-700">{bill.quantity}</td>
@@ -128,7 +136,7 @@ const ItemCard: React.FC<{
                <div className="min-w-0">
                  <h3 className="truncate text-[15px] font-black text-slate-900">{item.product_name}</h3>
                  <div className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                   <span>{item.total_quantity} {item.unit}</span>
+                   <span>{formatQuantity(item.total_quantity, item.unit)}</span>
                    <span className="h-1 w-1 rounded-full bg-slate-300"></span>
                    <span className="text-slate-700">{formatCurrency(item.total_value)}</span>
                  </div>
@@ -163,19 +171,24 @@ const ItemCard: React.FC<{
   );
 };
 
-export const FarmerItemsTab: React.FC<FarmerItemsTabProps> = ({ farmerId, farmerName, stockingDate, onCollect }) => {
+export const FarmerItemsTab: React.FC<FarmerItemsTabProps> = ({ farmerId, farmerName, firstActivityDate, onCollect }) => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const dealerId = useAuthStore((state) => state.user?.id || '');
-  const computedRange = getFarmerItemsPeriodRange(stockingDate ? 'this-season' : 'last-3-months', stockingDate);
+  const computedRange = getFarmerItemsPeriodRange('all-history', firstActivityDate);
   const startDate = searchParams.get('items_start') || computedRange.startDate;
   const endDate = searchParams.get('items_end') || computedRange.endDate;
   const productType = searchParams.get('items_type') || '';
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const query = useFarmerItems({ farmerId, startDate, endDate, productType: productType || undefined });
   const firstPage = query.data?.pages[0];
-  const items = useMemo(() => query.data?.pages.flatMap((page) => page.items) || [], [query.data]);
+  const rawItems = useMemo(() => query.data?.pages.flatMap((page) => page.items) || [], [query.data]);
+  const items = useMemo(
+    () => [...rawItems].sort((a, b) => new Date(b.last_purchased_on).getTime() - new Date(a.last_purchased_on).getTime()),
+    [rawItems]
+  );
 
   const updateParams = (updates: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
@@ -201,23 +214,33 @@ export const FarmerItemsTab: React.FC<FarmerItemsTabProps> = ({ farmerId, farmer
         <DateRangeFilter startDate={startDate} endDate={endDate} onChange={(start, end) => updateParams({ items_start: start, items_end: end })} />
       </div>
 
-      <div className="mb-2 flex rounded-[14px] bg-slate-100/80 p-1 border border-slate-200/50 shadow-inner" aria-label="Filter products by type">
-        {[['', t('farmers.itemsTab.filterAll', 'All')], ['feed', t('farmers.itemsTab.filterFeed', 'Feed')], ['medicine', t('farmers.itemsTab.filterMedicine', 'Medicines')]].map(([value, label]) => (
-          <button
-            key={label}
-            type="button"
-            aria-pressed={productType === value}
-            onClick={() => updateParams({ items_type: value || null })}
-            className={`flex-1 rounded-[10px] py-2 text-[0.85rem] font-bold transition-all duration-200 ${
-              productType === value
-                ? 'shadow-md'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-            }`}
-            style={productType === value ? { backgroundColor: 'var(--color-primary)', color: '#ffffff' } : {}}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex gap-2">
+        <div className="flex flex-1 rounded-[14px] bg-slate-100/80 p-1 border border-slate-200/50 shadow-inner" aria-label="Filter products by type">
+          {[['', t('farmers.itemsTab.filterAll', 'All')], ['feed', t('farmers.itemsTab.filterFeed', 'Feed')], ['medicine', t('farmers.itemsTab.filterMedicine', 'Medicines')]].map(([value, label]) => (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={productType === value}
+              onClick={() => updateParams({ items_type: value || null })}
+              className={`flex-1 rounded-[10px] py-2 text-[0.85rem] font-bold transition-all duration-200 ${
+                productType === value
+                  ? 'shadow-md'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
+              style={productType === value ? { backgroundColor: 'var(--color-primary)', color: '#ffffff' } : {}}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setViewMode(v => v === 'cards' ? 'table' : 'cards')}
+          aria-label={viewMode === 'cards' ? 'Switch to table view' : 'Switch to card view'}
+          className="flex items-center justify-center rounded-[14px] border border-slate-200/50 bg-slate-100/80 px-3 shadow-inner transition-colors hover:bg-slate-200/60"
+        >
+          {viewMode === 'cards' ? <Table2 className="h-4 w-4 text-slate-600" /> : <LayoutList className="h-4 w-4 text-slate-600" />}
+        </button>
       </div>
 
       {query.isLoading ? <div className="space-y-3">{[0, 1, 2].map((key) => <Skeleton key={key} className="h-32 rounded-lg" />)}</div> : null}
@@ -245,6 +268,40 @@ export const FarmerItemsTab: React.FC<FarmerItemsTabProps> = ({ farmerId, farmer
 
           {!items.length ? (
             <div className="border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center"><PackageOpen className="mx-auto h-9 w-9 text-slate-400" /><p className="mt-3 text-sm font-black text-slate-800">{t('farmers.itemsTab.noPurchases', 'No purchases in this period')}</p><p className="mt-1 text-xs font-semibold text-slate-500">{t('farmers.itemsTab.tryLongerRange', 'Try selecting a longer time range')}</p></div>
+          ) : viewMode === 'table' ? (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <table className="w-full min-w-[480px] text-left text-sm">
+                <thead className="border-b border-slate-100 bg-slate-50">
+                  <tr>
+                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Item</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Qty</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Value</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Last Date</th>
+                    <th className="px-4 py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {items.map((item) => {
+                    const status = getStatus(item.paid_amount, item.unpaid_amount, t);
+                    return (
+                      <tr key={item.product_id} className="hover:bg-slate-50/60">
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-slate-900">{item.product_name}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-slate-700">{formatQuantity(item.total_quantity, item.unit)}</td>
+                        <td className="px-4 py-3 text-right font-bold text-slate-900">{formatCurrency(item.total_value)}</td>
+                        <td className="px-4 py-3 text-right text-xs font-semibold text-slate-500">{formatDate(item.last_purchased_on)}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black ${status.className}`}>
+                            <status.Icon className="h-3 w-3" />{status.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <div className="space-y-2">
               {items.map((item) => <ItemCard key={item.product_id} item={item} expanded={expandedProductId === item.product_id} onToggle={() => setExpandedProductId((current) => current === item.product_id ? null : item.product_id)} farmerId={farmerId} startDate={startDate} endDate={endDate} onCollect={onCollect} />)}

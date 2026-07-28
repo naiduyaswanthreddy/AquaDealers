@@ -18,7 +18,7 @@ export const generateFarmerStatementPdfBlob = async (
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const contentWidth = pageWidth - 2 * margin;
-  const { farmer, openingBalance, totalDebit, totalCredit, closingBalance, transactions } = statement;
+  const { farmer, openingBalance, totalDebit, totalCredit, totalReturns = 0, closingBalance, transactions } = statement;
 
   // Colors based on modern design
   const colors = {
@@ -88,7 +88,7 @@ export const generateFarmerStatementPdfBlob = async (
   yPos += 8;
 
   // --- SUMMARY CARDS (4 Columns) ---
-  const cardWidth = (contentWidth - 9) / 4; // 3 gaps of 3mm
+  const cardWidth = (contentWidth - 12) / 5;
   const cardHeight = 24;
 
   const billCount = transactions.filter((t: any) => t.type === 'bill' || t.type === 'adjustment').length;
@@ -98,6 +98,7 @@ export const generateFarmerStatementPdfBlob = async (
     { label: 'OPENING BALANCE', value: openingBalance, countText: `as on ${format(new Date(startDate), 'dd MMM yyyy')}`, color: colors.navy },
     { label: 'TOTAL BILLS', value: totalDebit, countText: `${billCount} bills`, color: colors.red },
     { label: 'TOTAL PAID', value: totalCredit, countText: `${paymentCount} payment${paymentCount !== 1 ? 's' : ''}`, color: colors.green },
+    { label: 'RETURNED VALUE', value: totalReturns, countText: `${transactions.filter((t: any) => t.type === 'return').length} return(s)`, color: colors.red },
     { label: 'CLOSING BALANCE', value: closingBalance, countText: `as on ${format(new Date(endDate), 'dd MMM yyyy')}`, color: colors.blue }
   ];
 
@@ -140,7 +141,7 @@ export const generateFarmerStatementPdfBlob = async (
 
   const cols = [
     { name: 'DATE', width: 35, align: 'left' },
-    { name: 'REF / DETAILS', width: 75, align: 'left' },
+    { name: 'REF / DETAILS', width: 65, align: 'left' },
     { name: 'BILL (+)', width: 25, align: 'right' },
     { name: 'PAID (-)', width: 25, align: 'right' },
     { name: 'BALANCE', width: 20, align: 'right' }
@@ -229,7 +230,7 @@ export const generateFarmerStatementPdfBlob = async (
     if (tx.type === 'payment') {
        addText(safeCurrency(tx.amount), currentX + cols[3].width, yPos, 9, colors.green, true, 'right');
     } else {
-       addText('-', currentX + cols[3].width, yPos, 9, [0, 0, 0], true, 'right');
+       addText('N/A', currentX + cols[3].width, yPos, 9, colors.grayText, false, 'right');
     }
     currentX += cols[3].width;
 
@@ -340,7 +341,7 @@ export const downloadFarmerStatementPdf = async (
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Statement_${statement.farmer.name.replace(/\s+/g, '_')}.pdf`;
+  a.download = `Statement_${statement.farmer.name.replace(/\s+/g, '_')}_${startDate}_${endDate}.pdf`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

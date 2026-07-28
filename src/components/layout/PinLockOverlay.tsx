@@ -21,11 +21,17 @@ export const PinLockOverlay: React.FC = () => {
       recordActivity();
     };
 
+    // Check immediately on device wake / tab focus BEFORE any interaction resets the timer.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') checkIdleTimeout();
+    };
+
     // Listen to user interactions
     window.addEventListener('click', handleActivity);
     window.addEventListener('scroll', handleActivity);
     window.addEventListener('keypress', handleActivity);
     window.addEventListener('touchstart', handleActivity);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Run idle check every 30 seconds
     const interval = setInterval(() => {
@@ -37,6 +43,7 @@ export const PinLockOverlay: React.FC = () => {
       window.removeEventListener('scroll', handleActivity);
       window.removeEventListener('keypress', handleActivity);
       window.removeEventListener('touchstart', handleActivity);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(interval);
     };
   }, [isPinSet, recordActivity, checkIdleTimeout]);

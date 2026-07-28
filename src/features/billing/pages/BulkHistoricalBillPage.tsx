@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save, Calendar, CheckSquare, Square } from 'lucide-react';
+import { Plus, Trash2, Save, CheckSquare, Square } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SectionCard } from '@/components/layout/SectionCard';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { Button } from '@/components/ui';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
 import { useFarmers } from '@/features/farmers/hooks/useFarmers';
@@ -150,23 +151,14 @@ const BulkHistoricalBillPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-2 sm:px-6 py-4 pb-24">
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-slate-600" />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Bulk Historical Entry</h1>
-          {selectedFarmer && (
-            <p className="text-sm text-slate-500">For {selectedFarmer.name}</p>
-          )}
-        </div>
-      </div>
+    <PageShell width="wide">
+      <PageHeader
+        title="Bulk Historical Entry"
+        description={selectedFarmer ? `For ${selectedFarmer.name}` : 'Add earlier bills without changing today’s workflow.'}
+        onBack={() => navigate(-1)}
+      />
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6">
+      <SectionCard className="mt-4 overflow-hidden p-0">
         <div className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="font-semibold text-slate-800">Configuration</h2>
@@ -274,29 +266,13 @@ const BulkHistoricalBillPage: React.FC = () => {
             Add Row
           </button>
         </div>
-      </div>
+      </SectionCard>
       
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] z-10 flex justify-end gap-3 sm:pl-[280px]">
-        <button
-          onClick={() => navigate(-1)}
-          className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={isSubmitting || !farmerId || rows.every(r => !r.inventoryId)}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-brand-600 text-white font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors shadow-sm"
-        >
-          {isSubmitting ? (
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
-          Save Records
-        </button>
+      <div className="sticky bottom-3 z-10 mt-4 flex justify-end gap-3 rounded-lg border border-border bg-white/95 p-3 shadow-lg backdrop-blur">
+        <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
+        <Button onClick={handleSubmit} loading={isSubmitting} disabled={!farmerId || rows.every(r => !r.inventoryId)} leftIcon={<Save className="h-4 w-4" />}>Save records</Button>
       </div>
-    </div>
+    </PageShell>
   );
 };
 

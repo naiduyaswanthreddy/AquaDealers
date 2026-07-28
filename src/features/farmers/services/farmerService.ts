@@ -339,6 +339,7 @@ export interface FarmerBillRow {
   date: string;
   amount: number;
   createdAt: string;
+  items: { product_name: string; quantity: number }[];
 }
 
 export interface FarmerPaymentRow {
@@ -362,7 +363,7 @@ export async function getFarmerBillsPage(params: {
 
   let query = supabase
     .from('bills')
-    .select('id, bill_number, bill_date, total, created_at', { count: 'exact' })
+    .select('id, bill_number, bill_date, total, created_at, bill_items(product_name, quantity)', { count: 'exact' })
     .eq('dealer_id', params.dealerId)
     .eq('farmer_id', params.farmerId)
     .neq('status', 'cancelled');
@@ -384,6 +385,7 @@ export async function getFarmerBillsPage(params: {
       date: bill.bill_date,
       amount: Number(bill.total),
       createdAt: bill.created_at,
+      items: ((bill as any).bill_items ?? []).map((i: any) => ({ product_name: i.product_name, quantity: i.quantity })),
     })),
     total: count || 0,
     limit: params.limit,

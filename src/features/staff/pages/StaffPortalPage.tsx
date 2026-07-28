@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Lock, Delete, ArrowRight, Store } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageShell } from '@/components/layout/PageShell';
@@ -23,6 +23,7 @@ function humanizeSlug(value: string | undefined): string {
 export const StaffPortalPage: React.FC = () => {
   const navigate = useNavigate();
   const params = useParams<{ shopSlug: string; branchSlug: string }>();
+  const [searchParams] = useSearchParams();
   const { session } = useAuthStore();
   const { setStaffSession } = useStaffStore();
 
@@ -42,7 +43,11 @@ export const StaffPortalPage: React.FC = () => {
       }
 
       try {
-        const context = await resolveStaffPortalContext(params.shopSlug, params.branchSlug);
+        const context = await resolveStaffPortalContext(
+          params.shopSlug, 
+          params.branchSlug, 
+          searchParams.get('t')
+        );
         setPortalContext(context);
       } catch (err: any) {
         setContextError(err?.message || 'Unable to load staff portal.');
@@ -61,7 +66,12 @@ export const StaffPortalPage: React.FC = () => {
     setError(false);
 
     try {
-      const result = await verifyStaffPortalPin(params.shopSlug, params.branchSlug, rawPin);
+      const result = await verifyStaffPortalPin(
+        params.shopSlug,
+        params.branchSlug,
+        rawPin,
+        searchParams.get('t')
+      );
       const defaultRoute = getStaffDefaultRoute(result.staff.permissions);
 
       setStaffSession(

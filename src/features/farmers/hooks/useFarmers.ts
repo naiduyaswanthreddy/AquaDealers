@@ -4,6 +4,8 @@ import { useBranchStore } from '@/stores/branchStore';
 import {
   getFarmers,
   createFarmer,
+  setFarmerPreviousDue,
+  bulkCreateFarmers,
   updateFarmer,
   getFarmerProductDiscounts,
   upsertFarmerProductDiscount,
@@ -24,15 +26,14 @@ export function useFarmers(params?: {
   isWalkIn?: boolean;
 }) {
   const user = useAuthStore((s) => s.user);
-  const activeBranchId = useBranchStore((s) => s.getActiveBranchId());
   const dealerId = user?.id || '';
 
+  // Farmers are shared across branches — no activeBranchId in cache key or query.
   return useQuery({
-    queryKey: ['farmers', dealerId, activeBranchId, params],
+    queryKey: ['farmers', dealerId, params],
     queryFn: async () => {
       const res = await getFarmers({
         dealerId,
-        branchId: activeBranchId,
         limit: 1000,
         ...params,
       });
@@ -44,13 +45,23 @@ export function useFarmers(params?: {
 
 export function useDuesAgeing() {
   const user = useAuthStore((s) => s.user);
-  const activeBranchId = useBranchStore((s) => s.getActiveBranchId());
   const dealerId = user?.id || '';
 
   return useQuery({
-    queryKey: ['farmers', 'dues-ageing', dealerId, activeBranchId],
-    queryFn: () => getDuesAgeing(dealerId, activeBranchId),
+    queryKey: ['farmers', 'dues-ageing', dealerId],
+    queryFn: () => getDuesAgeing(dealerId, null),
     enabled: !!dealerId,
+  });
+}
+
+export function useBulkCreateFarmers() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rows: FarmerInsert[]) => bulkCreateFarmers(rows),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['farmers'] });
+    },
+    onError: (error: any) => toast.error(error.message || 'Failed to import farmers.'),
   });
 }
 
@@ -82,6 +93,20 @@ export function useUpdateFarmer() {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to update farmer.');
+    },
+  });
+}
+
+export function useSetFarmerPreviousDue() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { farmerId: string; previousDue: number }) =>
+      setFarmerPreviousDue(params.farmerId, params.previousDue),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['farmers'] });
+      queryClient.invalidateQueries({ queryKey: ['farmer'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

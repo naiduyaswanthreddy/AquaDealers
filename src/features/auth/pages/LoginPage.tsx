@@ -7,6 +7,8 @@ import { Mail, Lock, Package, FileText, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { Button, Input } from '@/components/ui';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { Download } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -20,6 +22,8 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/';
+  
+  const { isInstallable, promptInstall } = usePWAInstall();
 
   const {
     register,
@@ -156,6 +160,21 @@ export const LoginPage: React.FC = () => {
                 Sign up
               </Link>
             </p>
+
+            {isInstallable && (
+              <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center">
+                <p className="text-sm font-bold text-slate-600 mb-3">Get the app for easier access</p>
+                <Button 
+                  type="button" 
+                  onClick={promptInstall} 
+                  variant="outline" 
+                  className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 font-black h-12 rounded-xl"
+                  leftIcon={<Download className="w-5 h-5" />}
+                >
+                  Install AquaDealers App
+                </Button>
+              </div>
+            )}
           </form>
         </div>
       </div>

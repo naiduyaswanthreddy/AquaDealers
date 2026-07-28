@@ -83,7 +83,6 @@ const ExpensesPage: React.FC = () => {
   return (
     <PageShell width="wide">
       <PageHeader
-        eyebrow={t('nav.financials', 'Financials')}
         title={t('nav.expenses', 'Expenses')}
         onBack={() => navigate('/more')}
         description={t('financials.expensesSubtitle', 'Track and manage your operational costs')}

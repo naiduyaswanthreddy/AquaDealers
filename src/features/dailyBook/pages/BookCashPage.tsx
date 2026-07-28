@@ -21,15 +21,15 @@ export const BookCashPage: React.FC = () => {
       `Closing: ${bookMoney(book.closingCash)}`
     : undefined;
 
-  const nonCashIn = (book?.cashLines || [])
-    .filter((l) => l.direction === 'in' && l.method !== 'cash')
-    .reduce((sum, l) => sum + l.amount, 0);
+  // Cash counter: show only physical cash transactions (exclude UPI / cheque)
+  const cashIn = (book?.cashLines || []).filter((l) => l.direction === 'in' && l.method === 'cash');
+  const cashOut = (book?.cashLines || []).filter((l) => l.direction === 'out' && l.method === 'cash');
 
-  const cashIn = (book?.cashLines || []).filter((l) => l.direction === 'in');
-  const cashOut = (book?.cashLines || []).filter((l) => l.direction === 'out');
+  const nonCashTotal = (book?.cashLines || [])
+    .filter((l) => l.method !== 'cash')
+    .reduce((sum, l) => sum + (l.direction === 'in' ? l.amount : -l.amount), 0);
 
   const renderLine = (line: NonNullable<typeof book>['cashLines'][number]) => {
-    const countsInDrawer = line.method === 'cash';
     return (
       <div key={line.id} className="book-dashed py-2.5">
         <div className="flex items-baseline justify-between gap-3">
@@ -39,14 +39,12 @@ export const BookCashPage: React.FC = () => {
             </span>
             <span className="ml-2 text-sm font-semibold">
               {line.label}
-              <span className="text-xs text-[color:var(--book-ink-soft)]">{methodTag(line.method)}</span>
             </span>
           </div>
           <span
             className={cn(
-              'book-num shrink-0 text-sm font-black',
-              line.direction === 'in' ? 'text-[color:var(--book-green)]' : 'text-[color:var(--book-red)]',
-              !countsInDrawer && 'opacity-60'
+              'book-num shrink-0 text-base font-black',
+              line.direction === 'in' ? 'text-[color:var(--book-green)]' : 'text-[color:var(--book-red)]'
             )}
           >
             {line.direction === 'in' ? '+' : '−'}
@@ -76,11 +74,11 @@ export const BookCashPage: React.FC = () => {
             <span className="text-xs font-bold uppercase tracking-[0.1em] text-[color:var(--book-ink-soft)]">
               Opening Balance
             </span>
-            <span className="book-num text-sm font-black">{bookMoney(book.openingCash)}</span>
+            <span className="book-num text-base font-black">{bookMoney(book.openingCash)}</span>
           </div>
 
-          {book.cashLines.length === 0 ? (
-            <BookEmpty message="No money moved on this day." />
+          {cashIn.length === 0 && cashOut.length === 0 ? (
+            <BookEmpty message="No cash transactions on this day." />
           ) : (
             <>
               {cashIn.length > 0 ? (
@@ -104,15 +102,15 @@ export const BookCashPage: React.FC = () => {
             </>
           )}
 
-          {nonCashIn > 0 ? (
-            <p className="mt-3 text-xs text-[color:var(--book-ink-soft)]">
-              {bookMoney(nonCashIn)} came by UPI/cheque — shown faded because it is not in the drawer.
+          {nonCashTotal !== 0 ? (
+            <p className="mt-3 text-xs italic text-[color:var(--book-ink-soft)]">
+              UPI / cheque transactions are excluded from this view — they do not affect the cash drawer.
             </p>
           ) : null}
 
           <div className="mt-4 flex items-baseline justify-between border-t-2 border-[color:var(--book-rule)] pt-3">
-            <span className="text-xs font-black uppercase tracking-[0.1em]">Closing Balance (drawer)</span>
-            <span className="book-num text-lg font-black">{bookMoney(book.closingCash)}</span>
+            <span className="text-sm font-black uppercase tracking-[0.08em]">Closing Balance (drawer)</span>
+            <span className="book-num text-2xl font-black">{bookMoney(book.closingCash)}</span>
           </div>
         </>
       )}

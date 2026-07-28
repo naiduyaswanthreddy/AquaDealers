@@ -7,9 +7,10 @@ interface SignaturePadProps {
   value: SignatureStroke[];
   onChange: (value: SignatureStroke[]) => void;
   required?: boolean;
+  onDimensionsCaptured?: (width: number, height: number) => void;
 }
 
-export const SignaturePad: React.FC<SignaturePadProps> = ({ value, onChange, required = false }) => {
+export const SignaturePad: React.FC<SignaturePadProps> = ({ value, onChange, required = false, onDimensionsCaptured }) => {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = React.useState(false);
   const currentStrokeRef = React.useRef<SignatureStroke>([]);
@@ -23,6 +24,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ value, onChange, req
     const ratio = window.devicePixelRatio || 1;
     canvas.width = Math.round(rect.width * ratio);
     canvas.height = Math.round(rect.height * ratio);
+    onDimensionsCaptured?.(Math.round(rect.width), Math.round(rect.height));
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     context.lineCap = 'round';
     context.lineJoin = 'round';

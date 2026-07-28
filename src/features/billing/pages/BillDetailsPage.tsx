@@ -221,16 +221,6 @@ const BillDetailsPage: React.FC = () => {
         onBack={() => navigate(backTo)}
         action={
           <div className="flex flex-wrap justify-start xl:justify-end gap-2.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              leftIcon={billNumberCopied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-white" />}
-              onClick={handleCopyBillNumber}
-              className="rounded-[24px] hover:bg-white/25 transition-all text-white border-solid font-semibold text-xs px-5 sm:px-6"
-              style={{ background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.22)' }}
-            >
-              {billNumberCopied ? 'Copied!' : 'Copy No.'}
-            </Button>
             {bill.is_verified === false && (
               <Button
                 variant="primary"
@@ -348,14 +338,14 @@ const BillDetailsPage: React.FC = () => {
       )}
 
       {hasProPlus ? (
-        <div className="flex justify-start md:justify-center overflow-x-auto bg-slate-100 rounded-xl mb-12 w-full">
+        <div className="flex justify-start md:justify-center overflow-x-auto bg-slate-100 rounded-xl mb-12 w-full print:overflow-visible print:bg-white print:m-0 print:rounded-none">
           <MobileZoomableContainer>
-            <div className="bg-white shadow-lg overflow-hidden shrink-0 mx-auto" style={{ width: '794px', minHeight: '1123px' }}>
+            <div className="bg-white shadow-lg overflow-hidden shrink-0 mx-auto bill-print-frame-inner" style={{ width: '794px', minHeight: '1123px' }}>
               <Template bill={bill} dealer={dealer} settings={templateSettings} type="bill" billSignature={billSignature} />
             </div>
           </MobileZoomableContainer>
-          
-          <div className="max-w-4xl mx-auto w-full px-6">
+
+          <div className="max-w-4xl mx-auto w-full px-6 print:hidden">
             {(bill as any).is_edited && (
               <BillAuditHistory billId={bill.id} />
             )}
@@ -470,7 +460,12 @@ const BillDetailsPage: React.FC = () => {
 
             <div className="flex justify-between text-sm pt-2">
               <span className="text-gray-500">{t('billing.amountPaid')}</span>
-              <span className="font-medium text-green-600">{formatCurrency(bill.amount_paid)}</span>
+              <div className="flex items-center gap-2">
+                {bill.payment_type && (
+                  <span className="text-xs font-bold uppercase tracking-wide text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{bill.payment_type}</span>
+                )}
+                <span className="font-medium text-green-600">{formatCurrency(bill.amount_paid)}</span>
+              </div>
             </div>
 
             {bill.balance_due > 0 && (

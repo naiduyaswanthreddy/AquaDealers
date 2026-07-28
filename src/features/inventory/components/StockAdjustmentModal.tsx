@@ -9,6 +9,7 @@ import { InventoryItem } from '../types';
 // UI Components
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import { formatQuantity } from '@/lib/utils';
 
 interface StockAdjustmentModalProps {
   item: InventoryItem;
@@ -89,7 +90,7 @@ const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({ item, onClo
           <div className="text-right">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{t('inventory.currentStock', 'Current Stock')}</p>
             <p className="text-xl font-black text-slate-900 leading-none">
-              {item.quantity_in_stock} <span className="text-xs font-semibold text-slate-500">{item.product.unit}</span>
+              <span className="text-xs font-semibold text-slate-500">{formatQuantity(item.quantity_in_stock, item.product.unit)}</span>
             </p>
           </div>
         </div>
@@ -132,7 +133,7 @@ const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({ item, onClo
                   <option value="">Use FIFO / select lot</option>
                   {activeLots.map((lot) => (
                     <option key={lot.id} value={lot.id}>
-                      {lot.batch_number || 'Unlabelled lot'} - {lot.remaining_quantity} {item.product.unit}
+                      {lot.batch_number || 'Unlabelled lot'} - {formatQuantity(lot.remaining_quantity, item.product.unit)}
                     </option>
                   ))}
                 </select>

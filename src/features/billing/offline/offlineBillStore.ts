@@ -43,12 +43,12 @@ export interface OfflineSyncSummary {
 }
 
 export const generateTempBillNumber = () =>
-  `OFF-${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  `OFF-${crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()}`;
 
 export const isNetworkError = (error: unknown): boolean => {
   if (typeof navigator !== 'undefined' && !navigator.onLine) return true;
   const message = error instanceof Error ? error.message : String(error ?? '');
-  return /failed to fetch|network|load failed|fetch failed|timed? ?out/i.test(message);
+  return /failed to fetch|network|load failed|fetch failed|timed? ?out|connection was lost|could not be found|cancelled|networkerror/i.test(message);
 };
 
 const readQueue = async (): Promise<OfflineBill[]> =>
@@ -123,60 +123,83 @@ export const useOfflineBillStore = create<OfflineBillState>((set, get) => ({
         await writePendingSigs(stillPending);
       }
 
-      let bills = await readQueue();
+      const bills = await readQueue();
+      const newPendingSigs: PendingSig[] = [];
 
-      for (const bill of bills) {
-        const { data, error } = await supabase.rpc('create_bill_offline_sync', {
-          p_payload: bill.payload,
-          p_client_ref: bill.clientRef,
-        });
+      type BillOutcome =
+        | { ok: true; clientRef: string; billNumber: string; pendingSig: PendingSig | null }
+        | { ok: false; clientRef: string; error: string; isNetwork: boolean };
 
-        if (error) {
-          if (isNetworkError(error)) {
-            // Still offline / flaky — leave the whole queue for the next attempt.
-            break;
+      const outcomes = await Promise.allSettled<BillOutcome>(
+        bills.map(async (bill): Promise<BillOutcome> => {
+          const { data, error } = await supabase.rpc('create_bill_offline_sync', {
+            p_payload: bill.payload,
+            p_client_ref: bill.clientRef,
+          });
+
+          if (error) {
+            return { ok: false, clientRef: bill.clientRef, error: error.message, isNetwork: isNetworkError(error) };
           }
-          bills = bills.map((b) =>
-            b.clientRef === bill.clientRef
-              ? { ...b, status: 'failed' as const, error: error.message }
-              : b
-          );
+
+          const result = data as CreateBillResult & { already_synced?: boolean };
+          let pendingSig: PendingSig | null = null;
+
+          if (bill.signatureStrokes?.length) {
+            try {
+              await billingService.saveBillSignature({
+                dealerId: bill.payload.dealer_id,
+                branchId: bill.payload.branch_id ?? null,
+                billId: result.bill_id,
+                signerName: bill.signerName,
+                signatureData: bill.signatureStrokes,
+              });
+            } catch (signatureError) {
+              console.error('Failed to sync offline bill signature, queuing for retry:', signatureError);
+              pendingSig = {
+                billId: result.bill_id,
+                dealerId: bill.payload.dealer_id,
+                branchId: bill.payload.branch_id ?? null,
+                signerName: bill.signerName,
+                strokes: bill.signatureStrokes!,
+              };
+            }
+          }
+
+          return { ok: true, clientRef: bill.clientRef, billNumber: result.bill_number, pendingSig };
+        })
+      );
+
+      const syncedRefs = new Set<string>();
+      const failedRefs = new Map<string, string>();
+
+      for (const outcome of outcomes) {
+        const value = outcome.status === 'fulfilled' ? outcome.value : null;
+        if (!value) continue;
+        if (value.ok) {
+          syncedRefs.add(value.clientRef);
+          summary.synced += 1;
+          summary.syncedNumbers.push(value.billNumber);
+          if (value.pendingSig) newPendingSigs.push(value.pendingSig);
+        } else {
+          failedRefs.set(value.clientRef, value.error);
           summary.failed += 1;
-          continue;
         }
-
-        const result = data as CreateBillResult & { already_synced?: boolean };
-
-        if (bill.signatureStrokes?.length) {
-          try {
-            await billingService.saveBillSignature({
-              dealerId: bill.payload.dealer_id,
-              branchId: bill.payload.branch_id ?? null,
-              billId: result.bill_id,
-              signerName: bill.signerName,
-              signatureData: bill.signatureStrokes,
-            });
-          } catch (signatureError) {
-            // Bill synced successfully; persist strokes to retry on next sync.
-            console.error('Failed to sync offline bill signature, queuing for retry:', signatureError);
-            const sigs = await readPendingSigs();
-            await writePendingSigs([...sigs, {
-              billId: result.bill_id,
-              dealerId: bill.payload.dealer_id,
-              branchId: bill.payload.branch_id ?? null,
-              signerName: bill.signerName,
-              strokes: bill.signatureStrokes!,
-            }]);
-          }
-        }
-
-        bills = bills.filter((b) => b.clientRef !== bill.clientRef);
-        summary.synced += 1;
-        summary.syncedNumbers.push(result.bill_number);
       }
 
-      await writeQueue(bills);
-      set({ bills });
+      if (newPendingSigs.length) {
+        const existing = await readPendingSigs();
+        await writePendingSigs([...existing, ...newPendingSigs]);
+      }
+
+      const updatedBills = bills
+        .filter((b) => !syncedRefs.has(b.clientRef))
+        .map((b) => failedRefs.has(b.clientRef)
+          ? { ...b, status: 'failed' as const, error: failedRefs.get(b.clientRef) }
+          : b
+        );
+
+      await writeQueue(updatedBills);
+      set({ bills: updatedBills });
       return summary;
     } finally {
       set({ isSyncing: false });

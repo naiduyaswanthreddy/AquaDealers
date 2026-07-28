@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { shareDailySummaryViaWhatsApp } from '../utils/dailySummaryPdf';
 
-export const TodaySnapshot: React.FC = () => {
+const TodaySnapshotComponent: React.FC = () => {
   const { t } = useTranslation();
   const { data: stats, isLoading } = useDashboardStats();
   const [isSharing, setIsSharing] = useState(false);
@@ -94,5 +94,6 @@ export const TodaySnapshot: React.FC = () => {
     </div>
   );
 };
-
+export const TodaySnapshot = React.memo(TodaySnapshotComponent);
+TodaySnapshot.displayName = 'TodaySnapshot';
 export default TodaySnapshot;

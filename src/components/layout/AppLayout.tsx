@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import ImpersonationBanner from './ImpersonationBanner';
-import StaffModeBanner from './StaffModeBanner';
 import BottomNav from './BottomNav';
 import DesktopSidebar from './DesktopSidebar';
 import { useAuthStore } from '@/stores/authStore';
@@ -181,26 +180,43 @@ export const AppLayout: React.FC = () => {
   const isNoPaddingRoute = pathname.startsWith('/bills/new') || isBookRoute;
 
   return (
-    <div className="min-h-dvh bg-transparent text-text-primary overflow-x-clip lg:flex">
+    <div className={cn(
+      "min-h-dvh bg-transparent text-text-primary overflow-x-clip lg:flex",
+      isNoPaddingRoute && "lg:h-dvh lg:overflow-hidden"
+    )}>
       {!isFullScreenRoute && <DesktopSidebar />}
-      
-      <div className="flex-1 flex flex-col min-w-0">
+
+      <div className={cn("flex-1 flex flex-col min-w-0", isNoPaddingRoute && "lg:min-h-0")}>
         {isExpired && (
           <div className="bg-red-600 text-white p-3 text-center text-sm font-semibold sticky top-0 z-[100] shadow-md flex justify-center items-center gap-2">
             <span className="animate-pulse">⚠️</span> 
             Your subscription has expired. The app is in Read-Only mode. Please contact Admin/Sales to renew.
           </div>
         )}
-        <StaffModeBanner />
-        <ImpersonationBanner />
+<ImpersonationBanner />
         
         <main className={cn(
           "mx-auto w-full flex-1",
           isFullScreenRoute || isNoPaddingRoute
-            ? "p-0 max-w-none" 
-            : "content-safe-bottom max-w-[var(--page-max-width)] px-[var(--page-gutter)] pt-0 pb-6 lg:max-w-[var(--page-max-width-desktop)] lg:pt-6 lg:px-8"
+            ? "p-0 max-w-none"
+            : "content-safe-bottom max-w-[var(--page-max-width)] px-[var(--page-gutter)] pt-0 pb-6 lg:max-w-[var(--page-max-width-desktop)] lg:pt-6 lg:px-8",
+          isNoPaddingRoute && "lg:min-h-0 lg:overflow-hidden lg:flex lg:flex-col"
         )}>
-          <Outlet />
+          <React.Suspense fallback={
+            <div className="flex h-full min-h-[50vh] w-full items-center justify-center p-8">
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative flex h-12 w-12 items-center justify-center">
+                  <div className="absolute inset-0 rounded-full border-4 border-blue-100/50" />
+                  <div className="absolute inset-0 animate-spin rounded-full border-4 border-blue-600 border-t-transparent shadow-[0_0_15px_rgba(37,99,235,0.2)]" />
+                </div>
+                <p className="animate-pulse text-sm font-semibold tracking-wide text-blue-800">
+                  Loading...
+                </p>
+              </div>
+            </div>
+          }>
+            <Outlet />
+          </React.Suspense>
         </main>
         {!isFullScreenRoute && !isBookRoute && <BottomNav />}
       </div>

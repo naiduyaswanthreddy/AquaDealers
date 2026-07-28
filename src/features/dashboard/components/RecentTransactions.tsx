@@ -7,7 +7,7 @@ import { formatCurrency, formatRelativeDate } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { Clock } from 'lucide-react';
 
-export const RecentTransactions: React.FC = () => {
+const RecentTransactionsComponent: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: transactions, isLoading } = useRecentTransactionsList(5);
@@ -99,8 +99,13 @@ export const RecentTransactions: React.FC = () => {
                 <span className="text-[0.95rem] font-semibold text-slate-900 truncate">
                   {isBill ? tx.farmerName : isAdjustment ? `Rate Adj: ${tx.farmerName}` : t('dashboard.paymentReceived', 'Payment Received')}
                 </span>
-                <span className="text-[0.78rem] text-slate-500 font-medium mt-0.5">
-                  {subtext}
+                <span className="text-[0.78rem] text-slate-500 font-medium mt-0.5 inline-flex items-center gap-1.5 flex-wrap">
+                  <span>{subtext}</span>
+                  {tx.branchName && (
+                    <span className="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-sky-700 ring-1 ring-sky-200">
+                      {tx.branchName}
+                    </span>
+                  )}
                 </span>
               </div>
 
@@ -120,5 +125,6 @@ export const RecentTransactions: React.FC = () => {
     </div>
   );
 };
-
+export const RecentTransactions = React.memo(RecentTransactionsComponent);
+RecentTransactions.displayName = 'RecentTransactions';
 export default RecentTransactions;

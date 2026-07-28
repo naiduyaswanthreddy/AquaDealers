@@ -499,7 +499,7 @@ const InventoryDetailPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsEditInventoryOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white"
+            className="sm:hidden flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Edit product prices"
           >
             <Pencil className="h-[1.1rem] w-[1.1rem]" />
@@ -534,6 +534,14 @@ const InventoryDetailPage: React.FC = () => {
               leftIcon={<PackagePlus className="h-5 w-5" />}
             >
               Add Stock
+            </Button>
+            <Button
+              className="!hidden sm:!flex bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30 font-semibold h-12 rounded-xl"
+              fullWidth
+              onClick={() => setIsEditInventoryOpen(true)}
+              leftIcon={<Pencil className="h-5 w-5 opacity-80" />}
+            >
+              Edit
             </Button>
           </div>
         }
@@ -890,11 +898,11 @@ const InventoryDetailPage: React.FC = () => {
                               setDailyMovementDate(day.dateStr);
                               setActiveTab('overview');
                             }}
-                            className="h-14 border border-slate-100 rounded-[10px] flex flex-col p-1.5 cursor-pointer hover:bg-sky-50 hover:border-sky-200 transition-colors bg-white shadow-sm"
+                            className="h-14 border border-blue-100/60 rounded-[10px] flex flex-col p-1.5 cursor-pointer hover:bg-blue-100 hover:border-blue-200 transition-colors bg-blue-50/60 shadow-[0_1px_2px_rgba(37,99,235,0.05)]"
                           >
-                            <span className="text-[10px] font-semibold text-slate-400">{day.dayNum}</span>
+                            <span className="text-[10px] font-semibold text-slate-500">{day.dayNum}</span>
                             <div className="mt-auto flex items-center justify-center">
-                              <span className="text-xs font-black text-sky-700">{day.remaining}</span>
+                              <span className="text-xs font-black text-blue-700">{day.remaining}</span>
                             </div>
                           </div>
                         );

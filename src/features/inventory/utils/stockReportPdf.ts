@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatQuantity } from '@/lib/utils';
 import type { Dealer } from '@/types/database';
 import { StockLedgerItem } from '../services/stockReportService';
 
@@ -73,7 +73,7 @@ export const generateStockReportPdfBlob = async (
         
         doc.setFontSize(12);
         doc.setTextColor(220, 38, 38);
-        doc.text(`${item.totalOut} issued`, pageWidth - margin, yPos, { align: 'right' });
+        doc.text(`${formatQuantity(item.totalOut, item.unit)} issued`, pageWidth - margin, yPos, { align: 'right' });
         
         yPos += nameLines.length * 5 + 2;
 
@@ -98,7 +98,7 @@ export const generateStockReportPdfBlob = async (
            doc.setTextColor(0, 0, 0);
            const fNameLines = doc.splitTextToSize(farmer.farmerName, pageWidth - 2 * margin - 60);
            doc.text(fNameLines, margin + 5, yPos);
-           doc.text(String(farmer.quantity), pageWidth - margin - 5, yPos, { align: 'right' });
+           doc.text(formatQuantity(farmer.quantity, item.unit), pageWidth - margin - 5, yPos, { align: 'right' });
            
            yPos += fNameLines.length * 5;
         });

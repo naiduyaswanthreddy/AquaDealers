@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, MessageCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { Download, Eye, MessageCircle, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { Modal, Button } from '@/components/ui';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { useFarmerStatement } from '../hooks/useFarmerLedger';
 import { formatCurrency } from '@/lib/utils';
-import { shareFarmerStatementViaWhatsApp, downloadFarmerStatementPdf } from '../utils/farmerStatementPdf';
+import { generateFarmerStatementPdfBlob, shareFarmerStatementViaWhatsApp, downloadFarmerStatementPdf } from '../utils/farmerStatementPdf';
 import { useAuthStore } from '@/stores/authStore';
 
 interface BalanceStatementModalProps {
@@ -34,6 +34,24 @@ const BalanceStatementModal: React.FC<BalanceStatementModalProps> = ({
 
   const { data: statement, isLoading } = useFarmerStatement(farmerId, startDate, endDate);
   const [isExporting, setIsExporting] = useState(false);
+
+  const handlePreview = async () => {
+    if (!statement) return;
+    const previewWindow = window.open('', '_blank');
+    try {
+      setIsExporting(true);
+      const blob = await generateFarmerStatementPdfBlob(statement, dealer, startDate, endDate);
+      const url = URL.createObjectURL(blob);
+      if (previewWindow) previewWindow.location.href = url;
+      else window.open(url, '_blank');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      previewWindow?.close();
+      console.error('Failed to preview statement:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleDownload = async () => {
     if (!statement) return;
@@ -64,6 +82,11 @@ const BalanceStatementModal: React.FC<BalanceStatementModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Balance Statement"
+      footerButtons={statement ? [
+        { label: 'Preview', variant: 'outline', onClick: handlePreview, loading: isExporting },
+        { label: 'Download PDF', variant: 'outline', onClick: handleDownload, loading: isExporting },
+        { label: 'Share via WhatsApp', variant: 'primary', onClick: handleShare, loading: isExporting },
+      ] : undefined}
     >
       <div className="space-y-6">
         <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
@@ -108,26 +131,13 @@ const BalanceStatementModal: React.FC<BalanceStatementModalProps> = ({
                 <span className="text-sm text-emerald-600">Total Credits (Paid)</span>
                 <p className="text-lg font-bold text-emerald-700 mt-1">{formatCurrency(statement.totalCredit)}</p>
               </div>
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                <span className="text-sm text-amber-700">Returned Value</span>
+                <p className="text-lg font-bold text-amber-800 mt-1">{formatCurrency(statement.totalReturns || 0)}</p>
+                <p className="mt-1 text-xs text-amber-700">Returned items reduce the balance separately from payments.</p>
+              </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-              <Button
-                variant="outline"
-                leftIcon={<Download className="w-4 h-4" />}
-                onClick={handleDownload}
-                loading={isExporting}
-              >
-                Download PDF
-              </Button>
-              <Button
-                className="bg-[#25D366] hover:bg-[#1da851] text-white border-transparent"
-                leftIcon={<MessageCircle className="w-4 h-4" />}
-                onClick={handleShare}
-                loading={isExporting}
-              >
-                Share via WhatsApp
-              </Button>
-            </div>
           </div>
         ) : (
           <div className="text-center py-12 text-slate-500">

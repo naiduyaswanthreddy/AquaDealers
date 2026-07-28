@@ -50,6 +50,8 @@ export function getFarmerItemsPeriodRange(
       return { startDate: toDateInput(subMonths(today, 6)), endDate };
     case 'this-year':
       return { startDate: toDateInput(startOfYear(today)), endDate };
+    case 'all-history':
+      return { startDate: stockingDate?.slice(0, 10) || '2000-01-01', endDate };
     case 'custom':
       return { startDate: toDateInput(subMonths(today, 3)), endDate };
     case 'last-3-months':

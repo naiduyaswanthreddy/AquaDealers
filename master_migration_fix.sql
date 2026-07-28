@@ -7,6 +7,8 @@ ALTER TABLE stock_purchases ADD COLUMN IF NOT EXISTS mrp NUMERIC(10,2);
 ALTER TABLE inventory ADD COLUMN IF NOT EXISTS mrp NUMERIC(10,2);
 ALTER TABLE bill_items ADD COLUMN IF NOT EXISTS mrp NUMERIC(10,2);
 ALTER TABLE bills ADD COLUMN IF NOT EXISTS type text default 'sale';
+ALTER TABLE branches ADD COLUMN IF NOT EXISTS color TEXT;
+NOTIFY pgrst, 'reload schema';
 
 -- SECOND: Add FIFO columns to inventory_lots
 

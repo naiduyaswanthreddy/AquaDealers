@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
+import { DatePicker } from '@/components/ui/DatePicker';
 import { Bill, BillItem } from '@/types/database';
 import { formatCurrency } from '@/lib/utils';
 import { Calculator, AlertTriangle, Percent } from 'lucide-react';
@@ -9,7 +10,7 @@ interface EditBillModalProps {
   onClose: () => void;
   bill: Bill;
   items: BillItem[];
-  onConfirm: (edits: any[]) => void;
+  onConfirm: (edits: any[], billDate: string, payment: { amount_paid: number; payment_type: string | null }) => void;
   inventoryMap?: Record<string, number>; // maps inventory_id to quantity_in_stock
 }
 
@@ -23,6 +24,9 @@ export const EditBillModal: React.FC<EditBillModalProps> = ({
   // Store values as strings to prevent issues with decimal parsing and empty "0" inputs
   const [edits, setEdits] = useState<Record<string, { quantity: string; unit_price: string; discount: string }>>({});
   const [inventoryMap, setInventoryMap] = useState<Record<string, number>>({});
+  const [billDate, setBillDate] = useState(bill.bill_date || '');
+  const [amountPaid, setAmountPaid] = useState(String(bill.amount_paid || 0));
+  const [paymentType, setPaymentType] = useState(bill.payment_type || 'cash');
 
   useEffect(() => {
     if (isOpen) {
@@ -44,6 +48,9 @@ export const EditBillModal: React.FC<EditBillModalProps> = ({
         if (item.inventory_id_snapshot) invIds.push(item.inventory_id_snapshot);
       });
       setEdits(initialEdits);
+      setBillDate(bill.bill_date || '');
+      setAmountPaid(String(bill.amount_paid || 0));
+      setPaymentType(bill.payment_type || 'cash');
 
       if (invIds.length > 0) {
         import('@/lib/supabase').then(({ supabase }) => {
@@ -68,7 +75,7 @@ export const EditBillModal: React.FC<EditBillModalProps> = ({
     
     let newQtyStr = val;
     if (val !== '') {
-      const newQty = parseInt(val, 10);
+        const newQty = parseFloat(val);
       if (!isNaN(newQty)) {
         const invId = item.inventory_id_snapshot;
         const availableStock = invId ? (inventoryMap[invId] || 0) : 0;
@@ -157,21 +164,22 @@ export const EditBillModal: React.FC<EditBillModalProps> = ({
       return null;
     }).filter(Boolean);
 
-    if (changedEdits.length === 0) {
+    const paymentChanged = Number(amountPaid || 0) !== Number(bill.amount_paid || 0) || (Number(amountPaid || 0) > 0 && paymentType !== (bill.payment_type || 'cash'));
+    if (changedEdits.length === 0 && billDate === bill.bill_date && !paymentChanged) {
       onClose();
       return;
     }
 
-    onConfirm(changedEdits);
+    onConfirm(changedEdits, billDate, { amount_paid: Number(amountPaid || 0), payment_type: Number(amountPaid || 0) > 0 ? paymentType : null });
   };
 
-  const hasChanges = items.some(item => {
+  const hasChanges = billDate !== bill.bill_date || items.some(item => {
     const edit = edits[item.id];
     if (!edit) return false;
     const parsedQty = parseFloat(edit.quantity) || 0;
     const parsedPrice = parseFloat(edit.unit_price) || 0;
     return parsedQty !== Number(item.quantity) || parsedPrice !== Number(item.unit_price);
-  });
+  }) || Number(amountPaid || 0) !== Number(bill.amount_paid || 0) || (Number(amountPaid || 0) > 0 && paymentType !== (bill.payment_type || 'cash'));
 
   const currentTotal = Number(bill.total);
   const newTotal = calculateNewTotal();
@@ -185,6 +193,15 @@ export const EditBillModal: React.FC<EditBillModalProps> = ({
           <p className="font-bold mb-1">Editing Completed Bill</p>
           <p>Changing quantities will automatically adjust inventory stock. Changing prices will adjust the farmer's pending dues. All changes will be logged.</p>
         </div>
+      </div>
+
+      <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <div className="mb-1 text-xs font-bold uppercase text-slate-500">Bill date</div>
+        <DatePicker value={billDate} onChange={setBillDate} />
+      </div>
+      <div className="mb-5 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
+        <label className="text-sm font-bold text-slate-700">Amount received<input type="number" min="0" max={bill.total} step="0.01" value={amountPaid} onChange={(event) => setAmountPaid(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" /></label>
+        <label className="text-sm font-bold text-slate-700">Payment method<select value={paymentType} disabled={Number(amountPaid || 0) <= 0} onChange={(event) => setPaymentType(event.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank</option><option value="credit">Credit</option><option value="other">Other</option></select></label>
       </div>
 
       <div className="overflow-x-auto border border-slate-200 rounded-xl mb-6">

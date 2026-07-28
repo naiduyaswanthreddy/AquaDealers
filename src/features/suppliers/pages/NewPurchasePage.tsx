@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
 import { ArrowDownLeft, ArrowUpRight, PackagePlus, Plus, Trash2, TrendingUp } from 'lucide-react';
 import { useRecordPurchase, useRecordPayment, useSuppliers, useRecordSupplierCharge } from '../hooks/useSuppliers';
 import { useInventory, useProducts } from '@/features/inventory/hooks/useInventory';
@@ -13,7 +13,8 @@ import { SectionCard } from '@/components/layout/SectionCard';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { DatePicker } from '@/components/ui/DatePicker';
-import { Modal, SearchableSelect } from '@/components/ui';
+import { ConfirmModal, Modal, SearchableSelect } from '@/components/ui';
+import { PurchasePreviewModal } from '../components/PurchasePreviewModal';
 import { toast } from 'sonner';
 import { AddProductModal } from '@/features/inventory/components/AddProductModal';
 import { EditProductModal } from '@/features/inventory/components/EditProductModal';
@@ -69,7 +70,12 @@ const NewPurchasePage: React.FC = () => {
     rateDifference: number;
   }[]>([]);
   
-  const { register, handleSubmit, watch, control, setValue, formState: { errors } } = useForm<PurchaseForm>({
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<PurchaseForm | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
+  
+  const { register, handleSubmit, control, setValue, formState: { errors } } = useForm<PurchaseForm>({
     defaultValues: {
       supplier_id: supplierIdParam || '',
       purchase_date: new Date().toISOString().split('T')[0],
@@ -101,8 +107,11 @@ const NewPurchasePage: React.FC = () => {
     name: "items"
   });
 
-  const watchItems = watch('items');
-  const watchIsPaid = watch('is_paid');
+  const watchedForm = useWatch({ control });
+  const watchItems = watchedForm.items || [];
+  const watchIsPaid = Boolean(watchedForm.is_paid);
+  const watchAmountPaid = watchedForm.amount_paid;
+  const watchAdditionalCharges = watchedForm.additional_charges;
 
   const calculateItemGst = (costPrice: number, quantity: number, gstRate: number) => {
     return (costPrice * quantity * gstRate) / 100;
@@ -136,6 +145,67 @@ const NewPurchasePage: React.FC = () => {
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric : fallback;
   };
+
+  const hasUnsavedWork = useMemo(() => {
+    const hasValue = (value: unknown) => value != null && String(value).trim() !== '';
+    const hasPositiveNumber = (value: unknown) => Number(value) > 0;
+    const hasItemWork = watchItems.some((item) => (
+      hasValue(item.product_id) ||
+      hasPositiveNumber(item.quantity) ||
+      hasPositiveNumber(item.mrp) ||
+      hasPositiveNumber(item.selling_price) ||
+      hasPositiveNumber(item.cost_percentage) ||
+      hasPositiveNumber(item.cost_price_per_unit) ||
+      hasPositiveNumber(item.gst_rate) ||
+      hasPositiveNumber(item.gst_amount) ||
+      hasValue(item.batch_number) ||
+      hasValue(item.expiry_date)
+    ));
+
+    return Boolean(
+      hasValue(watchedForm.supplier_id) ||
+      hasValue(watchedForm.invoice_number) ||
+      watchedForm.is_paid ||
+      hasPositiveNumber(watchedForm.amount_paid) ||
+      hasPositiveNumber(watchedForm.additional_charges) ||
+      hasValue(watchedForm.notes) ||
+      hasItemWork
+    );
+  }, [
+    watchItems,
+    watchedForm.additional_charges,
+    watchedForm.amount_paid,
+    watchedForm.invoice_number,
+    watchedForm.is_paid,
+    watchedForm.notes,
+    watchedForm.supplier_id,
+  ]);
+
+  const handleLeavePage = () => {
+    if (!hasUnsavedWork) {
+      navigate(-1);
+      return;
+    }
+
+    setIsDiscardModalOpen(true);
+  };
+
+  const handleDiscardPurchase = () => {
+    setIsDiscardModalOpen(false);
+    navigate(-1);
+  };
+
+  useEffect(() => {
+    if (!hasUnsavedWork || isSubmitting) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedWork, isSubmitting]);
 
   const getStoredInventoryForProduct = (productId: string) =>
     inventory.find((item) => item.product_id === productId);
@@ -239,14 +309,21 @@ const NewPurchasePage: React.FC = () => {
     setValue(`items.${index}.selling_price`, newSellingPrice);
   };
 
-  const onSubmit = async (data: PurchaseForm) => {
-    if (!user?.id) return;
+  const onSubmitPreview = (data: PurchaseForm) => {
     if (data.items.length === 0) {
       toast.error('Please add at least one item');
       return;
     }
+    setPreviewData(data);
+    setIsPreviewOpen(true);
+  };
+
+  const handleConfirmPurchase = async () => {
+    if (!previewData || !user?.id) return;
+    const data = previewData;
 
     try {
+      setIsSubmitting(true);
       let totalBillAmount = 0;
       const adjustmentPrompts: typeof rateAdjustmentPrompts = [];
 
@@ -323,6 +400,9 @@ const NewPurchasePage: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(error.message || t('common.error'));
+    } finally {
+      setIsSubmitting(false);
+      setIsPreviewOpen(false);
     }
   };
 
@@ -338,33 +418,37 @@ const NewPurchasePage: React.FC = () => {
       profit += itemProfit;
     });
     
-    // We add additional charges to the overall total to display it clearly,
-    // though the purchase items will only reflect their respective subtotals and gst.
-    const addCharges = Number(watch('additional_charges')) || 0;
+    const addCharges = Number(watchAdditionalCharges) || 0;
+    const amountPaid = Number(watchAmountPaid) || 0;
+    const isPaid = watchIsPaid;
+    const total = subtotal + gst + addCharges;
+    const balance = isPaid ? 0 : Math.max(0, total - amountPaid);
     
-    return { subtotal, gst, profit, addCharges, total: subtotal + gst + addCharges };
-  }, [watchItems, watch('additional_charges')]);
+    return { subtotal, gst, profit, addCharges, amountPaid, total, balance, isPaid };
+  }, [watchItems, watchAdditionalCharges, watchAmountPaid, watchIsPaid]);
 
   return (
     <PageShell width="wide">
-      <PageHeader title="New Purchase Bill" onBack={() => navigate(-1)} />
+      <PageHeader title="New Purchase" onBack={handleLeavePage} />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmitPreview)} className="space-y-6">
         <SectionCard title="Invoice Details">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('suppliers.supplier')}</label>
-              <select
-                {...register('supplier_id', { required: t('common.required') })}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
-              >
-                <option value="">{t('suppliers.selectSupplier')}</option>
-                {suppliers?.map(s => (
-                  <option key={s.id} value={s.id}>{s.name} {s.company ? `(${s.company})` : ''}</option>
-                ))}
-              </select>
-              {errors.supplier_id && <p className="text-red-500 text-xs mt-1">{errors.supplier_id.message}</p>}
-            </div>
+            <Controller
+              control={control}
+              name="supplier_id"
+              rules={{ required: t('common.required') }}
+              render={({ field }) => (
+                <SearchableSelect
+                  label={t('suppliers.supplier')}
+                  placeholder={t('suppliers.selectSupplier')}
+                  options={suppliers?.map(s => ({ value: s.id, label: `${s.name} ${s.company ? `(${s.company})` : ''}` })) || []}
+                  value={field.value}
+                  onChange={field.onChange}
+                  error={errors.supplier_id?.message as string}
+                />
+              )}
+            />
 
             <Input
               label={t('suppliers.invoiceNumber', 'Invoice Number')}
@@ -404,7 +488,8 @@ const NewPurchasePage: React.FC = () => {
           </div>
           <div className="space-y-4">
             {fields.map((field, index) => {
-              const product = products?.find(p => p.id === watchItems[index]?.product_id);
+              const productId = watchItems[index]?.product_id;
+              const product = products?.find(p => p.id === productId);
               const isMedicine = product?.type === 'medicine';
               const discount = Number(watchItems[index]?.medicine_discount_percentage) || 0;
               const mrp = Number(watchItems[index]?.mrp) || 0;
@@ -413,34 +498,34 @@ const NewPurchasePage: React.FC = () => {
               const itemProfit = (sellingPrice - costPrice) * (Number(watchItems[index]?.quantity) || 0);
 
               return (
-                <div key={field.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50 relative">
-                  {fields.length > 1 && (
-                    <div className="absolute top-4 right-4">
-                      <button
-                        type="button"
-                        onClick={() => remove(index)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-                  
+              <div key={field.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50 relative">
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                     <div className={fields.length > 1 ? "md:col-span-11" : "md:col-span-12"}>
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                         <div className="md:col-span-3">
                           <div className="flex items-center justify-between mb-1">
-                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Product</label>
-                            {watchItems[index]?.product_id && (
-                              <button
-                                type="button"
-                                onClick={() => setEditingProductId(watchItems[index].product_id)}
-                                className="text-[10px] text-blue-600 hover:underline font-bold uppercase tracking-wider"
-                              >
-                                Edit
-                              </button>
-                            )}
+                            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Product {index + 1}</label>
+                            <div className="flex shrink-0 items-center gap-2">
+                              {productId && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingProductId(productId)}
+                                  className="text-[10px] text-blue-600 hover:underline font-bold uppercase tracking-wider"
+                                >
+                                  Edit
+                                </button>
+                              )}
+                              {fields.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => remove(index)}
+                                  className="rounded-lg p-1.5 text-red-500 transition-colors hover:bg-red-50 hover:text-red-700"
+                                  aria-label={`Remove product ${index + 1}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                           <Controller
                             name={`items.${index}.product_id`}
@@ -728,9 +813,19 @@ const NewPurchasePage: React.FC = () => {
                     {formatCurrency(totals.profit)}
                   </span>
                 </div>
-                <div className="pt-3 border-t border-gray-200 flex justify-between items-center text-lg font-black text-gray-900">
+                <div className="pt-3 border-t border-gray-200 flex justify-between items-center text-base font-bold text-gray-900">
                   <span>Total Amount</span>
-                  <span className="text-blue-600">{formatCurrency(totals.total)}</span>
+                  <span className="text-gray-900">{formatCurrency(totals.total)}</span>
+                </div>
+                <div className="flex justify-between items-center text-gray-600 text-sm">
+                  <span>Amount Paid</span>
+                  <span className="font-medium text-emerald-600">
+                    -{formatCurrency(totals.isPaid ? totals.total : totals.amountPaid)}
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-gray-100 flex justify-between items-center text-lg font-black text-blue-700">
+                  <span>Balance Due</span>
+                  <span>{formatCurrency(totals.balance)}</span>
                 </div>
               </div>
             </div>
@@ -740,16 +835,15 @@ const NewPurchasePage: React.FC = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate(-1)}
+              onClick={handleLeavePage}
               disabled={isPending}
             >
               {t('common.cancel')}
             </Button>
             <Button
               type="submit"
-              loading={isPending}
             >
-              {t('common.save', 'Save Purchase Bill')}
+              Review Purchase
             </Button>
           </div>
         </SectionCard>
@@ -767,6 +861,17 @@ const NewPurchasePage: React.FC = () => {
           productId={editingProductId}
         />
       )}
+
+      <ConfirmModal
+        isOpen={isDiscardModalOpen}
+        onClose={() => setIsDiscardModalOpen(false)}
+        onConfirm={handleDiscardPurchase}
+        title="Discard purchase bill?"
+        message="Your entered purchase details have not been saved. Leaving this page will remove them."
+        confirmLabel="Discard & Leave"
+        cancelLabel="Keep Editing"
+        variant="danger"
+      />
 
       <Modal
         isOpen={rateAdjustmentPrompts.length > 0}
@@ -823,6 +928,17 @@ const NewPurchasePage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      <PurchasePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        onConfirm={handleConfirmPurchase}
+        isSubmitting={isSubmitting}
+        data={previewData}
+        supplierName={suppliers?.find(s => s.id === previewData?.supplier_id)?.name}
+        branchName={activeBranch?.name}
+        productNames={products?.reduce((acc, p) => ({ ...acc, [p.id]: p.name }), {}) || {}}
+      />
     </PageShell>
   );
 };

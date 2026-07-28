@@ -4,8 +4,9 @@ import { Link } from 'react-router-dom';
 import Seo from '@/components/seo/Seo';
 import { 
   ArrowRight, CheckCircle2, Package, CreditCard, 
-  FileText, BarChart3, Clock, Check, Settings, 
-  Users, PenTool, Smartphone, ShieldCheck, PlayCircle, MessageCircle, AlertTriangle, TrendingUp, Cloud, Zap, Lock, Search, Puzzle, Headset, Sparkles, Rocket
+  FileText, BarChart3, Clock, Check, Settings,
+  Users, PenTool, Smartphone, ShieldCheck, PlayCircle, MessageCircle, AlertTriangle, TrendingUp, Cloud, Zap, Lock, Search, Puzzle, Headset, Sparkles, Rocket,
+  NotebookPen, WifiOff, RefreshCw, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 const LandingPage: React.FC = () => {
@@ -17,7 +18,7 @@ const LandingPage: React.FC = () => {
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 overflow-x-hidden selection:bg-blue-200">
       <Seo
         title="AquaDealers | Aqua Feed & Medicine Inventory Management"
-        description="AquaDealers is inventory, billing, farmer dues, cashbook, and reporting software built for aqua feed and medicine dealers in India."
+        description="AquaDealers is inventory, offline billing, farmer dues, daily book, cashbook, and reporting software built for aqua feed and medicine dealers in India."
         path="/"
         jsonLd={[
           {
@@ -28,7 +29,7 @@ const LandingPage: React.FC = () => {
             operatingSystem: 'Web',
             url: 'https://aquadealers.in/',
             description:
-              'AquaDealers is inventory, billing, farmer dues, cashbook, and reporting software built for aqua feed and medicine dealers in India.',
+              'AquaDealers is inventory, offline billing, farmer dues, daily book, cashbook, and reporting software built for aqua feed and medicine dealers in India.',
             areaServed: 'India',
             offers: {
               '@type': 'Offer',
@@ -92,6 +93,8 @@ const LandingPage: React.FC = () => {
               <div className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-500" /> Track farmer dues safely</div>
               <div className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-500" /> Manage aqua feed & medicine stock</div>
               <div className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-500" /> Zero cash variance</div>
+              <div className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-500" /> Billing works even without internet</div>
+              <div className="flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-500" /> Daily Book — your register, digital</div>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -354,6 +357,50 @@ const LandingPage: React.FC = () => {
 
 
 </motion.div>
+          {/* Feature: Daily Book */}
+          <motion.div initial={{ opacity: 0, y: 80 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.7, ease: "easeOut" }}>
+<div className="grid md:grid-cols-2 gap-12 items-center group">
+            <div className="order-2 md:order-1 bg-[#fdf8e9] p-6 rounded-3xl shadow-xl border border-[#e5dcc1] transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2 cursor-pointer">
+               <div className="text-center border-b-4 border-double border-[#0e5048]/60 pb-3 mb-2">
+                 <div className="font-black uppercase tracking-[0.2em] text-[#0e5048] text-lg" style={{ fontFamily: 'Georgia, serif' }}>Daily Book</div>
+                 <div className="text-xs font-bold text-[#6f6650] mt-1">Tue, 15 Jan 2026 ▾</div>
+               </div>
+               {[
+                 { icon: '💵', label: 'Cash in Hand', value: '₹1,24,380' },
+                 { icon: '📋', label: 'Products Sold', value: '6 · ₹39,750' },
+                 { icon: '👨‍🌾', label: 'Farmers', value: '4 today' },
+                 { icon: '🧮', label: 'Stock Position', value: '150 → 170' },
+                 { icon: '📊', label: 'Day Closing', value: '₹39,750' },
+               ].map((row) => (
+                 <div key={row.label} className="flex items-center justify-between border-b border-dashed border-[#c8bc9a] py-3">
+                   <span className="flex items-center gap-2 font-extrabold text-sm text-[#2f2a1e]">
+                     <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[#0e5048]/10 text-sm">{row.icon}</span>
+                     {row.label}
+                   </span>
+                   <span className="font-mono text-sm font-bold text-[#2f2a1e]">{row.value}</span>
+                 </div>
+               ))}
+               <div className="flex items-center justify-between pt-4 text-xs font-bold text-[#6f6650]">
+                 <span className="flex items-center gap-1"><ChevronLeft className="w-3.5 h-3.5" /> Yesterday</span>
+                 <span className="rounded-full bg-[#0e5048] px-4 py-1 text-[10px] font-black uppercase tracking-widest text-[#fdf8e9]">Today</span>
+                 <span className="flex items-center gap-1 opacity-50">Tomorrow <ChevronRight className="w-3.5 h-3.5" /></span>
+               </div>
+            </div>
+            <div className="order-1 md:order-2">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-teal-100 text-teal-700 mb-6 border border-teal-200 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                <NotebookPen className="w-6 h-6" />
+              </div>
+              <h3 className="text-3xl font-black text-slate-900 mb-4">Your Whole Day on One Page, Like Your Paper Register</h3>
+              <p className="text-lg text-slate-600 mb-6 font-medium">The Daily Book shows any day exactly the way you think about it — what sold, who came, what cash moved, and how stock changed. Turn pages like a physical register.</p>
+              <ul className="space-y-4">
+                <li className="flex items-center gap-3 font-bold text-slate-800 transition-all duration-300 hover:text-blue-600 hover:translate-x-2"><CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0"/> Tap any product to see exactly who bought it, and drill into any bill.</li>
+                <li className="flex items-center gap-3 font-bold text-slate-800 transition-all duration-300 hover:text-blue-600 hover:translate-x-2"><CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0"/> Opening → sold → received → closing stock position for every day.</li>
+                <li className="flex items-center gap-3 font-bold text-slate-800 transition-all duration-300 hover:text-blue-600 hover:translate-x-2"><CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0"/> Share or print any page — day closing is CA-ready in one tap.</li>
+              </ul>
+            </div>
+          </div>
+
+</motion.div>
           {/* Feature 2: Daily Cash Counter */}
           <motion.div initial={{ opacity: 0, y: 80 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.7, ease: "easeOut" }}>
 <div className="grid md:grid-cols-2 gap-12 items-center group">
@@ -384,6 +431,56 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
 
+
+</motion.div>
+          {/* Feature: Offline Billing */}
+          <motion.div initial={{ opacity: 0, y: 80 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-100px" }} transition={{ duration: 0.7, ease: "easeOut" }}>
+<div className="grid md:grid-cols-2 gap-12 items-center group">
+            <div>
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-amber-100 text-amber-600 mb-6 border border-amber-200 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                <WifiOff className="w-6 h-6" />
+              </div>
+              <h3 className="text-3xl font-black text-slate-900 mb-4">Network Down? Billing Never Stops.</h3>
+              <p className="text-lg text-slate-600 mb-6 font-medium">Village networks fail at the worst time — when a farmer is standing at your counter. AquaDealers keeps billing fully offline and syncs everything automatically the moment you're back online.</p>
+              <ul className="space-y-4">
+                <li className="flex items-center gap-3 font-bold text-slate-800 transition-all duration-300 hover:text-blue-600 hover:translate-x-2"><CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0"/> Create bills with zero internet — nothing waits, nothing is lost.</li>
+                <li className="flex items-center gap-3 font-bold text-slate-800 transition-all duration-300 hover:text-blue-600 hover:translate-x-2"><CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0"/> Bills queue safely on your phone until the network returns.</li>
+                <li className="flex items-center gap-3 font-bold text-slate-800 transition-all duration-300 hover:text-blue-600 hover:translate-x-2"><CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0"/> Auto-sync updates stock, dues, and cashbook — no double entry.</li>
+              </ul>
+            </div>
+            <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-200 transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2 group-hover:border-amber-200 cursor-pointer">
+               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3 mb-4">
+                 <WifiOff className="w-5 h-5 text-amber-600 shrink-0" />
+                 <div className="text-sm font-bold text-amber-800">No internet — bills are saved on this phone</div>
+               </div>
+               <div className="space-y-3 mb-4">
+                 <div className="flex justify-between items-center p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                   <div>
+                     <div className="font-bold text-sm text-slate-900">Bill #893 · Ramesh Farm</div>
+                     <div className="text-xs text-slate-500">Avanti 3mm × 20 bags</div>
+                   </div>
+                   <div className="text-right">
+                     <div className="font-black text-sm text-slate-900">₹25,000</div>
+                     <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">⏳ Waiting to sync</div>
+                   </div>
+                 </div>
+                 <div className="flex justify-between items-center p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                   <div>
+                     <div className="font-bold text-sm text-slate-900">Bill #894 · Venkat Rao</div>
+                     <div className="text-xs text-slate-500">Cipro 500mg × 5 bottles</div>
+                   </div>
+                   <div className="text-right">
+                     <div className="font-black text-sm text-slate-900">₹6,250</div>
+                     <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">⏳ Waiting to sync</div>
+                   </div>
+                 </div>
+               </div>
+               <div className="p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
+                 <RefreshCw className="w-5 h-5 text-green-600 shrink-0" />
+                 <div className="text-sm font-bold text-green-800">Back online — 2 bills synced automatically ✓</div>
+               </div>
+            </div>
+          </div>
 
 </motion.div>
           {/* Feature 3: Smart Rate Diff */}
@@ -588,8 +685,8 @@ const LandingPage: React.FC = () => {
               <h3 className="text-3xl font-black text-slate-900 mb-4">Instantly Know Who Owes You What, Down to the Last Rupee</h3>
               <p className="text-lg text-slate-600 mb-6 font-medium">Say goodbye to messy ledger books. Search any farmer, see their entire history, and settle accounts in seconds. Clean, transparent, and accurate.</p>
               <ul className="space-y-4">
-                <li className="flex items-center gap-3 font-bold text-slate-800 transition-all duration-300 hover:text-blue-600 hover:translate-x-2"><CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0"/> Consolidated view of all pending dues across all farmers.</li>
-                <li className="flex items-center gap-3 font-bold text-slate-800 transition-all duration-300 hover:text-blue-600 hover:translate-x-2"><CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0"/> Print or WhatsApp full transaction statements instantly.</li>
+                <li className="flex items-center gap-3 font-bold text-slate-800 transition-all duration-300 hover:text-blue-600 hover:translate-x-2"><CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0"/> See dues aged 30 / 60 / 90+ days and set follow-up reminders.</li>
+                <li className="flex items-center gap-3 font-bold text-slate-800 transition-all duration-300 hover:text-blue-600 hover:translate-x-2"><CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0"/> WhatsApp a live statement link farmers can open anytime.</li>
                 <li className="flex items-center gap-3 font-bold text-slate-800 transition-all duration-300 hover:text-blue-600 hover:translate-x-2"><CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0"/> Track partial payments and running balances flawlessly.</li>
               </ul>
             </div>
@@ -870,10 +967,14 @@ const LandingPage: React.FC = () => {
                   </a>
                 </div>
               </div>
-            </div>
-            
-            <div className="text-xs text-slate-600 pb-2 text-center">
-              &copy; {new Date().getFullYear()} AquaDealers. All rights reserved.
+              
+              <div className="flex flex-col md:flex-row items-center gap-4 text-xs font-medium text-slate-500 pb-2">
+                <div>&copy; {new Date().getFullYear()} AquaDealers. All rights reserved.</div>
+                <div className="flex items-center gap-4">
+                  <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
+                  <Link to="/terms" className="hover:text-slate-300 transition-colors">Terms of Service</Link>
+                </div>
+              </div>
             </div>
           </div>
         </section>

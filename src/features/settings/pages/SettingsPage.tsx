@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
-import { Save, Globe, Lock, ShieldCheck, TimerReset, PenLine, Package, GitBranch, Users, ChevronRight, FileText, TrendingUp, Crown, CheckCircle2, Store, User, Phone, Mail, MapPin, Tag, Upload, X, Check } from 'lucide-react';
+import { Save, Globe, Lock, ShieldCheck, TimerReset, PenLine, Package, GitBranch, Users, ChevronRight, FileText, TrendingUp, Crown, CheckCircle2, Store, User, Phone, Mail, MapPin, Tag, Upload, X, Check, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePinStore } from '@/stores/pinStore';
 import { supabase } from '@/lib/supabase';
@@ -226,7 +226,6 @@ const SettingsPage: React.FC = () => {
   return (
     <PageShell width="wide">
       <PageHeader
-        eyebrow={isSecuritySection ? 'Security' : t('settings.preferences', 'Preferences')}
         title={isSecuritySection ? 'Lock Screen Settings' : t('nav.settings', 'Settings')}
         description={
           isSecuritySection
@@ -234,6 +233,7 @@ const SettingsPage: React.FC = () => {
             : t('settings.description', 'Manage your shop profile and preferences')
         }
         onBack={() => navigate('/more')}
+        action={<Button variant="outline" onClick={() => window.location.reload()} leftIcon={<RefreshCw className="h-4 w-4" />}>Update now</Button>}
       />
 
       <div className="mb-8 flex overflow-x-auto hide-scrollbar items-center gap-1.5 p-1.5 bg-slate-100/60 backdrop-blur-sm rounded-xl border border-slate-200 shadow-sm">
@@ -496,79 +496,7 @@ const SettingsPage: React.FC = () => {
             </form>
           </Modal>
 
-          {/* Management Quick Links - Desktop Only */}
-          <div className="hidden md:grid grid-cols-2 gap-6 mt-6">
-            <button
-              type="button"
-              onClick={() => navigate('/branches')}
-              className="relative overflow-hidden flex items-center gap-5 p-6 rounded-[1.35rem] border border-slate-200/60 bg-white hover:bg-gradient-to-br hover:from-white hover:to-blue-50/50 hover:border-blue-200 transition-all duration-300 text-left group shadow-sm hover:shadow-md hover:-translate-y-0.5"
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-blue-50 text-blue-600 shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 shadow-sm">
-                <GitBranch className="h-6 w-6" />
-              </div>
-              <div className="flex-1">
-                <div className="text-base font-bold text-slate-900 group-hover:text-blue-900 transition-colors">Manage Shops</div>
-                <p className="text-sm font-medium text-slate-500 mt-0.5">Add or edit your branch locations</p>
-              </div>
-              <div className="h-8 w-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 transition-all duration-300">
-                <ChevronRight className="h-5 w-5" />
-              </div>
-            </button>
 
-            <button
-              type="button"
-              onClick={() => navigate('/staff')}
-              className="relative overflow-hidden flex items-center gap-5 p-6 rounded-[1.35rem] border border-slate-200/60 bg-white hover:bg-gradient-to-br hover:from-white hover:to-emerald-50/50 hover:border-emerald-200 transition-all duration-300 text-left group shadow-sm hover:shadow-md hover:-translate-y-0.5"
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-emerald-50 text-emerald-600 shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300 shadow-sm">
-                <Users className="h-6 w-6" />
-              </div>
-              <div className="flex-1">
-                <div className="text-base font-bold text-slate-900 group-hover:text-emerald-900 transition-colors">Manage Staff</div>
-                <p className="text-sm font-medium text-slate-500 mt-0.5">Add staff members & set permissions</p>
-              </div>
-              <div className="h-8 w-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-600 transition-all duration-300">
-                <ChevronRight className="h-5 w-5" />
-              </div>
-            </button>
-          </div>
-
-          {/* Tools & Reports */}
-          <div className="hidden md:grid md:grid-cols-2 gap-6 mt-6">
-            <button
-              type="button"
-              onClick={() => navigate('/inventory/report')}
-              className="relative overflow-hidden flex items-center gap-5 p-6 rounded-[1.35rem] border border-slate-200/60 bg-white hover:bg-gradient-to-br hover:from-white hover:to-indigo-50/50 hover:border-indigo-200 transition-all duration-300 text-left group shadow-sm hover:shadow-md hover:-translate-y-0.5"
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-indigo-50 text-indigo-600 shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300 shadow-sm">
-                <FileText className="h-6 w-6" />
-              </div>
-              <div className="flex-1">
-                <div className="text-base font-bold text-slate-900 group-hover:text-indigo-900 transition-colors">Stock Report</div>
-                <p className="text-sm font-medium text-slate-500 mt-0.5">View and export stock levels</p>
-              </div>
-              <div className="h-8 w-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-all duration-300">
-                <ChevronRight className="h-5 w-5" />
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/inventory/rate-adjustment')}
-              className="relative overflow-hidden flex items-center gap-5 p-6 rounded-[1.35rem] border border-slate-200/60 bg-white hover:bg-gradient-to-br hover:from-white hover:to-violet-50/50 hover:border-violet-200 transition-all duration-300 text-left group shadow-sm hover:shadow-md hover:-translate-y-0.5"
-            >
-              <div className="flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-violet-50 text-violet-600 shrink-0 group-hover:bg-violet-600 group-hover:text-white transition-all duration-300 shadow-sm">
-                <TrendingUp className="h-6 w-6" />
-              </div>
-              <div className="flex-1">
-                <div className="text-base font-bold text-slate-900 group-hover:text-violet-900 transition-colors">Rate Diff Tool</div>
-                <p className="text-sm font-medium text-slate-500 mt-0.5">Bulk adjust inventory prices</p>
-              </div>
-              <div className="h-8 w-8 rounded-full flex items-center justify-center bg-slate-50 text-slate-400 group-hover:bg-violet-100 group-hover:text-violet-600 transition-all duration-300">
-                <ChevronRight className="h-5 w-5" />
-              </div>
-            </button>
-          </div>
         </>
       ) : (
       <PlanGate 

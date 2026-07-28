@@ -24,12 +24,12 @@ const SalesTrendComponent: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-h-[400px] flex flex-col">
-        <div className="flex justify-between items-center mb-8">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-h-[300px] flex flex-col">
+        <div className="flex justify-between items-center mb-4">
           <Skeleton className="h-6 w-32 rounded-md" />
           <Skeleton className="h-5 w-24 rounded-md" />
         </div>
-        <div className="flex-1 w-full mt-4">
+        <div className="flex-1 w-full mt-2">
           <Skeleton className="w-full h-full rounded-lg" />
         </div>
       </div>
@@ -51,8 +51,8 @@ const SalesTrendComponent: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-h-[400px] flex flex-col">
-      <div className="flex flex-wrap gap-3 items-start justify-between mb-6">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-h-[300px] flex flex-col">
+      <div className="flex flex-row gap-3 items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-slate-800">{t('dashboard.salesTrend', 'Sales Trend')}</h3>
         <DateRangeFilter
           startDate={startDate}
@@ -61,7 +61,7 @@ const SalesTrendComponent: React.FC = () => {
         />
       </div>
 
-      <div className="w-full mt-auto h-[280px]">
+      <div className="w-full mt-auto h-[200px]">
         {chartData.length === 0 ? (
           <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
             No data available

@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { formatCurrency } from '@/lib/utils';
 import { useBranchStore } from '@/stores/branchStore';
+import { useStaffStore } from '@/stores/staffStore';
+import { getStaffFeatureMode } from '@/lib/staffAccess';
 import {
   AlertTriangle,
   Boxes,
@@ -46,13 +48,20 @@ const InventoryPage: React.FC = () => {
   const { data: inventory = [], isLoading, error } = useInventory();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('all');
+  const [selectedCompany, setSelectedCompany] = useState('all');
   const [searchParams] = useSearchParams();
   const [showLowStockOnly, setShowLowStockOnly] = useState(searchParams.get('filter') === 'low-stock');
   const [showOutOfStockOnly, setShowOutOfStockOnly] = useState(searchParams.get('filter') === 'out-of-stock');
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
+  const [showCompanyFilters, setShowCompanyFilters] = useState(false);
 
   const productTypes = useMemo(
     () => Array.from(new Set(inventory.map((item) => item.product.type))).sort(),
+    [inventory]
+  );
+
+  const companies = useMemo(
+    () => Array.from(new Set(inventory.map((item) => item.product.company).filter(Boolean))).sort() as string[],
     [inventory]
   );
 
@@ -77,6 +86,8 @@ const InventoryPage: React.FC = () => {
 
   const { user } = useAuthStore();
   const { activeBranch, isAllBranches } = useBranchStore();
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const canAddStock = getStaffFeatureMode('suppliers', currentStaff?.permissions, !!currentStaff) === 'visible';
   const branchId = isAllBranches ? null : activeBranch?.id;
 
   const fetchInventoryPage = React.useCallback(async ({ page, limit }: { page: number; limit: number }) => {
@@ -86,14 +97,15 @@ const InventoryPage: React.FC = () => {
       limit,
       searchQuery,
       productType: selectedType,
+      company: selectedCompany !== 'all' ? selectedCompany : undefined,
       lowStockOnly: showLowStockOnly && !showOutOfStockOnly,
       outOfStockOnly: showOutOfStockOnly,
     });
-  }, [user?.id, branchId, searchQuery, selectedType, showLowStockOnly, showOutOfStockOnly]);
+  }, [user?.id, branchId, searchQuery, selectedType, selectedCompany, showLowStockOnly, showOutOfStockOnly]);
 
   const pagedInventory = useLoadMoreList<InventoryItem>({
-    initialLimit: 9,
-    step: 9,
+    initialLimit: 16,
+    step: 16,
     fetchFn: fetchInventoryPage,
     dependencies: [fetchInventoryPage],
   });
@@ -101,8 +113,10 @@ const InventoryPage: React.FC = () => {
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedType('all');
+    setSelectedCompany('all');
     setShowLowStockOnly(false);
     setShowOutOfStockOnly(false);
+    setShowCompanyFilters(false);
   };
 
   const summaryCards: Array<{
@@ -180,7 +194,7 @@ const InventoryPage: React.FC = () => {
   return (
     <PageShell width="full">
       <PageHeader
-        title="Stock Control"
+        title="Stock & Purchase"
         action={
           <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:flex-row">
 
@@ -189,15 +203,15 @@ const InventoryPage: React.FC = () => {
               className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 min-h-10 text-xs sm:text-sm font-semibold text-white bg-white/15 border border-white/20 rounded-[14px] hover:bg-white/25 transition-colors sm:text-left sm:min-w-[110px]"
             >
               <PackagePlus className="h-4 w-4 sm:h-[18px] sm:w-[18px] shrink-0" />
-              <span className="leading-tight">New<br className="hidden sm:block" />Product</span>
+              <span className="leading-tight whitespace-nowrap">New Product</span>
             </button>
-            <button
+            {canAddStock && <button
               onClick={() => navigate('/purchases/new')}
               className="flex items-center justify-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 min-h-10 text-xs sm:text-sm font-semibold text-white bg-white/15 border border-white/20 rounded-[14px] hover:bg-white/25 transition-colors sm:text-left sm:min-w-[110px]"
             >
               <Plus className="h-4 w-4 sm:h-[18px] sm:w-[18px] shrink-0" />
               <span className="leading-tight whitespace-nowrap whitespace-normal sm:whitespace-nowrap">Add Stock</span>
-            </button>
+            </button>}
           </div>
         }
       />
@@ -233,9 +247,9 @@ const InventoryPage: React.FC = () => {
               >
                 {t('inventory.newProduct', 'New Product')}
               </Button>
-              <Button onClick={() => navigate('/purchases/new')} leftIcon={<Plus className="h-4.5 w-4.5" />}>
+              {canAddStock && <Button onClick={() => navigate('/purchases/new')} leftIcon={<Plus className="h-4.5 w-4.5" />}>
                 {t('inventory.addStock', 'Add Stock')}
-              </Button>
+              </Button>}
             </div>
           }
         />
@@ -261,7 +275,7 @@ const InventoryPage: React.FC = () => {
                         : undefined
                     }
                     aria-pressed={card.interactive ? card.active : undefined}
-                    className={`group relative overflow-hidden rounded-[16px] border bg-white p-3 sm:p-5 text-left transition-all duration-200 flex flex-col sm:flex-row items-start gap-2 sm:gap-4 ${
+                    className={`group relative overflow-hidden rounded-[16px] border bg-white p-4 text-left transition-all duration-200 flex flex-col gap-2 ${
                       card.interactive ? 'cursor-pointer' : 'cursor-default'
                     } ${
                       card.active
@@ -269,16 +283,14 @@ const InventoryPage: React.FC = () => {
                         : 'border-slate-200 hover:border-slate-300 hover:shadow-sm shadow-sm'
                     }`}
                   >
-                    <div className={`flex shrink-0 items-center justify-center h-10 w-10 sm:h-14 sm:w-14 rounded-2xl border ${card.colorClass}`}>
-                      {React.cloneElement(card.icon as React.ReactElement, { className: 'h-5 w-5 sm:h-6 sm:w-6' })}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[0.68rem] font-bold uppercase tracking-wider text-slate-500">{card.label}</span>
+                      <div className={`flex shrink-0 items-center justify-center h-8 w-8 rounded-xl border ${card.colorClass}`}>
+                        {React.cloneElement(card.icon as React.ReactElement, { className: 'h-4 w-4' })}
+                      </div>
                     </div>
-                    <div className="flex flex-col justify-start gap-0.5 sm:gap-1 mt-1 sm:mt-0">
-                      <div className="text-[0.65rem] sm:text-[0.7rem] font-bold uppercase tracking-[0.1em] text-slate-500 truncate w-full">
-                        {card.label}
-                      </div>
-                      <div className="text-xl sm:text-2xl font-black tracking-[-0.03em] text-slate-900 leading-none mt-0.5">
-                        {card.value}
-                      </div>
+                    <div className="text-xl font-black tracking-[-0.03em] text-slate-900 leading-none">
+                      {card.value}
                     </div>
                   </div>
                 );
@@ -298,7 +310,8 @@ const InventoryPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-4">
+            <div className="flex flex-col gap-3 border-t border-slate-100 pt-4">
+              {/* Type filter */}
               <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 sm:flex-wrap sm:gap-3">
                 <button
                   type="button"
@@ -321,6 +334,14 @@ const InventoryPage: React.FC = () => {
 
                 <button
                   type="button"
+                  onClick={() => setShowCompanyFilters(prev => !prev)}
+                  className={(showCompanyFilters || selectedCompany !== 'all') ? 'stock-filter-capsule stock-filter-capsule--active gap-1.5' : 'stock-filter-capsule gap-1.5'}
+                >
+                  Company {showCompanyFilters ? <ChevronDown className="h-3.5 w-3.5 rotate-180 transition-transform" /> : <ChevronDown className="h-3.5 w-3.5 transition-transform" />}
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => {
                     setShowLowStockOnly((value) => !value);
                     setShowOutOfStockOnly(false);
@@ -331,6 +352,34 @@ const InventoryPage: React.FC = () => {
                   {t('inventory.lowStock', 'Low stock')}
                 </button>
               </div>
+
+              {/* Company filter */}
+              {companies.length > 0 && showCompanyFilters && (
+                <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 sm:flex-wrap sm:gap-3 mt-1 pt-3 border-t border-slate-100/60">
+                  <span className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400 shrink-0">Brand</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCompany('all')}
+                    className={selectedCompany === 'all' ? 'stock-filter-capsule stock-filter-capsule--active' : 'stock-filter-capsule'}
+                  >
+                    All
+                  </button>
+                  {companies.map((co) => (
+                    <button
+                      key={co}
+                      type="button"
+                      onClick={() => setSelectedCompany(co)}
+                      className={selectedCompany === co ? 'stock-filter-capsule stock-filter-capsule--active' : 'stock-filter-capsule'}
+                    >
+                      {co}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div />
 
               <div className="flex items-center gap-4 ml-auto">
                 <div className="text-sm font-bold text-slate-700">

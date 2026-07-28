@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { hashPin } from '@/lib/utils';
 import { STAFF_DEFAULT_PERMISSIONS, getStaffDefaultRoute } from '@/lib/staffAccess';
 import type { StaffMember, StaffMemberInsert, StaffPermissions } from '@/types/database';
 
@@ -44,7 +43,7 @@ export interface StaffPortalLoginResult extends StaffPortalContext {
   };
 }
 
-const STAFF_SELECT_FIELDS = 'id,dealer_id,name,phone,pin_hash,branch_ids,permissions,is_active,last_login_at,created_at,updated_at';
+const STAFF_SELECT_FIELDS = 'id,dealer_id,name,phone,pin_hash,access_token,branch_ids,permissions,is_active,last_login_at,created_at,updated_at';
 
 function normalizeBranchIds(branchIds?: string[]): string[] {
   return [...new Set((branchIds ?? []).filter(Boolean))];
@@ -79,12 +78,12 @@ export async function listStaffMembers(dealerId: string): Promise<StaffMember[]>
 }
 
 export async function createStaffMember(input: StaffCreateInput): Promise<StaffMember> {
-  const pinHash = await hashPin(input.pin);
   const payload: StaffMemberInsert = {
     dealer_id: input.dealerId,
     name: input.name.trim(),
     phone: input.phone?.trim() || null,
-    pin_hash: pinHash,
+    // Raw PIN — the staff_hash_pin_on_write DB trigger bcrypts it in place.
+    pin_hash: input.pin,
     branch_ids: normalizeBranchIds(input.branchIds),
     permissions: normalizePermissions(input.permissions),
     is_active: input.isActive ?? true,
@@ -98,6 +97,19 @@ export async function createStaffMember(input: StaffCreateInput): Promise<StaffM
 
   if (error) throw toFriendlyStaffError(error);
   return data as StaffMember;
+}
+
+export async function deleteStaffMember(staffId: string, dealerId: string): Promise<void> {
+  // Hard delete — CASCADE clears staff_sessions and staff_login_attempts.
+  // Historical bills / payments retain their branch_id and their record of
+  // "who logged in when" via the audit trail — nothing on those tables
+  // references staff_members.id, so no orphans.
+  const { error } = await supabase
+    .from('staff_members')
+    .delete()
+    .eq('id', staffId)
+    .eq('dealer_id', dealerId);
+  if (error) throw toFriendlyStaffError(error);
 }
 
 export async function updateStaffMember(
@@ -114,7 +126,9 @@ export async function updateStaffMember(
   };
 
   if (input.pin) {
-    updates.pin_hash = await hashPin(input.pin);
+    // Raw PIN — DB trigger bcrypts it. Writing the same pin_hash value also
+    // triggers session revocation for this staff, forcing a re-login.
+    updates.pin_hash = input.pin;
   }
 
   const { data, error } = await supabase
@@ -129,13 +143,24 @@ export async function updateStaffMember(
   return data as StaffMember;
 }
 
+async function fetchClientIp(): Promise<string | null> {
+  try {
+    const r = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return typeof j?.ip === 'string' ? j.ip : null;
+  } catch { return null; }
+}
+
 export async function resolveStaffPortalContext(
   shopSlug: string,
-  branchSlug: string
+  branchSlug: string,
+  accessToken: string | null,
 ): Promise<StaffPortalContext> {
-  const { data, error } = await supabase.rpc('staff_portal_context', {
+  const { data, error } = await supabase.rpc('staff_portal_context_v2', {
     p_shop_slug: shopSlug,
     p_branch_slug: branchSlug,
+    p_access_token: accessToken,
   });
 
   if (error) throw error;
@@ -145,20 +170,29 @@ export async function resolveStaffPortalContext(
 export async function verifyStaffPortalPin(
   shopSlug: string,
   branchSlug: string,
-  pin: string
+  pin: string,
+  accessToken: string | null,
 ): Promise<StaffPortalLoginResult> {
-  const pinHash = await hashPin(pin);
+  const clientIp = await fetchClientIp();
   const { data, error } = await supabase.rpc('staff_portal_login', {
     p_shop_slug: shopSlug,
     p_branch_slug: branchSlug,
-    p_pin_hash: pinHash,
+    p_pin: pin,
+    p_access_token: accessToken,
+    p_client_ip: clientIp,
   });
 
   if (error) throw error;
   return data as StaffPortalLoginResult;
 }
 
-export function buildStaffLink(origin: string, shopName: string, branchName: string): string {
+export async function rotateStaffAccessToken(staffId: string): Promise<string> {
+  const { data, error } = await supabase.rpc('rotate_staff_access_token', { p_staff_id: staffId });
+  if (error) throw error;
+  return data as string;
+}
+
+export function buildStaffLink(origin: string, shopName: string, branchName: string, accessToken?: string): string {
   const shopSlug = shopName
     .trim()
     .toLowerCase()
@@ -174,5 +208,6 @@ export function buildStaffLink(origin: string, shopName: string, branchName: str
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-  return `${origin}/${shopSlug}/${branchSlug}/staff`;
+  const base = `${origin}/${shopSlug}/${branchSlug}/staff`;
+  return accessToken ? `${base}?t=${accessToken}` : base;
 }

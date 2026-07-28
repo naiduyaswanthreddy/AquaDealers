@@ -14,7 +14,7 @@ import { ListLoadMore } from '@/components/ui/ListLoadMore';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
-import { DateRangeFilter } from '@/components/ui';
+import { DateRangeFilter, Modal } from '@/components/ui';
 import { toast } from 'sonner';
 
 const CashBookPage: React.FC = () => {
@@ -35,6 +35,7 @@ const CashBookPage: React.FC = () => {
   const [physicalCash, setPhysicalCash] = useState('');
   const [closingNotes, setClosingNotes] = useState('');
   const [modalType, setModalType] = useState<'income' | 'expense' | null>(null);
+  const [detailEntry, setDetailEntry] = useState<{ id: string; entry_type: string; amount: number; entry_date: string; notes?: string | null; source?: string | null; farmer_name?: string | null; runningBalance: number } | null>(null);
 
   const { data: ledger, isLoading, error } = useCashBook(startDate, endDate);
   const { data: dailyCash } = useDailyCashClarity(cashDate);
@@ -362,13 +363,16 @@ const CashBookPage: React.FC = () => {
           <>
           <div className="space-y-2 p-3 md:hidden">
             {pagedEntries.visibleItems.map((entry) => (
-              <div key={entry.id} className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+              <button type="button" key={entry.id} onClick={() => setDetailEntry(entry)} className="w-full text-left rounded-2xl border border-slate-100 bg-white p-3 shadow-sm hover:border-slate-200 hover:shadow-md transition-shadow focus-ring">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-black text-slate-900">{entry.notes || 'No details'}</div>
+                    <div className="text-sm font-black text-slate-900">{entry.farmer_name || entry.notes || 'No details'}</div>
+                    {entry.farmer_name && entry.notes ? (
+                      <div className="text-xs text-slate-400 mt-0.5 truncate">{entry.notes}</div>
+                    ) : null}
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                        {entry.source?.replace('_', ' ') || 'Manual'}
+                        {entry.source?.replace(/_/g, ' ') || 'Manual'}
                       </span>
                       <span className="text-xs font-semibold text-slate-400">{formatDate(entry.entry_date)}</span>
                     </div>
@@ -380,7 +384,7 @@ const CashBookPage: React.FC = () => {
                     <div className="mt-1 text-[11px] font-bold text-slate-500">{formatCurrency(entry.runningBalance)}</div>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
           <div className="hidden overflow-x-auto custom-scrollbar md:block">
@@ -397,12 +401,17 @@ const CashBookPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {pagedEntries.visibleItems.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors group cursor-pointer" onClick={() => setDetailEntry(entry)}>
                     <td className="py-4 px-6 text-sm text-gray-500 whitespace-nowrap group-hover:text-gray-700 transition-colors">
                       {formatDate(entry.entry_date)}
                     </td>
-                    <td className="py-4 px-6 text-sm font-medium text-gray-900 max-w-[300px] truncate" title={entry.notes || ''}>
-                      {entry.notes || <span className="text-gray-400 italic">No details</span>}
+                    <td className="py-4 px-6 max-w-[300px]" title={entry.farmer_name || entry.notes || ''}>
+                      {entry.farmer_name ? (
+                        <div className="text-sm font-semibold text-gray-900 truncate">{entry.farmer_name}</div>
+                      ) : null}
+                      {entry.notes ? (
+                        <div className={cn('truncate', entry.farmer_name ? 'text-xs text-gray-400' : 'text-sm font-medium text-gray-900')}>{entry.notes}</div>
+                      ) : (!entry.farmer_name ? <span className="text-gray-400 italic text-sm">No details</span> : null)}
                     </td>
                     <td className="py-4 px-6">
                       <span className={cn(
@@ -444,6 +453,51 @@ const CashBookPage: React.FC = () => {
 
       {modalType && (
         <CashEntryModal type={modalType} onClose={() => setModalType(null)} />
+      )}
+
+      {detailEntry && (
+        <Modal isOpen onClose={() => setDetailEntry(null)} title="Entry Details">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2 border-b border-slate-100">
+              <span className="text-sm font-semibold text-slate-500">Date</span>
+              <span className="text-sm font-bold text-slate-800">{formatDate(detailEntry.entry_date)}</span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-slate-100">
+              <span className="text-sm font-semibold text-slate-500">Type</span>
+              <span className={cn('text-sm font-extrabold', detailEntry.entry_type === 'income' ? 'text-emerald-600' : 'text-rose-600')}>
+                {detailEntry.entry_type === 'income' ? '↑ Money In' : '↓ Money Out'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-slate-100">
+              <span className="text-sm font-semibold text-slate-500">Amount</span>
+              <span className={cn('text-base font-extrabold tabular-nums', detailEntry.entry_type === 'income' ? 'text-emerald-600' : 'text-rose-600')}>
+                {detailEntry.entry_type === 'income' ? '+' : '−'}{formatCurrency(detailEntry.amount)}
+              </span>
+            </div>
+            {detailEntry.farmer_name && (
+              <div className="flex items-center justify-between py-2 border-b border-slate-100">
+                <span className="text-sm font-semibold text-slate-500">Farmer</span>
+                <span className="text-sm font-extrabold text-slate-800">{detailEntry.farmer_name}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between py-2 border-b border-slate-100">
+              <span className="text-sm font-semibold text-slate-500">Source</span>
+              <span className="text-sm font-bold text-slate-700 capitalize">{detailEntry.source?.replace(/_/g, ' ') || 'Manual'}</span>
+            </div>
+            {detailEntry.notes && (
+              <div className="py-2 border-b border-slate-100">
+                <span className="text-sm font-semibold text-slate-500">Notes</span>
+                <p className="mt-1 text-sm text-slate-800">{detailEntry.notes}</p>
+              </div>
+            )}
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm font-semibold text-slate-500">Running Balance</span>
+              <span className={cn('text-base font-extrabold tabular-nums', detailEntry.runningBalance >= 0 ? 'text-slate-800' : 'text-rose-600')}>
+                {formatCurrency(detailEntry.runningBalance)}
+              </span>
+            </div>
+          </div>
+        </Modal>
       )}
     </PageShell>
   );

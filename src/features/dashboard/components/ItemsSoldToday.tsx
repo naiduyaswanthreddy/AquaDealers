@@ -4,8 +4,9 @@ import { useTodaySoldItems } from '../hooks/useDashboardData';
 import { Skeleton } from '@/components/ui';
 import { Package, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { formatQuantity } from '@/lib/utils';
 
-export const ItemsSoldToday: React.FC = () => {
+const ItemsSoldTodayComponent: React.FC = () => {
   const { t } = useTranslation();
   const { data: items, isLoading, isError, error } = useTodaySoldItems();
 
@@ -98,7 +99,7 @@ export const ItemsSoldToday: React.FC = () => {
 
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-[0.98rem] font-bold text-blue-600">
-                {item.quantity} <span className="text-xs font-medium text-slate-400 ml-0.5">{item.unit || 'units'}</span>
+                <span className="text-xs font-medium text-slate-400 ml-0.5">{formatQuantity(item.quantity, item.unit)}</span>
               </span>
             </div>
           </div>
@@ -107,5 +108,6 @@ export const ItemsSoldToday: React.FC = () => {
     </div>
   );
 };
-
+export const ItemsSoldToday = React.memo(ItemsSoldTodayComponent);
+ItemsSoldToday.displayName = 'ItemsSoldToday';
 export default ItemsSoldToday;

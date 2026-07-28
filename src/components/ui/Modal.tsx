@@ -7,8 +7,9 @@ import { Button } from './Button';
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   footerButtons?: {
     label: string;
     onClick?: () => void;
@@ -28,6 +29,7 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   title,
   children,
+  footer,
   footerButtons,
   className,
   contentClassName,
@@ -116,7 +118,7 @@ export const Modal: React.FC<ModalProps> = ({
           className
         )}
       >
-        <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
+        <div className="shrink-0 flex items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-6">
           <h3 id="modal-title" className="text-lg font-bold tracking-[-0.02em] text-text-primary">{title}</h3>
           {!hideCloseButton && (
             <button
@@ -129,9 +131,15 @@ export const Modal: React.FC<ModalProps> = ({
             </button>
           )}
         </div>
-        <div className={cn("flex-1 overflow-y-auto px-5 py-5 sm:px-6", contentClassName)}>{children}</div>
+        <div className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6", contentClassName)}>{children}</div>
+        {footer ? (
+          <div className="shrink-0 border-t border-border bg-white shadow-[0_-8px_20px_rgba(15,30,45,0.05)]">
+            {footer}
+          </div>
+        ) : null}
         {footerButtons?.length ? (
-          <div className="flex flex-col-reverse gap-3 px-5 pb-5 pt-2 sm:flex-row sm:justify-end sm:px-6 sm:pb-6">
+          <div className="shrink-0 border-t border-border bg-white px-5 py-4 shadow-[0_-8px_20px_rgba(15,30,45,0.05)] sm:flex sm:flex-row sm:justify-end sm:px-6">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
             {footerButtons.map((button, index) => (
               <Button
                 key={`${button.label}-${index}`}
@@ -147,6 +155,7 @@ export const Modal: React.FC<ModalProps> = ({
                 {button.label}
               </Button>
             ))}
+            </div>
           </div>
         ) : null}
       </div>

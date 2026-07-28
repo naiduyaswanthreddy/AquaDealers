@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { sanitizeSearchTerm } from '@/lib/utils';
 import {
   SupplierItem,
   SupplierInsert,
@@ -27,7 +28,8 @@ export const supplierService = {
       .order('name');
     
     if (search) {
-      query = query.or(`name.ilike.%${search}%,company.ilike.%${search}%,phone.ilike.%${search}%,alternate_phone.ilike.%${search}%`);
+      const safe = sanitizeSearchTerm(search);
+      if (safe) query = query.or(`name.ilike.%${safe}%,company.ilike.%${safe}%,phone.ilike.%${safe}%,alternate_phone.ilike.%${safe}%`);
     }
 
     query = query.range(from, to);

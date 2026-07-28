@@ -14,6 +14,7 @@ interface DatePickerProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  variant?: 'default' | 'header';
 }
 
 export const DatePicker: React.FC<DatePickerProps> = ({
@@ -24,6 +25,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   placeholder = 'Select date',
   className,
   disabled = false,
+  variant = 'default',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [alignRight, setAlignRight] = useState(false);
@@ -54,12 +56,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
   const calendarContent = (
     <div 
       ref={popoverRef}
-      className={cn(
-        "z-[100] animate-in fade-in zoom-in-95 duration-200",
-        isMobile
-          ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-          : cn("absolute top-full mt-2", alignRight ? "right-0" : "left-0")
-      )}
+      className="z-[100] relative animate-in fade-in zoom-in-95 duration-200"
       onClick={(e) => e.stopPropagation()}
     >
       <Calendar
@@ -80,28 +77,27 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         <div
           onClick={() => {
             if (disabled) return;
-            // Flip the desktop popover to right-aligned when a left-aligned
-            // calendar (~380px) would overflow the viewport's right edge.
-            const rect = wrapperRef.current?.getBoundingClientRect();
-            setAlignRight(!!rect && rect.left + 384 > window.innerWidth - 8);
             setIsOpen(!isOpen);
           }}
           className={cn(
-            "flex h-11 w-full items-center justify-between rounded-xl border bg-white px-3 py-2 text-sm transition-all focus-within:ring-2 focus-within:ring-primary/20",
-            disabled ? "opacity-50 cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500" : "cursor-pointer border-slate-200 hover:border-primary/50 text-slate-900",
-            isOpen && "border-primary ring-2 ring-primary/20"
+            variant === 'header' 
+              ? "flex items-center gap-2 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-1.5 transition-colors cursor-pointer text-white" 
+              : "flex h-11 w-full items-center justify-between rounded-xl border bg-white px-2 sm:px-3 py-2 text-[0.7rem] sm:text-sm transition-all focus-within:ring-2 focus-within:ring-primary/20",
+            variant === 'default' && disabled && "opacity-50 cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500",
+            variant === 'default' && !disabled && "cursor-pointer border-slate-200 hover:border-primary/50 text-slate-900",
+            variant === 'default' && isOpen && "border-primary ring-2 ring-primary/20"
           )}
         >
-          <div className="flex items-center gap-2 overflow-hidden">
-            <CalendarIcon className={cn("h-4.5 w-4.5 flex-shrink-0", value ? "text-primary" : "text-slate-400")} />
-            <span className={cn("truncate", !value && "text-slate-400")}>
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden min-w-0">
+            <CalendarIcon className={cn("flex-shrink-0", variant === 'header' ? "h-4 w-4 text-white/90" : (value ? "h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-primary" : "h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-slate-400"))} />
+            <span className={cn("truncate min-w-0 font-medium", variant === 'header' ? "text-sm font-semibold" : (!value && "text-slate-400"))}>
               {formattedValue || placeholder}
             </span>
           </div>
-          {value && !disabled && (
+          {value && !disabled && variant === 'default' && (
             <button
               type="button"
-              className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0 ml-1"
+              className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0 ml-0.5 sm:ml-1"
               onClick={(e) => {
                 e.stopPropagation();
                 onChange('');
@@ -111,16 +107,13 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             </button>
           )}
         </div>
-
-        {/* Desktop Popover */}
-        {isOpen && !isMobile && calendarContent}
       </div>
 
-      {/* Mobile Modal Overlay */}
-      {isOpen && isMobile && createPortal(
-        <div className="fixed inset-0 z-[99] bg-slate-900/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-             {/* Detect clicks outside calendar on mobile */}
+      {/* Modal Overlay for all screen sizes */}
+      {isOpen && createPortal(
+        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4">
+             {/* Detect clicks outside calendar */}
              <div className="absolute inset-0" onClick={() => setIsOpen(false)} />
              {calendarContent}
           </div>

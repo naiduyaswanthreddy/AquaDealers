@@ -19,7 +19,7 @@ const SPARKLINE_WIDTH = 320;
 const SPARKLINE_HEIGHT = 112;
 const SPARKLINE_PADDING = 8;
 
-type CardTone = 'blue' | 'red' | 'orange' | 'green';
+type CardTone = 'blue' | 'red' | 'orange' | 'green' | 'purple';
 
 interface DashboardCardConfig {
   label: string;
@@ -29,6 +29,7 @@ interface DashboardCardConfig {
   trend: TrendDescriptor;
   series: number[];
   trendVariant?: 'arrow' | 'dot';
+  desktopOnly?: boolean;
 }
 
 function TrendGlyph({
@@ -49,7 +50,7 @@ function TrendGlyph({
   return <MoveRight className={className} />;
 }
 
-export const StatCards: React.FC = () => {
+const StatCardsComponent: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { data: stats, isLoading } = useDashboardStats();
@@ -57,8 +58,8 @@ export const StatCards: React.FC = () => {
   if (isLoading) {
     return (
       <div className="dashboard-kpi-grid">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="dashboard-metric-card dashboard-metric-card--loading">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className={cn('dashboard-metric-card dashboard-metric-card--loading', index === 1 && 'hidden lg:flex flex-col')}>
             <div className="flex items-start justify-between">
               <Skeleton className="h-[4.5rem] w-[4.5rem] rounded-[1.7rem]" />
               <Skeleton className="h-14 w-14 rounded-full" />
@@ -75,6 +76,8 @@ export const StatCards: React.FC = () => {
     );
   }
 
+  const todayTotalReceived = (stats?.todayCashReceived ?? 0) + (stats?.todayUpiReceived ?? 0) + (stats?.todayChequeReceived ?? 0);
+
   const cards: DashboardCardConfig[] = [
     {
       label: t('dashboard.todaysSales', "Today's Sales"),
@@ -88,6 +91,21 @@ export const StatCards: React.FC = () => {
         compareLabel: 'yesterday',
         formatter: formatCurrency,
       }),
+      series: stats?.salesSeries?.length ? stats.salesSeries : [0],
+    },
+    {
+      label: "Today's Collection",
+      value: formatCurrency(todayTotalReceived),
+      path: '/cashbook',
+      tone: 'purple',
+      trendVariant: 'arrow',
+      desktopOnly: true,
+      trend: {
+        direction: todayTotalReceived > 0 ? 'up' : 'flat',
+        tone: todayTotalReceived > 0 ? 'positive' : 'neutral',
+        emphasis: stats?.todayCount ? String(stats.todayCount) : '',
+        label: stats?.todayCount === 1 ? 'bill today' : stats?.todayCount ? 'bills today' : 'no bills today',
+      },
       series: stats?.salesSeries?.length ? stats.salesSeries : [0],
     },
     {
@@ -141,7 +159,7 @@ export const StatCards: React.FC = () => {
 
   return (
     <div className="dashboard-kpi-grid">
-      {cards.map((card) => {
+      {cards.map((card, i) => {
         const sparklinePoints = buildSparklinePoints(
           card.series,
           SPARKLINE_WIDTH,
@@ -152,17 +170,23 @@ export const StatCards: React.FC = () => {
         const lastPoint = (pointList[pointList.length - 1] ?? '').split(',');
         const lastPointX = Number(lastPoint[0]) || SPARKLINE_WIDTH - SPARKLINE_PADDING;
         const lastPointY = Number(lastPoint[1]) || SPARKLINE_HEIGHT - SPARKLINE_PADDING;
+        const gradientId = `metric-fill-${card.tone}-${i}`;
 
         return (
           <button
             key={card.label}
             type="button"
-            className={cn('dashboard-metric-card focus-ring', `dashboard-metric-card--${card.tone}`)}
+            className={cn('dashboard-metric-card focus-ring', `dashboard-metric-card--${card.tone}`, card.desktopOnly && 'hidden lg:flex flex-col')}
             onClick={() => navigate(card.path)}
           >
             <div className="dashboard-metric-card__content">
               <p className="dashboard-metric-card__label">{card.label}</p>
-              <p className="dashboard-metric-card__value">{card.value}</p>
+              <p
+                className="dashboard-metric-card__value"
+                style={{
+                  fontSize: card.value.length > 11 ? '1rem' : card.value.length > 9 ? '1.25rem' : card.value.length > 7 ? '1.5rem' : '1.85rem',
+                }}
+              >{card.value}</p>
             </div>
 
             <div className={cn('dashboard-metric-card__trend', `dashboard-metric-card__trend--${card.trend.tone}`)}>
@@ -180,14 +204,14 @@ export const StatCards: React.FC = () => {
             <div className="dashboard-metric-card__sparkline" aria-hidden="true">
               <svg viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`} preserveAspectRatio="none">
                 <defs>
-                  <linearGradient id={`metric-fill-${card.tone}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                  <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" stopColor="currentColor" stopOpacity="0.2" />
                     <stop offset="100%" stopColor="currentColor" stopOpacity="0.03" />
                   </linearGradient>
                 </defs>
                 <path
                   d={`M ${sparklinePoints} L ${SPARKLINE_WIDTH - SPARKLINE_PADDING},${SPARKLINE_HEIGHT - SPARKLINE_PADDING} L ${SPARKLINE_PADDING},${SPARKLINE_HEIGHT - SPARKLINE_PADDING} Z`}
-                  fill={`url(#metric-fill-${card.tone})`}
+                  fill={`url(#${gradientId})`}
                   className="dashboard-metric-card__sparkline-area"
                 />
                 <polyline
@@ -204,8 +228,74 @@ export const StatCards: React.FC = () => {
           </button>
         );
       })}
+
+      {/* Today's Profit — mobile only, same card style as Cash in Hand */}
+      {(() => {
+        const profit = stats?.todayProfit ?? 0;
+        const profitFormatted = (profit < 0 ? '−' : '') + formatCurrency(Math.abs(profit));
+        const tone: CardTone = profit >= 0 ? 'green' : 'red';
+        const sparklinePoints = buildSparklinePoints(
+          stats?.cashSeries?.length ? stats.cashSeries : [0],
+          SPARKLINE_WIDTH,
+          SPARKLINE_HEIGHT,
+          SPARKLINE_PADDING
+        );
+        const pointList = sparklinePoints.split(' ');
+        const lastPoint = (pointList[pointList.length - 1] ?? '').split(',');
+        const lastPointX = Number(lastPoint[0]) || SPARKLINE_WIDTH - SPARKLINE_PADDING;
+        const lastPointY = Number(lastPoint[1]) || SPARKLINE_HEIGHT - SPARKLINE_PADDING;
+        const gradientId = `metric-fill-profit`;
+        return (
+          <button
+            type="button"
+            className={cn('dashboard-metric-card focus-ring lg:!hidden flex flex-col', `dashboard-metric-card--${tone}`)}
+            onClick={() => navigate('/profit-report')}
+          >
+            <div className="dashboard-metric-card__content">
+              <p className="dashboard-metric-card__label">Today's Profit</p>
+              <p
+                className="dashboard-metric-card__value"
+                style={{
+                  fontSize: profitFormatted.length > 11 ? '1rem' : profitFormatted.length > 9 ? '1.25rem' : profitFormatted.length > 7 ? '1.5rem' : '1.85rem',
+                }}
+              >{profitFormatted}</p>
+            </div>
+            <div className={cn('dashboard-metric-card__trend', `dashboard-metric-card__trend--${profit >= 0 ? 'positive' : 'negative'}`)}>
+              <TrendGlyph direction={profit > 0 ? 'up' : profit < 0 ? 'down' : 'flat'} className="h-4 w-4 shrink-0" />
+              <span className="dashboard-metric-card__trend-label">
+                {profit >= 0 ? 'Net positive today' : 'Net negative today'}
+              </span>
+            </div>
+            <div className="dashboard-metric-card__sparkline" aria-hidden="true">
+              <svg viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`} preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="currentColor" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="currentColor" stopOpacity="0.03" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d={`M ${sparklinePoints} L ${SPARKLINE_WIDTH - SPARKLINE_PADDING},${SPARKLINE_HEIGHT - SPARKLINE_PADDING} L ${SPARKLINE_PADDING},${SPARKLINE_HEIGHT - SPARKLINE_PADDING} Z`}
+                  fill={`url(#${gradientId})`}
+                  className="dashboard-metric-card__sparkline-area"
+                />
+                <polyline
+                  points={sparklinePoints}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.25"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <circle cx={lastPointX} cy={lastPointY} r="5" fill="currentColor" />
+              </svg>
+            </div>
+          </button>
+        );
+      })()}
     </div>
   );
 };
-
+export const StatCards = React.memo(StatCardsComponent);
+StatCards.displayName = 'StatCards';
 export default StatCards;

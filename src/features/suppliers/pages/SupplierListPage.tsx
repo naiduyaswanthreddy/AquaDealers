@@ -20,14 +20,20 @@ const SupplierListPage: React.FC = () => {
   const navigate = useNavigate();
   const { data: suppliers, isLoading, error } = useSuppliers();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const { user } = useAuthStore();
 
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
   const fetchSuppliersPage = React.useCallback(async ({ page, limit }: { page: number; limit: number }) => {
     if (!user?.id) throw new Error('No dealer ID');
-    return supplierService.getSuppliers(user.id, search || undefined, page, limit);
-  }, [user?.id, search]);
+    return supplierService.getSuppliers(user.id, debouncedSearch || undefined, page, limit);
+  }, [user?.id, debouncedSearch]);
 
   const pagedSuppliers = useLoadMoreList<SupplierItem>({
     initialLimit: 9,
@@ -36,7 +42,7 @@ const SupplierListPage: React.FC = () => {
     dependencies: [fetchSuppliersPage],
   });
 
-  if (isLoading) {
+  if ((isLoading || pagedSuppliers.isLoading) && pagedSuppliers.visibleItems.length === 0) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>

@@ -12,6 +12,7 @@ import { BillingPayload } from '../types';
 import type { SignatureStroke } from '@/types/database';
 import { supabase } from '@/lib/supabase';
 import { getLocalDateString } from '@/lib/utils';
+import { upsertFarmerProductDiscount } from '@/features/farmers/services/farmerService';
 
 interface CheckoutOptions {
   totals: {
@@ -256,6 +257,23 @@ export const useCheckout = () => {
           canvasWidth: sigCanvasDims?.w,
           canvasHeight: sigCanvasDims?.h,
         });
+      }
+
+      // Write back manually-set or farmer-specific discounts so next bill auto-populates them
+      if (farmerId && user.farmer_product_discounts_enabled) {
+        const medicineItems = items.filter(i => i.product_type === 'medicine' && i.product_id);
+        if (medicineItems.length > 0) {
+          Promise.all(
+            medicineItems.map(item =>
+              upsertFarmerProductDiscount({
+                dealerId: user.id,
+                farmerId,
+                productId: item.product_id,
+                discountPercentage: item.discount_percentage,
+              })
+            )
+          ).catch(err => console.error('Failed to save farmer discounts:', err));
+        }
       }
 
       toast.success(t('billing.success', 'Bill created successfully.'));

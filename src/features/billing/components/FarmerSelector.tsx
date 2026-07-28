@@ -1,21 +1,29 @@
 import React, { useMemo, useState } from 'react';
 import { Check, User, Users, UserPlus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { SearchBar, FarmerAvatar, Button } from '@/components/ui';
 import { useFarmers } from '@/features/farmers/hooks/useFarmers';
 import { useCartStore } from '../stores/cartStore';
 import { cn, formatCurrency } from '@/lib/utils';
 import { QuickAddFarmerModal } from './QuickAddFarmerModal';
 import { QuickAddWalkInModal } from './QuickAddWalkInModal';
-import { CROP_STATUSES } from '@/lib/constants';
 
-export const FarmerSelector: React.FC<{ onSelect?: () => void }> = ({ onSelect }) => {
+export const FarmerSelector: React.FC<{ onSelect?: () => void; openWalkIn?: boolean }> = ({ onSelect, openWalkIn = false }) => {
   const { t } = useTranslation();
   const { data: farmers = [], isLoading } = useFarmers();
-  const { farmerId, setFarmer } = useCartStore();
+  const { farmerId, setFarmer, items } = useCartStore();
+  const cartTotal = useMemo(
+    () => items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0),
+    [items]
+  );
   const [search, setSearch] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (openWalkIn) setIsWalkInModalOpen(true);
+  }, [openWalkIn]);
 
   const filteredFarmers = useMemo(
     () =>
@@ -36,8 +44,19 @@ export const FarmerSelector: React.FC<{ onSelect?: () => void }> = ({ onSelect }
   );
 
   return (
-    <div className="space-y-3 rounded-[22px] bg-slate-50/80 p-2">
+    <div className="space-y-3 rounded-[22px] bg-slate-50/80 p-2 pb-4">
       <SearchBar value={search} onChange={setSearch} placeholder={t('billing.searchCustomer', 'Search customer')} showVoicePlaceholder />
+
+      {search.trim().toLowerCase().includes('walk') ? (
+        <button
+          type="button"
+          onClick={() => setIsWalkInModalOpen(true)}
+          className="focus-ring flex w-full items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-left hover:bg-primary/10"
+        >
+          <span><span className="block text-sm font-bold text-slate-900">Walk-in Customer</span><span className="mt-0.5 block text-xs text-slate-500">Add customer details and use them for this bill</span></span>
+          <User className="h-5 w-5 text-primary" />
+        </button>
+      ) : null}
 
       <div className="grid gap-2.5 grid-cols-2">
         <button
@@ -107,9 +126,6 @@ export const FarmerSelector: React.FC<{ onSelect?: () => void }> = ({ onSelect }
       ) : filteredFarmers.length > 0 ? (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col">
           {filteredFarmers.map((farmer, index) => {
-            const crop = CROP_STATUSES.find((c) => c.value === farmer.crop_status);
-            const statusColor = crop?.color || '#10B981';
-            const listStatusLabel = crop?.label || 'Growing';
             const details = [
               farmer.village,
               farmer.phone,
@@ -124,6 +140,11 @@ export const FarmerSelector: React.FC<{ onSelect?: () => void }> = ({ onSelect }
                   type="button"
                   onClick={() => {
                     setFarmer(farmer.id, farmer.name, farmer.total_due, farmer.credit_limit);
+                    if (farmer.credit_limit > 0 && (farmer.total_due + cartTotal) > farmer.credit_limit) {
+                      toast.warning(
+                        `${farmer.name} is over credit limit. Due: ${formatCurrency(farmer.total_due)}, Limit: ${formatCurrency(farmer.credit_limit)}`
+                      );
+                    }
                     onSelect?.();
                   }}
                   className={cn(
@@ -134,8 +155,8 @@ export const FarmerSelector: React.FC<{ onSelect?: () => void }> = ({ onSelect }
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <FarmerAvatar imageUrl={farmer.image_url} name={farmer.name} size="md" />
 
-                    <div className="min-w-0">
-                      <div className="truncate text-[0.95rem] font-bold tracking-tight text-slate-900">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[0.95rem] font-bold tracking-tight text-slate-900 break-words">
                         {farmer.name}
                       </div>
                       {details && (
@@ -146,26 +167,9 @@ export const FarmerSelector: React.FC<{ onSelect?: () => void }> = ({ onSelect }
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    <div className="flex flex-col items-end">
-                      <div className="flex items-center gap-1">
-                        <span
-                          className={`text-[0.95rem] font-bold tabular-nums ${
-                            farmer.total_due > 0 ? 'text-orange-500' : 'text-slate-400'
-                          }`}
-                        >
-                          {formatCurrency(farmer.total_due)}
-                        </span>
-                        <div className="h-2.5 w-2.5 flex-shrink-0 rounded-full shadow-sm" style={{ backgroundColor: statusColor }} />
-                      </div>
-                      <div className="mt-0">
-                        <span className="text-[0.75rem] font-semibold text-slate-400">
-                          {listStatusLabel}
-                        </span>
-                      </div>
-                    </div>
+                  <div className="shrink-0 ml-2">
                     {farmerId === farmer.id ? (
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white shrink-0 ml-1">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-white shrink-0">
                         <Check className="h-3 w-3" strokeWidth={3} />
                       </span>
                     ) : (

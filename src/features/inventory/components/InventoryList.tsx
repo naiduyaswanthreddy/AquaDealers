@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { InventoryItem } from '../types';
 import { useFeatureGate } from '@/stores/subscriptionStore';
 import StockAdjustmentModal from './StockAdjustmentModal';
+import { formatQuantity } from '@/lib/utils';
 import {
   getInventoryBasePrice,
   getInventoryDiscountPercentage,
@@ -69,7 +70,7 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
     const displayPrice = getInventoryDisplayPrice(item);
     const basePrice = getInventoryBasePrice(item);
     const discount = getInventoryDiscountPercentage(item);
-    const hasMedicineDiscount = isMedicineProduct(item.product.type) && discount > 0 && displayPrice !== basePrice;
+    const hasMedicineDiscount = discount > 0 && displayPrice !== basePrice;
 
     return { displayPrice, basePrice, discount, hasMedicineDiscount };
   };
@@ -154,9 +155,15 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
                     </div>
                     <div className="flex flex-col items-end text-right">
                       <span className="text-[0.65rem] sm:text-[0.7rem] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Stock</span>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-lg sm:text-xl font-black text-slate-900 leading-none">{item.quantity_in_stock || 0}</span>
-                        <span className="text-[0.65rem] sm:text-[0.7rem] font-bold text-slate-500 uppercase">{item.product.unit}</span>
+                      <div className="flex items-baseline justify-end gap-1">
+                        <span className="text-base sm:text-lg font-black text-slate-900 leading-none">
+                          {item.quantity_in_stock || 0}
+                        </span>
+                        {item.product.unit ? (
+                          <span className="text-[0.62rem] sm:text-[0.68rem] font-bold text-slate-500 leading-none">
+                            {item.product.unit}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -192,7 +199,7 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
               className="cursor-pointer overflow-hidden rounded-[22px] border border-slate-200/80 bg-white py-3 pl-2.5 pr-4.5 shadow-[0_4px_12px_rgba(0,0,0,0.03)] transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_12px_24px_rgba(0,0,0,0.08)]"
             >
               <div className="flex items-center gap-2">
-                <div className="flex h-[3.25rem] w-[3.25rem] shrink-0 items-center justify-center overflow-hidden rounded-[18px] bg-slate-50 text-slate-500">
+                <div className="flex h-[3.25rem] w-[3.25rem] shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-600 border border-slate-200/60">
                   {displayImage ? (
                     <img
                       src={displayImage}
@@ -201,7 +208,9 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
                       className="h-[2.75rem] w-[2.75rem] object-contain"
                     />
                   ) : (
-                    <Package2 className="h-5 w-5" />
+                    <span className="text-[1.1rem] font-black">
+                      {(item.product.name || 'P').charAt(0).toUpperCase()}
+                    </span>
                   )}
                 </div>
 
@@ -235,7 +244,7 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
                       <span className={`text-[1.1rem] font-black leading-none ${
                         item.quantity_in_stock <= 0 ? 'text-rose-500' : lowStock ? 'text-amber-500' : 'text-slate-900'
                       }`}>
-                        {item.quantity_in_stock || 0}
+                        {formatQuantity(item.quantity_in_stock || 0, item.product.unit)}
                       </span>
                     </div>
                   </div>
@@ -247,10 +256,10 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
       </div>
 
       {/* Desktop view: Table */}
-      <div className="hidden md:block overflow-x-auto rounded-[24px] border border-slate-200/80 bg-white shadow-[0_10px_26px_rgba(148,163,184,0.12)]">
-        <table className="w-full text-left text-sm whitespace-nowrap">
-          <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/50">
+      <div className="hidden md:block overflow-x-auto rounded-[24px] border border-slate-200/80 bg-white shadow-[0_10px_26px_rgba(148,163,184,0.12)] max-h-[800px]">
+        <table className="w-full text-left text-sm whitespace-nowrap relative">
+          <thead className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur-md shadow-sm after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-slate-200">
+            <tr>
               <th className="px-5 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs w-[35%]">Product</th>
               <th className="px-5 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs w-[15%]">Company</th>
               <th className="px-5 py-4 font-bold text-slate-500 uppercase tracking-wider text-xs w-[15%]">Batch / Expiry</th>
@@ -275,11 +284,11 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
                 <tr 
                   key={item.id}
                   onClick={() => navigate(`/inventory/${item.id}`, { state: { from: '/inventory' } })}
-                  className="cursor-pointer transition-colors hover:bg-slate-50/80 group"
+                  className="cursor-pointer transition-all duration-200 hover:bg-blue-50/50 hover:shadow-[0_4px_16px_rgba(37,99,235,0.06)] relative z-0 hover:z-10 group"
                 >
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-3 rounded-l-[12px]">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-100 text-slate-500">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-600 border border-slate-200/60">
                         {displayImage ? (
                           <img
                             src={displayImage}
@@ -288,7 +297,9 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
                             className="h-7 w-7 object-contain"
                           />
                         ) : (
-                          <Package2 className="h-5 w-5" />
+                          <span className="text-[0.9rem] font-black">
+                            {(item.product.name || 'P').charAt(0).toUpperCase()}
+                          </span>
                         )}
                       </div>
                       <div className="font-bold text-slate-900 group-hover:text-[#0070F3] transition-colors">
@@ -311,7 +322,7 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
                               </span>
                             </div>
                             <span className="text-[0.8rem] font-black text-sky-700 ml-4">
-                              {lot.remaining_quantity} <span className="text-[0.65rem] font-bold uppercase">{item.product.unit}</span>
+                              {formatQuantity(lot.remaining_quantity, item.product.unit)}
                             </span>
                           </div>
                         ))}
@@ -346,13 +357,12 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
                   </td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex flex-col items-end gap-0.5">
-                      <div className="flex items-baseline gap-1">
+                      <div className="flex items-baseline justify-end">
                         <span className={`text-[1.1rem] font-black ${
                           item.quantity_in_stock <= 0 ? 'text-rose-500' : lowStock ? 'text-amber-500' : 'text-slate-900'
                         }`}>
-                          {item.quantity_in_stock || 0}
+                          {formatQuantity(item.quantity_in_stock || 0, item.product.unit)}
                         </span>
-                        <span className="text-[0.7rem] font-bold text-slate-400 uppercase">{item.product.unit}</span>
                       </div>
                     </div>
                   </td>

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { MessageCircle, TrendingDown } from 'lucide-react';
 import { CROP_STATUSES } from '@/lib/constants';
 
-export const CollectToday: React.FC = () => {
+const CollectTodayComponent: React.FC = () => {
   const navigate = useNavigate();
   const { data: farmers, isLoading, isError, error } = useCollectToday();
 
@@ -141,5 +141,6 @@ export const CollectToday: React.FC = () => {
     </div>
   );
 };
-
+export const CollectToday = React.memo(CollectTodayComponent);
+CollectToday.displayName = 'CollectToday';
 export default CollectToday;

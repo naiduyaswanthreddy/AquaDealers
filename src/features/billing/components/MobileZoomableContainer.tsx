@@ -31,12 +31,12 @@ export const MobileZoomableContainer: React.FC<MobileZoomableContainerProps> = (
 
   const handleZoomIn = () => {
     setIsManualZoom(true);
-    setScale(s => Math.min(s + 0.15, 3));
+    setScale(s => Math.min(Number((s + 0.05).toFixed(2)), 2));
   };
   
   const handleZoomOut = () => {
     setIsManualZoom(true);
-    setScale(s => Math.max(s - 0.15, 0.3));
+    setScale(s => Math.max(Number((s - 0.05).toFixed(2)), 0.5));
   };
   
   const handleResetZoom = () => {
@@ -63,18 +63,18 @@ export const MobileZoomableContainer: React.FC<MobileZoomableContainerProps> = (
         </div>
       </div>
 
-      <div className="w-full overflow-auto bg-slate-100 p-0 sm:p-4 touch-pan-x touch-pan-y flex justify-start items-start">
-        <div 
+      <div className="w-full overflow-auto bg-slate-100 p-0 sm:p-4 touch-pan-x touch-pan-y flex justify-start items-start bill-print-viewport">
+        <div
           style={{
             width: 794 * scale,
             height: 1123 * scale,
             position: 'relative',
             margin: '0 auto'
           }}
-          className="shrink-0 transition-all duration-200"
+          className="shrink-0 transition-all duration-200 bill-print-frame"
         >
-          <div 
-            className="bg-white shadow-xl absolute top-0 left-0"
+          <div
+            className="bg-white shadow-xl absolute top-0 left-0 bill-print-scaler"
             style={{
               width: '794px',
               minHeight: '1123px',

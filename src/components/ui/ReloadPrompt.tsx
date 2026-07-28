@@ -37,10 +37,10 @@ export const ReloadPrompt: React.FC = () => {
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h3 className="text-sm font-black tracking-tight text-slate-900">
-              {t('common.updateAvailable', 'New Update Available!')}
+              {t('common.updateAvailable', 'Get latest update')}
             </h3>
             <p className="text-xs font-semibold text-slate-500">
-              {t('common.updateDesc', 'A new version of AquaDealers is ready. Reload to apply changes.')}
+              {t('common.updateDesc', 'Reload the app and fetch the newest version (same as Ctrl+Shift+R).')}
             </p>
           </div>
           <button
@@ -58,7 +58,7 @@ export const ReloadPrompt: React.FC = () => {
             onClick={() => updateServiceWorker(true)}
           >
             <RefreshCw className="mr-2 h-4 w-4" />
-            {t('common.reload', 'Reload & Update')}
+            {t('common.reload', 'Update now')}
           </Button>
         </div>
       </div>

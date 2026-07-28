@@ -37,6 +37,8 @@ const FarmerStatementPage = React.lazy(() => import('@/features/publicStatement/
 
 // Dashboard
 const DashboardPage       = React.lazy(() => import('@/features/dashboard/pages/DashboardPage'));
+const ProfitReportPage    = React.lazy(() => import('@/features/dashboard/pages/ProfitReportPage'));
+const SalesRegisterPage   = React.lazy(() => import('@/features/reports/pages/SalesRegisterPage'));
 
 // Farmers
 const FarmerListPage      = React.lazy(() => import('@/features/farmers/pages/FarmerListPage'));
@@ -74,6 +76,7 @@ const CashBookPage        = React.lazy(() => import('@/features/financials/pages
 // Daily Book
 const DailyBookPage           = React.lazy(() => import('@/features/dailyBook/pages/DailyBookPage'));
 const BookProductsPage        = React.lazy(() => import('@/features/dailyBook/pages/BookProductsPage'));
+const BookSalesPage           = React.lazy(() => import('@/features/dailyBook/pages/BookSalesPage'));
 const BookProductDetailPage   = React.lazy(() => import('@/features/dailyBook/pages/BookProductDetailPage'));
 const BookFarmersPage         = React.lazy(() => import('@/features/dailyBook/pages/BookFarmersPage'));
 const BookFarmerPage          = React.lazy(() => import('@/features/dailyBook/pages/BookFarmerPage'));
@@ -116,15 +119,19 @@ const AdminPlaceholderPage     = React.lazy(() => import('@/admin/pages/AdminPla
 // ─────────────────────────────────────────────────────────────────
 // Staff plan-gate fallback — extracted to avoid inline JSX in routes
 // ─────────────────────────────────────────────────────────────────
-const StaffPlanFallback: React.FC = () => (
-  <div className="p-8 text-center mt-12 max-w-md mx-auto">
-    <h2 className="text-xl font-bold text-slate-900">Upgrade to Pro+</h2>
-    <p className="mt-2 text-slate-600">
-      Staff management and access control is available on the Pro+ plan.
-      Please contact sales to upgrade.
-    </p>
-  </div>
-);
+const StaffPlanFallback: React.FC = () => {
+  const planDefinitions = useSubscriptionStore((s) => s.planDefinitions);
+  const requiredPlan = Object.values(planDefinitions).find((p) => p.features.includes('staff'))?.name ?? 'Pro+';
+  return (
+    <div className="p-8 text-center mt-12 max-w-md mx-auto">
+      <h2 className="text-xl font-bold text-slate-900">Upgrade to {requiredPlan}</h2>
+      <p className="mt-2 text-slate-600">
+        Staff management and access control is available on the {requiredPlan} plan.
+        Please contact sales to upgrade.
+      </p>
+    </div>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────────
 // Route-level Suspense fallback — lightweight, always in main bundle
@@ -301,10 +308,13 @@ const App: React.FC = () => {
             {/* Financials */}
             <Route path="/expenses"  element={<FeatureGate allowed={['expenses']}  title="Expenses"   description="You do not have access to expenses."><ExpensesPage /></FeatureGate>} />
             <Route path="/cashbook"  element={<FeatureGate allowed={['cashbook']}  title="Cash Book"  description="You do not have access to the cashbook."><CashBookPage /></FeatureGate>} />
+            <Route path="/profit-report"  element={<FeatureGate allowed={['dashboard']} title="Profit Report" description="You do not have access to profit reports."><ProfitReportPage /></FeatureGate>} />
+            <Route path="/sales-register" element={<FeatureGate allowed={['reports']} title="Sales Register" description="You do not have access to reports."><SalesRegisterPage /></FeatureGate>} />
             <Route path="/transactions" element={<FeatureGate allowed={['transactions']} title="Transactions" description="You do not have access to transactions."><TransactionsPage /></FeatureGate>} />
 
             {/* Daily Book */}
             <Route path="/book"                        element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><DailyBookPage /></FeatureGate>} />
+            <Route path="/book/sales"                  element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookSalesPage /></FeatureGate>} />
             <Route path="/book/products"               element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookProductsPage /></FeatureGate>} />
             <Route path="/book/products/:productId"    element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookProductDetailPage /></FeatureGate>} />
             <Route path="/book/farmers"                element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookFarmersPage /></FeatureGate>} />

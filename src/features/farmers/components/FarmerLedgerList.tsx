@@ -7,12 +7,13 @@ import { useLoadMoreList } from '@/lib/useLoadMoreList';
 
 interface Transaction {
   id: string;
-  type: 'bill' | 'payment' | 'adjustment';
+  type: 'bill' | 'payment' | 'adjustment' | 'return';
   refNumber: string;
   date: string;
   amount: number;
   runningBalance?: number;
   paymentMethod?: string;
+  branchName?: string | null;
 }
 
 interface FarmerLedgerListProps {
@@ -20,6 +21,15 @@ interface FarmerLedgerListProps {
   isLoading: boolean;
   backTo?: string;
   headerComponent?: React.ReactNode;
+  // Server-driven infinite scroll (used by the paginated ledger tab). When
+  // these are set, we skip the client-side useLoadMoreList and drive the
+  // "Load more" button off the React Query infinite hook instead.
+  serverPagination?: {
+    total: number;
+    hasMore: boolean;
+    isFetchingMore: boolean;
+    onLoadMore: () => void;
+  };
 }
 
 export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
@@ -27,6 +37,7 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
   isLoading,
   backTo,
   headerComponent,
+  serverPagination,
 }) => {
   const navigate = useNavigate();
   const pagedTransactions = useLoadMoreList(transactions, {
@@ -34,6 +45,8 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
     step: 12,
     resetDeps: [transactions.length],
   });
+  // Server-paginated: render everything already loaded; client-paginated: slice.
+  const visibleItems = serverPagination ? transactions : pagedTransactions.visibleItems;
 
   if (isLoading) {
     return (
@@ -46,7 +59,7 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
     );
   }
 
-  const groupedTransactions = pagedTransactions.visibleItems.reduce((groups, tx) => {
+  const groupedTransactions = visibleItems.reduce((groups, tx) => {
     const dateObj = new Date(tx.date);
     const monthYear = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     if (!groups[monthYear]) {
@@ -61,7 +74,7 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
   return (
     <div className="mt-4 overflow-hidden rounded-[24px] border border-slate-200/60 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.04)]">
       {headerComponent && (
-        <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-3 sm:px-6">
+        <div className="border-b border-primary/10 bg-primary/5 px-4 py-3 sm:px-6">
           {headerComponent}
         </div>
       )}
@@ -79,6 +92,7 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
               const month = dateObj.toLocaleDateString('en-US', { month: 'short' });
               const isPayment = tx.type === 'payment';
               const isAdjustment = tx.type === 'adjustment';
+              const isReturn = tx.type === 'return';
               const subLabel = isPayment ? (tx.paymentMethod || tx.refNumber || 'Payment') : tx.refNumber;
               const isLast = index === txs.length - 1 && groupIndex === groupEntries.length - 1;
 
@@ -86,9 +100,9 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
                 <React.Fragment key={tx.id}>
                   <button
                     type="button"
-                    onClick={isPayment ? undefined : () => navigate(`/bills/${tx.id}`, backTo ? { state: { from: backTo } } : undefined)}
+                    onClick={isPayment || isReturn ? undefined : () => navigate(`/bills/${tx.id}`, backTo ? { state: { from: backTo } } : undefined)}
                     className={`group flex min-h-[80px] w-full items-center justify-between px-4 py-4 text-left transition-all active:scale-[0.99] focus-ring ${
-                      isPayment ? 'cursor-default' : 'cursor-pointer hover:bg-slate-50/70'
+                      isPayment || isReturn ? 'cursor-default' : 'cursor-pointer hover:bg-slate-50/70'
                     }`}
                   >
                     <div className="flex min-w-0 items-center gap-3">
@@ -99,18 +113,23 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
 
                       <div className="min-w-0">
                         <div className="truncate text-[1rem] font-bold tracking-tight text-slate-900">
-                          {isPayment ? 'Payment Received' : isAdjustment ? 'Rate Adjustment' : 'Bill'}
+                          {isPayment ? 'Payment Received' : isReturn ? 'Farmer Return' : isAdjustment ? 'Rate Adjustment' : 'Bill'}
                         </div>
                         <div className="mt-0.5 truncate text-[0.82rem] font-medium text-slate-500">
                           {subLabel}
+                          {tx.branchName && (
+                            <span className="ml-2 inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-sky-700 ring-1 ring-sky-200">
+                              {tx.branchName}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <div className="flex flex-col items-end">
-                        <div className={`text-[1rem] font-bold tabular-nums ${isPayment ? 'text-emerald-600' : isAdjustment ? 'text-amber-600' : 'text-orange-500'}`}>
-                          {isPayment ? '+' : '-'}{formatCurrency(tx.amount)}
+                        <div className={`text-[1rem] font-bold tabular-nums ${isPayment || isReturn ? 'text-emerald-600' : isAdjustment ? 'text-amber-600' : 'text-orange-500'}`}>
+                          {isPayment ? '+' : isReturn ? '−' : '-'}{formatCurrency(tx.amount)}
                         </div>
                         {typeof tx.runningBalance === 'number' ? (
                           <div className="mt-0 text-[0.72rem] font-semibold text-slate-400">
@@ -118,7 +137,7 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
                           </div>
                         ) : (
                           <div className="mt-0 text-[0.72rem] font-semibold text-slate-400">
-                            {isPayment ? 'Credit' : 'Debit'}
+                            {isPayment || isReturn ? 'Credit' : 'Debit'}
                           </div>
                         )}
                       </div>
@@ -141,12 +160,22 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
         </div>
       )}
 
-      <ListLoadMore
-        shown={pagedTransactions.visibleCount}
-        total={pagedTransactions.totalCount}
-        onLoadMore={pagedTransactions.loadMore}
-        label="Load more transactions"
-      />
+      {serverPagination ? (
+        <ListLoadMore
+          shown={transactions.length}
+          total={serverPagination.total}
+          onLoadMore={serverPagination.onLoadMore}
+          isLoading={serverPagination.isFetchingMore}
+          label="Load more transactions"
+        />
+      ) : (
+        <ListLoadMore
+          shown={pagedTransactions.visibleCount}
+          total={pagedTransactions.totalCount}
+          onLoadMore={pagedTransactions.loadMore}
+          label="Load more transactions"
+        />
+      )}
     </div>
   );
 };

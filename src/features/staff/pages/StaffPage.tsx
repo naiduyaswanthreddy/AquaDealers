@@ -6,11 +6,14 @@ import {
   ShieldCheck,
   Users2,
   CheckCircle2,
-  Clock3,
   PencilLine,
   KeyRound,
   Globe,
   Link as LinkIcon,
+  Trash2,
+  Clock,
+  Activity,
+  WifiOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, Badge, Input, Modal } from '@/components/ui';
@@ -24,7 +27,7 @@ import {
   STAFF_DEFAULT_PERMISSIONS,
   STAFF_FEATURES,
 } from '@/lib/staffAccess';
-import { buildStaffLink, createStaffMember, listStaffMembers, updateStaffMember } from '../services/staffService';
+import { buildStaffLink, createStaffMember, deleteStaffMember, listStaffMembers, updateStaffMember } from '../services/staffService';
 import { cn, getInitials } from '@/lib/utils';
 import { ListLoadMore } from '@/components/ui/ListLoadMore';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
@@ -116,6 +119,16 @@ const StaffPage: React.FC = () => {
     [staffMembers]
   );
 
+  const neverLoggedIn = useMemo(
+    () => staffMembers.filter((member) => !member.last_login_at).length,
+    [staffMembers]
+  );
+
+  const activeThisWeek = useMemo(() => {
+    const sevenDaysAgo = Date.now() - 7 * 86_400_000;
+    return staffMembers.filter((m) => m.last_login_at && new Date(m.last_login_at).getTime() > sevenDaysAgo).length;
+  }, [staffMembers]);
+
   const createMutation = useMutation({
     mutationFn: createStaffMember,
     onSuccess: async () => {
@@ -130,6 +143,15 @@ const StaffPage: React.FC = () => {
       await queryClient.invalidateQueries({ queryKey: ['staff-members', user?.id] });
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: (staffId: string) => deleteStaffMember(staffId, user!.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['staff-members', user?.id] });
+    },
+  });
+  const [deleteTarget, setDeleteTarget] = React.useState<StaffMember | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = React.useState('');
 
   const primaryBranchForSelection = (branchIds: string[]) => {
     if (branchIds.length > 0) {
@@ -331,7 +353,7 @@ const StaffPage: React.FC = () => {
       });
 
       const primaryBranch = primaryBranchForSelection(selectedBranches);
-      const link = primaryBranch ? buildStaffLink(window.location.origin, user.shop_name, primaryBranch.name) : '';
+      const link = primaryBranch ? buildStaffLink(window.location.origin, user.shop_name, primaryBranch.name, created.access_token) : '';
       setSharePayload({
         title: 'Staff created',
         staffName: created.name,
@@ -385,7 +407,7 @@ const StaffPage: React.FC = () => {
 
       if (formState.pin) {
         const primaryBranch = primaryBranchForSelection(selectedBranches);
-        const link = primaryBranch ? buildStaffLink(window.location.origin, user.shop_name, primaryBranch.name) : '';
+        const link = primaryBranch ? buildStaffLink(window.location.origin, user.shop_name, primaryBranch.name, updated.access_token) : '';
         setSharePayload({
           title: 'PIN updated',
           staffName: updated.name,
@@ -430,7 +452,7 @@ const StaffPage: React.FC = () => {
       });
 
       const primaryBranch = primaryBranchForSelection(resetTarget.branch_ids);
-      const link = primaryBranch ? buildStaffLink(window.location.origin, user.shop_name, primaryBranch.name) : '';
+      const link = primaryBranch ? buildStaffLink(window.location.origin, user.shop_name, primaryBranch.name, updated.access_token) : '';
       setSharePayload({
         title: 'PIN reset',
         staffName: updated.name,
@@ -447,14 +469,33 @@ const StaffPage: React.FC = () => {
     }
   };
 
+  const formatLastSeen = (lastLoginAt: string | null): { label: string; status: 'active' | 'idle' | 'dormant' | 'never' } => {
+    if (!lastLoginAt) return { label: 'Never logged in', status: 'never' };
+    const diffMs = Date.now() - new Date(lastLoginAt).getTime();
+    const diffMins = Math.floor(diffMs / 60_000);
+    const diffHours = Math.floor(diffMs / 3_600_000);
+    const diffDays = Math.floor(diffMs / 86_400_000);
+    let label: string;
+    if (diffMins < 60) label = diffMins <= 1 ? 'Just now' : `${diffMins}m ago`;
+    else if (diffHours < 24) label = `${diffHours}h ago`;
+    else if (diffDays === 1) label = 'Yesterday';
+    else if (diffDays < 7) label = `${diffDays} days ago`;
+    else if (diffDays < 30) label = `${Math.floor(diffDays / 7)}w ago`;
+    else if (diffDays < 365) label = `${Math.floor(diffDays / 30)}mo ago`;
+    else label = `${Math.floor(diffDays / 365)}y ago`;
+    const status = diffDays < 7 ? 'active' : diffDays < 30 ? 'idle' : 'dormant';
+    return { label, status };
+  };
+
   const renderStaffCard = (staff: StaffMember) => {
     const visibleCount = Object.values(staff.permissions).filter((mode) => mode === 'visible').length;
     const disabledCount = Object.values(staff.permissions).filter((mode) => mode === 'disabled').length;
     const hiddenCount = Object.values(staff.permissions).filter((mode) => mode === 'hidden').length;
+    const { label: lastSeenLabel, status: activityStatus } = formatLastSeen(staff.last_login_at);
     const primaryBranch = staff.branch_ids.length > 0
       ? branches.find((branch) => staff.branch_ids.includes(branch.id)) || branches.find((branch) => branch.is_main) || branches[0] || null
       : branches.find((branch) => branch.is_main) || branches[0] || null;
-    const shareLink = primaryBranch ? buildStaffLink(window.location.origin, user?.shop_name || '', primaryBranch.name) : '';
+    const shareLink = primaryBranch ? buildStaffLink(window.location.origin, user?.shop_name || '', primaryBranch.name, staff.access_token) : '';
 
     return (
       <div
@@ -489,7 +530,7 @@ const StaffPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[22rem]">
+          <div className="grid gap-2 sm:grid-cols-4 lg:min-w-[26rem]">
             <Button
               size="sm"
               variant="outline"
@@ -518,6 +559,15 @@ const StaffPage: React.FC = () => {
             >
               Edit
             </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              leftIcon={<Trash2 className="h-4 w-4" />}
+              onClick={() => { setDeleteTarget(staff); setDeleteConfirmText(''); }}
+              fullWidth
+            >
+              Delete
+            </Button>
           </div>
         </div>
 
@@ -536,25 +586,66 @@ const StaffPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Branches */}
         <div className="space-y-2">
           <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-text-muted">Branches</div>
           <div className="flex flex-wrap items-center gap-2">
-          {(staff.branch_ids.length > 0 ? staff.branch_ids : branches.map((branch) => branch.id))
-            .slice(0, 4)
-            .map((branchId) => {
-              const branch = branches.find((item) => item.id === branchId);
-              if (!branch) return null;
-              return (
-                <Badge key={branch.id} variant="info" className="normal-case tracking-[0.02em]">
-                  {branch.name}
-                </Badge>
-              );
-            })}
-          {staff.branch_ids.length > 4 ? (
-            <Badge variant="neutral" className="normal-case tracking-[0.02em]">
-              +{staff.branch_ids.length - 4} more
-            </Badge>
-          ) : null}
+            {(staff.branch_ids.length > 0 ? staff.branch_ids : branches.map((branch) => branch.id))
+              .slice(0, 4)
+              .map((branchId) => {
+                const branch = branches.find((item) => item.id === branchId);
+                if (!branch) return null;
+                return (
+                  <Badge key={branch.id} variant="info" className="normal-case tracking-[0.02em]">
+                    {branch.name}
+                  </Badge>
+                );
+              })}
+            {staff.branch_ids.length > 4 && (
+              <Badge variant="neutral" className="normal-case tracking-[0.02em]">
+                +{staff.branch_ids.length - 4} more
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Activity row */}
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-surface/35 px-4 py-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {activityStatus === 'active' && <Activity className="h-4 w-4 shrink-0 text-emerald-500" />}
+            {activityStatus === 'idle' && <Clock className="h-4 w-4 shrink-0 text-amber-500" />}
+            {(activityStatus === 'dormant' || activityStatus === 'never') && <WifiOff className="h-4 w-4 shrink-0 text-slate-400" />}
+            <div className="min-w-0">
+              <div className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-text-muted">Last Active</div>
+              <div className={`text-sm font-bold truncate ${
+                activityStatus === 'active' ? 'text-emerald-600'
+                : activityStatus === 'idle' ? 'text-amber-600'
+                : 'text-text-secondary'
+              }`}>
+                {lastSeenLabel}
+              </div>
+            </div>
+          </div>
+          <div className="shrink-0">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.68rem] font-bold ${
+              activityStatus === 'active'
+                ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                : activityStatus === 'idle'
+                ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                : activityStatus === 'never'
+                ? 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'
+                : 'bg-rose-50 text-rose-600 ring-1 ring-rose-200'
+            }`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${
+                activityStatus === 'active' ? 'bg-emerald-500 animate-pulse'
+                : activityStatus === 'idle' ? 'bg-amber-400'
+                : 'bg-slate-300'
+              }`} />
+              {activityStatus === 'active' ? 'Online recently'
+                : activityStatus === 'idle' ? 'Occasional'
+                : activityStatus === 'never' ? 'Never used'
+                : 'Dormant'}
+            </span>
           </div>
         </div>
       </div>
@@ -574,8 +665,8 @@ const StaffPage: React.FC = () => {
         }
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="surface-card p-5">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]">
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-text-muted">Total staff</div>
@@ -587,47 +678,56 @@ const StaffPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="surface-card p-5">
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]">
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-text-muted">Active staff</div>
               <div className="mt-2 text-3xl font-black tracking-[-0.05em] text-text-primary">{activeStaffCount}</div>
             </div>
-            <div className="rounded-2xl bg-success-light p-3 text-success">
+            <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
               <CheckCircle2 className="h-5 w-5" />
             </div>
           </div>
         </div>
 
-        <div className="surface-card p-5">
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]">
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-text-muted">Branch limited</div>
               <div className="mt-2 text-3xl font-black tracking-[-0.05em] text-text-primary">{staffWithBranchRestrictions}</div>
             </div>
-            <div className="rounded-2xl bg-info-light p-3 text-primary">
+            <div className="rounded-2xl bg-blue-50 p-3 text-blue-600">
               <Globe className="h-5 w-5" />
             </div>
           </div>
         </div>
 
-        <div className="surface-card p-5">
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-text-muted">Default quick actions</div>
-              <div className="mt-2 text-base font-black tracking-[-0.04em] text-text-primary">
-                Bill + Farmer
-              </div>
+              <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-text-muted">Active this week</div>
+              <div className="mt-2 text-3xl font-black tracking-[-0.05em] text-emerald-600">{activeThisWeek}</div>
             </div>
-            <div className="rounded-2xl bg-surface p-3 text-text-primary">
-              <ShieldCheck className="h-5 w-5" />
+            <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
+              <Activity className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_1px_2px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-text-muted">Never logged in</div>
+              <div className={`mt-2 text-3xl font-black tracking-[-0.05em] ${neverLoggedIn > 0 ? 'text-rose-500' : 'text-text-primary'}`}>{neverLoggedIn}</div>
+            </div>
+            <div className={`rounded-2xl p-3 ${neverLoggedIn > 0 ? 'bg-rose-50 text-rose-500' : 'bg-slate-50 text-slate-400'}`}>
+              <WifiOff className="h-5 w-5" />
             </div>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <SectionCard
+      <SectionCard
           title="Staff list"
           description="Each staff record gets one PIN and an optional branch scope. The same portal link can be shared with staff after creation."
           headerAction={
@@ -669,47 +769,6 @@ const StaffPage: React.FC = () => {
             </div>
           )}
         </SectionCard>
-
-        <SectionCard
-          title="Access model"
-          description="This panel defines which features a staff member can use after unlocking the portal."
-          className="space-y-4"
-        >
-          <div className="rounded-[1.35rem] bg-gradient-to-br from-primary to-primary-light p-5 text-white shadow-[0_14px_30px_rgba(20,103,159,0.14)]">
-            <div className="text-[0.72rem] font-bold uppercase tracking-[0.14em] text-white/75">Default preset</div>
-            <div className="mt-2 text-2xl font-black tracking-[-0.04em]">Add Bill + Add Farmer</div>
-            <p className="mt-2 text-sm leading-6 text-white/82">
-              Every other feature starts hidden and can be turned on, disabled, or kept hidden per staff member.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-white p-4">
-            <div className="text-sm font-bold text-text-primary">Branch assignments</div>
-            <p className="mt-1 text-sm leading-6 text-text-secondary">
-              Leave the branch list empty to let the staff member use all current and future branches.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {branches.map((branch) => (
-                <Badge key={branch.id} variant={branch.is_main ? 'info' : 'neutral'} className="normal-case tracking-[0.02em]">
-                  {branch.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-surface/35 p-4 text-sm leading-6 text-text-secondary">
-            <div className="flex items-start gap-3">
-              <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <div>
-                <div className="font-bold text-text-primary">PIN rules</div>
-                <p className="mt-1">
-                  PINs are 4 digits, unique per dealer, and can be reset at any time from the staff card.
-                </p>
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-      </div>
 
       <Modal
         isOpen={isCreateOpen || !!editingStaff}
@@ -964,6 +1023,60 @@ const StaffPage: React.FC = () => {
             </div>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => { if (!deleteMutation.isPending) { setDeleteTarget(null); setDeleteConfirmText(''); } }}
+        title="Delete staff member"
+        footerButtons={[
+          {
+            label: 'Cancel',
+            variant: 'outline',
+            onClick: () => { setDeleteTarget(null); setDeleteConfirmText(''); },
+            disabled: deleteMutation.isPending,
+            type: 'button',
+          },
+          {
+            label: deleteMutation.isPending ? 'Deleting…' : 'Delete permanently',
+            variant: 'danger',
+            onClick: async () => {
+              if (!deleteTarget || deleteConfirmText.trim().toLowerCase() !== deleteTarget.name.trim().toLowerCase()) return;
+              try {
+                await deleteMutation.mutateAsync(deleteTarget.id);
+                toast.success(`Removed ${deleteTarget.name}.`);
+                setDeleteTarget(null);
+                setDeleteConfirmText('');
+              } catch (e: any) {
+                toast.error(e?.message || 'Failed to delete staff.');
+              }
+            },
+            disabled: deleteMutation.isPending || !deleteTarget || deleteConfirmText.trim().toLowerCase() !== (deleteTarget?.name || '').trim().toLowerCase(),
+            loading: deleteMutation.isPending,
+            type: 'button',
+          },
+        ]}
+      >
+        {deleteTarget && (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-rose-900">
+              <div className="font-black">Delete <span className="underline">{deleteTarget.name}</span>?</div>
+              <ul className="mt-2 ml-4 list-disc text-[13px] leading-6 text-rose-800">
+                <li>The staff member will lose access immediately — any live sessions are revoked.</li>
+                <li>Their invite link becomes invalid.</li>
+                <li>Historical bills / payments they created are kept unchanged.</li>
+                <li>This cannot be undone — you'd have to re-create the staff to restore access.</li>
+              </ul>
+            </div>
+            <Input
+              label={`Type "${deleteTarget.name}" to confirm`}
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={deleteTarget.name}
+              autoFocus
+            />
+          </div>
+        )}
       </Modal>
     </PageShell>
   );

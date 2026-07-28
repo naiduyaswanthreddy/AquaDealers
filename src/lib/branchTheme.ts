@@ -42,11 +42,15 @@ export const getBranchColorOption = (color?: string | null): BranchColorOption =
  */
 export function applyBranchTheme(color?: string | null): void {
   const root = document.documentElement;
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
 
   if (!color || color === DEFAULT_BRANCH_COLOR.value) {
     root.style.removeProperty('--color-primary');
     root.style.removeProperty('--color-primary-light');
     root.style.removeProperty('--color-primary-dark');
+    if (themeMeta) {
+      themeMeta.setAttribute('content', DEFAULT_BRANCH_COLOR.primary);
+    }
     return;
   }
 
@@ -54,4 +58,8 @@ export function applyBranchTheme(color?: string | null): void {
   root.style.setProperty('--color-primary', option.primary);
   root.style.setProperty('--color-primary-light', option.light);
   root.style.setProperty('--color-primary-dark', option.dark);
+  
+  if (themeMeta) {
+    themeMeta.setAttribute('content', option.primary);
+  }
 }

@@ -1,9 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLowStockAlerts } from '../hooks/useDashboardData';
 import { Card, CardContent, Skeleton } from '@/components/ui';
 import { Package, AlertTriangle } from 'lucide-react';
 
-export const LowStockAlert: React.FC = () => {
+const LowStockAlertComponent: React.FC = () => {
+  const navigate = useNavigate();
   const { data: items, isLoading } = useLowStockAlerts();
 
   if (isLoading) {
@@ -28,7 +30,11 @@ export const LowStockAlert: React.FC = () => {
       </h3>
       <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
         {items.slice(0, 6).map((item: any) => (
-          <Card key={item.id} className="flex-shrink-0 w-[140px] border border-warning/30 bg-warning/5 shadow-none rounded-xl">
+          <Card 
+            key={item.id} 
+            onClick={() => navigate(`/inventory/${item.id}`)}
+            className="flex-shrink-0 w-[140px] border border-warning/30 bg-warning/5 shadow-none rounded-xl cursor-pointer hover:shadow-md transition-shadow hover:bg-warning/10"
+          >
             <CardContent className="p-3">
               <div className="flex items-center gap-1 mb-1.5">
                 <AlertTriangle className="w-3 h-3 text-warning" />
@@ -50,5 +56,6 @@ export const LowStockAlert: React.FC = () => {
     </div>
   );
 };
-
+export const LowStockAlert = React.memo(LowStockAlertComponent);
+LowStockAlert.displayName = 'LowStockAlert';
 export default LowStockAlert;

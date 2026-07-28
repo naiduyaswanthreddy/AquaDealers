@@ -6,6 +6,7 @@ import { Check, Settings, Layout, Lock } from 'lucide-react';
 import { useBranchStore } from '@/stores/branchStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { supabase } from '@/lib/supabase';
 import { InvoiceTemplates, StatementTemplates } from '@/features/billing/components/templates';
 import { MobileZoomableContainer } from '@/features/billing/components/MobileZoomableContainer';
 
@@ -47,7 +48,9 @@ export const BillingTemplatesPage: React.FC = () => {
   const branchId = getActiveBranchId() || 'default';
   const savedSettings = getTemplateSettings(branchId);
   
-  const hasProPlus = dealer?.plan === 'pro_plus' || useSubscriptionStore.getState().hasFeature('custom_templates');
+  // Use hook selector (not .getState()) so this re-renders when plan loads async
+  const hasFeature = useSubscriptionStore(s => s.hasFeature);
+  const hasProPlus = dealer?.plan === 'pro_plus' || hasFeature('custom_templates');
 
   const [activeTab, setActiveTab] = useState<'invoice' | 'statement'>('invoice');
   const [localSettings, setLocalSettings] = useState(savedSettings);
@@ -59,13 +62,24 @@ export const BillingTemplatesPage: React.FC = () => {
 
   const handleSave = () => {
     updateTemplateSettings(branchId, localSettings);
-    // show toast success
   };
 
   const updateSetting = (key: keyof typeof localSettings, value: any) => {
     const updated = { ...localSettings, [key]: value };
     setLocalSettings(updated);
-    updateTemplateSettings(branchId, updated); // Auto-save on change for better UX
+    updateTemplateSettings(branchId, updated); // localStorage
+    if (branchId && branchId !== 'default') {
+      supabase.from('branches').update({
+        invoice_template: updated.invoiceTemplate,
+        statement_template: updated.statementTemplate,
+        template_settings: {
+          showLogo: updated.showLogo,
+          showShopAddress: updated.showShopAddress,
+          showTax: updated.showTax,
+          showSignatureLine: updated.showSignatureLine,
+        },
+      }).eq('id', branchId);
+    }
   };
 
   if (!hasProPlus) {
@@ -234,7 +248,7 @@ export const BillingTemplatesPage: React.FC = () => {
           <div className="bg-slate-200 px-4 py-2 text-xs font-medium text-slate-600 text-center uppercase tracking-wider">
             Live Preview (A4 Size)
           </div>
-          <div className="h-[calc(100vh-200px)] overflow-auto p-4 lg:p-8">
+          <div className="p-4 lg:p-8 overflow-x-auto">
             <div className="flex sm:justify-center min-w-max">
               <div className="bg-white shadow-2xl shrink-0" style={{ width: '794px', minHeight: '1123px' }}>
                 <TemplateComponent 

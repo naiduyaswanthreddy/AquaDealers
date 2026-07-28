@@ -1,7 +1,7 @@
 {
   "name": "aquadealers",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:ui": "vitest --ui",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "bump:patch": "npm version patch --no-git-tag-version",
+    "bump:minor": "npm version minor --no-git-tag-version",
+    "bump:major": "npm version major --no-git-tag-version"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -22,7 +25,6 @@
     "@tanstack/react-virtual": "^3.13.25",
     "browser-image-compression": "^2.0.2",
     "date-fns": "^4.1.0",
-    "dotenv": "^17.4.2",
     "framer-motion": "^12.40.0",
     "html2canvas": "^1.4.1",
     "i18next": "^24.2.2",
@@ -55,6 +57,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.15",
+    "supabase": "^2.109.1",
     "tailwindcss": "^4.3.0",
     "typescript": "~5.6.2",
     "vite": "^5.4.14",
@@ -65,6 +68,10 @@
     "workbox-routing": "^7.4.1",
     "workbox-strategies": "^7.4.1",
     "workbox-window": "^7.4.1",
-    "ws": "^8.21.0"
+    "ws": "^8.21.0",
+    "dotenv": "^17.4.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

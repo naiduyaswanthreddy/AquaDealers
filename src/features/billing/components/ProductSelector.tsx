@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { ChevronRight, Package2, Pill, Plus, Minus, User, Wheat, Pencil, Trash2, Info, SlidersHorizontal, Search, MoreVertical } from 'lucide-react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { ChevronRight, Package2, Pill, Plus, Minus, User, Wheat, Pencil, Trash2, Info, SlidersHorizontal, Search, MoreVertical, Receipt } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Modal, Button, SearchBar, Input, DatePicker } from '@/components/ui';
@@ -7,12 +7,15 @@ import { useInventory, useProducts } from '@/features/inventory/hooks/useInvento
 import { InventoryItem } from '@/features/inventory/types';
 import { InventoryLot } from '@/types/database';
 import { Product } from '@/types/database';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatQuantity } from '@/lib/utils';
 import { useCartStore } from '../stores/cartStore';
 import { FarmerSelector } from './FarmerSelector';
+import { QuickAddFarmerModal } from './QuickAddFarmerModal';
+import { QuickAddWalkInModal } from './QuickAddWalkInModal';
 import { useFarmers, useFarmerProductDiscounts } from '@/features/farmers/hooks/useFarmers';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { Banknote, QrCode, CreditCard } from 'lucide-react';
 
 const getLotsWithStock = (item: InventoryItem) => {
   return (item.inventory_lots || []).filter((lot: any) => lot.remaining_quantity > 0)
@@ -38,6 +41,16 @@ const getBadgeForLot = (lot: any, allLots: any[]) => {
 
 interface ProductSelectorProps {
   onNext: () => void;
+  onSuccess?: (data: {
+    billId: string;
+    billNumber: string;
+    total: number;
+    amountPaid: number;
+    balanceDue: number;
+    farmerName: string | null;
+    billDate: string;
+    isOffline?: boolean;
+  }) => void;
 }
 
 type ProductTypeFilter = 'feed' | 'medicine';
@@ -62,7 +75,143 @@ const ProductIcon: React.FC<{ type?: string | null; className?: string }> = ({ t
   );
 };
 
-export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
+const RateInput = ({
+  item,
+  unitPrice,
+  onDiscount,
+  onPrice,
+}: {
+  item: any;
+  unitPrice: number;
+  onDiscount: (invId: string, lotId: string | null | undefined, disc: number) => void;
+  onPrice: (invId: string, lotId: string | null | undefined, price: number) => void;
+}) => {
+  const [val, setVal] = React.useState(unitPrice.toFixed(2));
+  const isFocused = React.useRef(false);
+
+  // Only sync from store when input is NOT focused (avoid clobbering user's typing)
+  React.useEffect(() => {
+    if (!isFocused.current) {
+      setVal(unitPrice.toFixed(2));
+    }
+  }, [unitPrice]);
+
+  const commit = (raw: string) => {
+    const newRate = parseFloat(raw);
+    if (isNaN(newRate) || newRate < 0) {
+      setVal(unitPrice.toFixed(2)); // revert to current
+      return;
+    }
+    const mrp = item.mrp || item.base_unit_price;
+    if (mrp > 0) {
+      const newDiscount = Math.min(100, Math.max(0, Number(((1 - newRate / mrp) * 100).toFixed(2))));
+      onDiscount(item.inventory_id, item.lot_id, newDiscount);
+    } else {
+      onPrice(item.inventory_id, item.lot_id, newRate);
+    }
+  };
+
+  return (
+    <input
+      type="number"
+      value={val}
+      onFocus={() => { isFocused.current = true; }}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={() => {
+        isFocused.current = false;
+        commit(val);
+      }}
+      onKeyDown={(e) => { if (e.key === 'Enter') commit(val); }}
+      className="w-full px-1.5 py-1 text-right border border-slate-200 rounded text-sm font-bold focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-slate-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+      placeholder="0"
+      step="0.01"
+    />
+  );
+};
+
+const QuantityInput = ({ 
+  item, 
+  onChange 
+}: { 
+  item: any; 
+  onChange: (invId: string, lotId: string | null | undefined, qty: number) => void;
+}) => {
+  const [val, setVal] = React.useState(item.quantity.toString());
+
+  React.useEffect(() => {
+    setVal(item.quantity.toString());
+  }, [item.quantity]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    const num = parseInt(rawVal, 10);
+    
+    if (!isNaN(num) && num > item.max_quantity) {
+      toast.error(`Only ${formatQuantity(item.max_quantity, item.unit)} available in stock`);
+      setVal(item.max_quantity.toString());
+      onChange(item.inventory_id, item.lot_id, item.max_quantity);
+      return;
+    }
+
+    setVal(rawVal);
+    if (!isNaN(num) && num > 0) {
+      onChange(item.inventory_id, item.lot_id, num);
+    }
+  };
+
+  const handleBlur = () => {
+    const num = parseInt(val, 10);
+    if (isNaN(num) || num <= 0) {
+      setVal('1');
+      onChange(item.inventory_id, item.lot_id, 1);
+    }
+  };
+
+  return (
+    <input 
+      type="number"
+      value={val}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      className="w-full px-1.5 py-1 text-center border border-slate-200 rounded text-sm font-bold focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-slate-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+      placeholder="1"
+    />
+  );
+};
+
+const AmountInput = ({
+  item,
+  onDiscount,
+  onPrice,
+}: {
+  item: any;
+  onDiscount: (invId: string, lotId: string | null | undefined, disc: number) => void;
+  onPrice: (invId: string, lotId: string | null | undefined, price: number) => void;
+}) => {
+  const amount = getLineTotal(item);
+  const [value, setValue] = React.useState(amount.toFixed(2));
+
+  React.useEffect(() => setValue(amount.toFixed(2)), [amount]);
+
+  const commit = () => {
+    const nextAmount = Number(value);
+    if (!Number.isFinite(nextAmount) || nextAmount < 0 || item.quantity <= 0) {
+      setValue(amount.toFixed(2));
+      return;
+    }
+    const nextRate = nextAmount / item.quantity;
+    const mrp = Number(item.mrp || item.base_unit_price || 0);
+    if (mrp > 0) {
+      onDiscount(item.inventory_id, item.lot_id, Math.min(100, Math.max(0, Number(((1 - nextRate / mrp) * 100).toFixed(2)))));
+    } else {
+      onPrice(item.inventory_id, item.lot_id, nextRate);
+    }
+  };
+
+  return <input type="number" min="0" step="0.01" value={value} onChange={(event) => setValue(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === 'Enter') commit(); }} className="w-full rounded border border-slate-200 bg-white px-1.5 py-1 text-right text-[0.8rem] font-black text-slate-950 focus:border-primary focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" aria-label={`Amount for ${item.product_name}`} />;
+};
+
+export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSuccess }) => {
   const { t } = useTranslation();
   const { data: inventory = [] } = useInventory();
   const { data: products = [] } = useProducts();
@@ -87,15 +236,77 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
     clearItems,
     updateItemPrice,
     updateItemDiscount,
+    paymentType,
+    amountPaid,
+    upiRef,
+    chequeNumber,
+    notes,
+    setFarmer,
+    setPaymentType,
+    setAmountPaid,
+    setUpiRef,
+    setChequeNumber,
+    setNotes,
+    settlementDiscountAmount,
+    setSettlementDiscount,
   } = useCartStore();
   const [search, setSearch] = useState('');
   const [showFarmerModal, setShowFarmerModal] = useState(false);
+  const [showQuickAddFarmer, setShowQuickAddFarmer] = useState(false);
+  const [showWalkInDetails, setShowWalkInDetails] = useState(false);
+  const [desktopFarmerSearch, setDesktopFarmerSearch] = useState('');
+  const [isDesktopFarmerFocused, setIsDesktopFarmerFocused] = useState(false);
+  const desktopFarmerInputRef = useRef<HTMLInputElement>(null);
+  const itemsScrollRef = useRef<HTMLDivElement>(null);
+  const [hasMoreBelow, setHasMoreBelow] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  const checkItemsScroll = () => {
+    const el = itemsScrollRef.current;
+    if (!el) return;
+    setHasMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 16);
+  };
   const [sheetType, setSheetType] = useState<ProductTypeFilter | null>(null);
   const [desktopTab, setDesktopTab] = useState<ProductTypeFilter>('feed');
 
   const { data: farmerDiscounts = [] } = useFarmerProductDiscounts(farmerId || '');
   const selectedFarmer = useMemo(() => farmers?.find(f => f.id === farmerId), [farmers, farmerId]);
+  const desktopFarmerMatches = useMemo(() => {
+    const query = desktopFarmerSearch.trim().toLowerCase();
+    if (!query) return [];
+    return (farmers || []).filter((farmer) =>
+      farmer.name.toLowerCase().includes(query) || farmer.phone?.includes(desktopFarmerSearch) || farmer.village?.toLowerCase().includes(query)
+    ).slice(0, 6);
+  }, [desktopFarmerSearch, farmers]);
+
+  useEffect(() => {
+    if (!isDesktopFarmerFocused) setDesktopFarmerSearch(farmerName || '');
+  }, [farmerName, isDesktopFarmerFocused]);
+
+  useEffect(() => {
+    const focusFarmerSearch = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTypingInField = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+      if (window.innerWidth < 1024 || isTypingInField || event.ctrlKey || event.metaKey || event.altKey || event.key.length !== 1) return;
+      desktopFarmerInputRef.current?.focus();
+      setIsDesktopFarmerFocused(true);
+      setDesktopFarmerSearch((current) => current === farmerName ? event.key : current + event.key);
+      event.preventDefault();
+    };
+    window.addEventListener('keydown', focusFarmerSearch);
+    return () => window.removeEventListener('keydown', focusFarmerSearch);
+  }, [farmerName]);
   
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+  const [visibleCount, setVisibleCount] = useState(24);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setVisibleCount(24);
+  }, [search, desktopTab, sheetType]);
+
+
+
   const [isEditingList, setIsEditingList] = useState(false);
   const [editingCartItem, setEditingCartItem] = useState<{ inventory_id: string; lot_id?: string | null } | null>(null);
   const [editLotId, setEditLotId] = useState<string | null>(null);
@@ -106,47 +317,64 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
   const handleEditItem = (item: any) => {
     setEditingCartItem({ inventory_id: item.inventory_id, lot_id: item.lot_id });
     setEditLotId(item.lot_id || null);
+    // Show: MRP (reference), the actual Selling Price the farmer pays, and the
+    // discount derived from MRP → selling. Selling = base × (1 − disc). For feed
+    // base already IS the selling price (disc 0); for medicine base is MRP.
     const mrp = item.mrp || item.base_unit_price;
-    const discount = item.discount_percentage || 0;
-    const sellingPrice = Number((mrp * (1 - discount / 100)).toFixed(2));
-    
+    const effectiveDisc = item.discount_percentage || 0;
+    const sellingPrice = Number((item.base_unit_price * (1 - effectiveDisc / 100)).toFixed(2));
+    const displayDiscount = mrp > 0 && sellingPrice < mrp
+      ? Number((((mrp - sellingPrice) / mrp) * 100).toFixed(2))
+      : 0;
+
     setEditPrice(mrp.toString());
-    setEditDiscount(discount.toString());
+    setEditDiscount(displayDiscount.toString());
     setEditSellingPrice(sellingPrice.toString());
   };
 
   const handleSaveEdit = () => {
-    if (editingCartItem) {
-      const parsedPrice = Number(editPrice) || 0;
-      const parsedDiscount = Number(editDiscount) || 0;
-      
-      // If lot was changed, update it first
-      if (editLotId !== editingCartItem.lot_id) {
-         const invItem = inventory.find(i => i.id === editingCartItem.inventory_id);
-         const targetLot = invItem?.inventory_lots?.find((l: any) => l.id === editLotId);
-         if (invItem && targetLot) {
-           useCartStore.getState().switchItemLot(editingCartItem.inventory_id, editingCartItem.lot_id, {
-             lot_id: targetLot.id,
-             batch_number: targetLot.batch_number,
-             expiry_date: targetLot.expiry_date,
-             mrp: targetLot.mrp || 0,
-             base_unit_price: targetLot.mrp || invItem.mrp || invItem.product.default_price || invItem.selling_price || 0,
-             unit_price: targetLot.selling_price || invItem.selling_price || invItem.product.default_price || 0,
-             max_quantity: targetLot.remaining_quantity
-           });
-           
-           // Apply the edited prices to the newly switched lot
-           updateItemPrice(editingCartItem.inventory_id, targetLot.id, parsedPrice);
-           updateItemDiscount(editingCartItem.inventory_id, targetLot.id, parsedDiscount);
-         }
+    if (!editingCartItem) return;
+    const sellingPrice = Number(editSellingPrice) || 0;
+    const mrpVal = Number(editPrice) || 0;
+    const discVal = Number(editDiscount) || 0;
+
+    const cartItem = items.find(
+      (i) => i.inventory_id === editingCartItem.inventory_id && (i.lot_id ?? null) === (editLotId ?? null)
+    );
+    const isMedicine = cartItem ? normalizeType(cartItem.product_type) === 'medicine' : false;
+
+    const applyPricing = (invId: string, lotId: string | null | undefined) => {
+      if (isMedicine) {
+        // Medicine keeps the MRP + discount model (RATE = MRP, DISC = %).
+        updateItemPrice(invId, lotId, mrpVal);       // clears discount to 0…
+        updateItemDiscount(invId, lotId, discVal);   // …then sets the real discount
       } else {
-         // Lot didn't change, just update price/discount directly
-         updateItemPrice(editingCartItem.inventory_id, editingCartItem.lot_id, parsedPrice);
-         updateItemDiscount(editingCartItem.inventory_id, editingCartItem.lot_id, parsedDiscount);
+        // Feed / non-medicine: RATE = the selling price the farmer pays, no
+        // per-line discount (updateItemPrice clears it to 0).
+        updateItemPrice(invId, lotId, sellingPrice);
       }
-      
-      setEditingCartItem(null);
+    };
+
+    if (editLotId !== editingCartItem.lot_id) {
+      const invItem = inventory.find((i) => i.id === editingCartItem.inventory_id);
+      const targetLot = invItem?.inventory_lots?.find((l: any) => l.id === editLotId);
+      if (invItem && targetLot) {
+        useCartStore.getState().switchItemLot(editingCartItem.inventory_id, editingCartItem.lot_id, {
+          lot_id: targetLot.id,
+          batch_number: targetLot.batch_number,
+          expiry_date: targetLot.expiry_date,
+          mrp: targetLot.mrp || 0,
+          base_unit_price: targetLot.mrp || invItem.mrp || invItem.product.default_price || invItem.selling_price || 0,
+          unit_price: targetLot.selling_price || invItem.selling_price || invItem.product.default_price || 0,
+          max_quantity: targetLot.remaining_quantity,
+        });
+        applyPricing(editingCartItem.inventory_id, targetLot.id);
+      }
+    } else {
+      applyPricing(editingCartItem.inventory_id, editingCartItem.lot_id);
     }
+
+    setEditingCartItem(null);
   };
 
   const handleMrpChange = (val: string) => {
@@ -165,15 +393,31 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
 
   const handleSellingPriceChange = (val: string) => {
     setEditSellingPrice(val);
-    const sp = Number(val) || 0;
     const mrp = Number(editPrice) || 0;
+    const sp = Number(val) || 0;
     if (mrp > 0) {
-      const newDisc = ((mrp - sp) / mrp) * 100;
-      setEditDiscount(newDisc.toFixed(2));
+      setEditDiscount((((mrp - sp) / mrp) * 100).toFixed(2));
     }
   };
 
-
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === 'F12') {
+        e.preventDefault();
+        if (items.length > 0) {
+          onNext();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [items.length, onNext]);
 
   const totals = useMemo(() => {
     const subtotal = items.reduce((sum, item) => sum + getLineTotal(item), 0);
@@ -184,11 +428,20 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
     return { subtotal, count, finalTotal, tax, discount };
   }, [items, discountAmount, gstEnabled]);
 
+  const effectiveTotal = Math.max(0, totals.finalTotal - (settlementDiscountAmount || 0));
+  const balanceDue = Math.max(0, effectiveTotal - amountPaid);
+  const totalDue = (selectedFarmer?.total_due || 0) + balanceDue;
+
   const typeCounts = useMemo(() => {
     const feed = inventory.filter((item) => normalizeType(item.product.type) === 'feed').length;
     const medicine = inventory.filter((item) => normalizeType(item.product.type) === 'medicine').length;
     return { feed, medicine };
   }, [inventory]);
+
+  useEffect(() => {
+    checkItemsScroll();
+    if (items.length === 0) setConfirmClear(false);
+  }, [items]);
 
   const filterInventory = (type: ProductTypeFilter) =>
     inventory.filter((item) => {
@@ -214,6 +467,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
   const desktopInventory = useMemo(() => filterInventory(desktopTab), [inventory, search, desktopTab]);
   const desktopCatalog = useMemo(() => filterCatalog(desktopTab), [products, search, desktopTab]);
 
+  const [justAdded, setJustAdded] = useState<string | null>(null);
+
   const handleAdd = (item: InventoryItem) => {
     if (item.quantity_in_stock <= 0) {
       toast.error(t('billing.outOfStock', 'This product is out of stock.'));
@@ -227,6 +482,9 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
       toast.error(t('billing.maxStockReached', 'You have reached the available stock.'));
       return;
     }
+
+    setJustAdded(item.id);
+    setTimeout(() => setJustAdded(null), 300);
 
     const lots = getLotsWithStock(item);
     let targetLot = lots.length > 0 ? lots[lots.length - 1] : null;
@@ -244,9 +502,17 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
       }
     }
 
-    const maxQty = targetLot ? targetLot.remaining_quantity : item.quantity_in_stock;
+    const maxQty = item.quantity_in_stock;
 
-    let finalDiscount = normalizeType(item.product.type) === 'medicine' ? Number(item.medicine_discount_percentage || 0) : 0;
+    const isMedicine = normalizeType(item.product.type) === 'medicine';
+    const mrpPrice = targetLot?.mrp || item.mrp || item.product.default_price || item.selling_price || 0;
+    const sellingPrice = targetLot?.selling_price || item.selling_price || item.product.default_price || 0;
+    // Pricing model:
+    //  - feed / non-medicine: RATE = the selling price the farmer actually pays.
+    //    base_unit_price = selling price, no per-line discount (DISC shows "-").
+    //  - medicine: RATE = MRP, and a discount % (product/farmer) brings it down.
+    //    This keeps the dynamic farmer-discount flow working.
+    let finalDiscount = isMedicine ? Number(item.medicine_discount_percentage || 0) : 0;
     let defaultDiscountPercentage = finalDiscount;
     let farmerDiscountPercentage = null;
     let discountSource = finalDiscount > 0 ? 'product_default' : 'none';
@@ -269,15 +535,15 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
 
     addItem({
       inventory_id: item.id,
-      lot_id: targetLot?.id,
-      batch_number: targetLot?.batch_number,
+      lot_id: null,
+      batch_number: null,
       product_id: item.product_id,
       product_name: item.product.name,
       hsn_code: item.product.hsn_code,
       product_type: item.product.type,
       quantity: 1,
-      base_unit_price: targetLot?.mrp || item.mrp || item.product.default_price || item.selling_price || 0,
-      unit_price: targetLot?.selling_price || item.selling_price || item.product.default_price || 0,
+      base_unit_price: isMedicine ? mrpPrice : (sellingPrice || mrpPrice),
+      unit_price: sellingPrice || mrpPrice,
       gst_rate: item.product.gst_rate,
       discount_percentage: finalDiscount,
       default_discount_percentage: defaultDiscountPercentage,
@@ -289,6 +555,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
       max_quantity: maxQty,
       unit: item.product.unit,
     });
+    setSearch('');
   };
 
   const ProductCard = ({ item }: { item: InventoryItem }) => {
@@ -350,7 +617,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
     </div>
   );
 
-  const MedicineGridCard = ({ item }: { item: InventoryItem }) => {
+  const GridCard = ({ item }: { item: InventoryItem }) => {
     const lots = getLotsWithStock(item);
     const newestLot = lots.length > 0 ? lots[0] : null;
     const badge = newestLot ? getBadgeForLot(newestLot, lots) : null;
@@ -362,7 +629,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
     // Sum all quantities of this product in cart
     const cartQty = items.filter((cartItem) => cartItem.inventory_id === item.id).reduce((sum, c) => sum + c.quantity, 0);
     
-    const discount = item.medicine_discount_percentage || 0;
+    const discount = normalizeType(item.product.type) === 'medicine' ? (item.medicine_discount_percentage || 0) : 0;
+    const fallbackImage = normalizeType(item.product.type) === 'medicine' ? '/medicine_.svg' : '/feed_.svg';
 
     return (
       <div 
@@ -371,12 +639,24 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
           if (!outOfStock && cartQty === 0) handleAdd(item);
         }}
       >
-        <div className="h-32 bg-slate-50 relative flex items-center justify-center p-4">
-          <img 
-            src={item.image_url || '/medicine_.svg'} 
-            alt={item.product.name} 
-            className="h-full object-contain filter drop-shadow-sm transition-transform duration-300 hover:scale-105" 
-          />
+        <div className="h-28 lg:h-24 bg-slate-50 relative flex items-center justify-center p-3 lg:p-3">
+          {item.image_url ? (
+            <img 
+              src={item.image_url} 
+              alt={item.product.name} 
+              className="h-full object-contain filter drop-shadow-sm transition-transform duration-300 hover:scale-105" 
+            />
+          ) : normalizeType(item.product.type) === 'medicine' ? (
+            <img 
+              src="/medicine_.svg" 
+              alt={item.product.name} 
+              className="h-full object-contain filter drop-shadow-sm transition-transform duration-300 hover:scale-105" 
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center text-amber-600/30">
+              <Wheat className="w-16 h-16" strokeWidth={1.5} />
+            </div>
+          )}
           
           {badge && (
             <div className="absolute top-3 left-3 flex flex-col gap-1 items-start">
@@ -393,11 +673,11 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
           </div>
         </div>
         
-        <div className="p-3 flex flex-col flex-1">
-          <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="p-2.5 lg:p-2.5 flex flex-col">
+          <div className="flex items-start justify-between gap-2 mb-1.5 lg:mb-1.5">
             <div className="min-w-0">
               <div className="font-extrabold text-slate-800 text-[13px] leading-tight line-clamp-2">{item.product.name}</div>
-              <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1 truncate">
+              <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1 lg:mt-0.5 truncate">
                 {item.product.company || 'Generic'}
               </div>
             </div>
@@ -409,21 +689,21 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
             </div>
           </div>
           
-          <div className="pt-2 border-t border-slate-100/80 flex items-end justify-between mb-3">
+          <div className="pt-1.5 lg:pt-1.5 border-t border-slate-100/80 flex items-end justify-between mb-2 lg:mb-2">
             <div className="flex flex-col">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Price</span>
               <span className="font-extrabold text-slate-800 text-base leading-none">{formatCurrency(price || 0)}</span>
               {discount > 0 ? (
-                <span className="text-[9px] font-bold text-emerald-500 mt-1">{discount}% off</span>
+                <span className="text-[9px] font-bold text-emerald-500 mt-1 lg:mt-0.5">{discount}% off</span>
               ) : (
                 <span className="h-[13.5px] mt-1 block" />
               )}
             </div>
           </div>
 
-          <div className="mt-auto">
+          <div className="mt-0">
             {cartQty > 0 ? (
-              <div className="flex items-center bg-blue-50 border border-blue-100 rounded-xl overflow-hidden h-9 w-full" onClick={(e) => e.stopPropagation()}>
+              <div key={cartQty} className="flex items-center bg-blue-50 border border-blue-100 rounded-xl overflow-hidden h-9 lg:h-8 w-full animate-pop-in" onClick={(e) => e.stopPropagation()}>
                 <span className="text-xs font-bold text-blue-700 flex-1 text-center">In Cart ({cartQty})</span>
               </div>
             ) : (
@@ -434,8 +714,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
                   handleAdd(item);
                 }}
                 disabled={outOfStock}
-                style={{ backgroundColor: '#0b5cff', color: 'white' }}
-                className="w-full h-9 rounded-xl text-xs font-bold flex items-center justify-center hover:opacity-90 disabled:opacity-30 transition-all shadow-sm"
+                className={`w-full h-9 lg:h-8 rounded-xl text-xs font-bold flex items-center justify-center hover:opacity-90 disabled:opacity-30 transition-all shadow-sm ${justAdded === item.id ? 'bg-blue-600 text-white scale-105' : 'bg-[#0b5cff] text-white scale-100'}`}
               >
                 Add to Bill
               </button>
@@ -448,17 +727,36 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
 
   const renderProductList = (inventoryList: InventoryItem[], catalog: Product[], isDesktop = false, listType?: 'feed' | 'medicine') => {
     if (inventoryList.length > 0) {
-      if (listType === 'medicine') {
+      const displayedInventory = inventoryList.slice(0, visibleCount);
+      const hasMore = inventoryList.length > visibleCount;
+
+      const LoadMoreBtn = () => hasMore ? (
+        <div className="flex justify-center mt-6 col-span-full pb-6">
+          <button 
+            onClick={() => setVisibleCount(v => v + 24)}
+            className="px-6 py-2.5 bg-white border border-slate-200 shadow-sm rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            Load More Products
+          </button>
+        </div>
+      ) : null;
+
+      if (!isDesktop) {
         return (
           <div className="grid grid-cols-2 gap-3 pb-24 md:pb-0 bg-[#eff4f9] p-3 rounded-2xl">
-             {inventoryList.map(item => <MedicineGridCard key={item.id} item={item} />)}
+             {displayedInventory.map(item => <GridCard key={item.id} item={item} />)}
+             <LoadMoreBtn />
           </div>
         );
       }
       return (
-        <div className="space-y-2 pb-24 md:pb-0">
-          {inventoryList.map((item) => {
+        <div className={isDesktop && viewMode === 'grid' ? "grid grid-cols-3 gap-3 pb-24 md:pb-0" : "space-y-2 pb-24 md:pb-0"}>
+          {displayedInventory.map((item) => {
             if (isDesktop) {
+              if (viewMode === 'grid') {
+                return <GridCard key={item.id} item={item} />;
+              }
+
               const lots = getLotsWithStock(item);
               const newestLot = lots.length > 0 ? lots[0] : null;
               const badge = newestLot ? getBadgeForLot(newestLot, lots) : null;
@@ -482,12 +780,12 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
                         </div>
                         <div className="text-xs text-slate-500 flex gap-2">
                            <span>{formatCurrency(price || 0)} / {item.product.unit || 'Bag'}</span>
-                           <span className="text-blue-600 font-medium">Available: {item.quantity_in_stock} {item.product.unit || 'Bags'}</span>
+                           <span className="text-blue-600 font-medium">Available: {formatQuantity(item.quantity_in_stock, item.product.unit || 'Bags')}</span>
                         </div>
                       </div>
                    </div>
                    {cartQty > 0 ? (
-                     <div className="px-4 py-2 text-sm font-bold text-blue-700 bg-blue-50 border border-blue-100 rounded-lg">
+                     <div key={cartQty} className="px-4 py-2 text-sm font-bold text-blue-700 border rounded-lg bg-blue-50 border-blue-100 animate-pop-in">
                         In Cart ({cartQty})
                      </div>
                    ) : (
@@ -498,8 +796,9 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
                 </div>
               );
             }
-            return <ProductCard key={item.id} item={item} />;
+            return null; // ProductCard is unused now since we use GridCard on mobile
           })}
+          <LoadMoreBtn />
         </div>
       );
     }
@@ -544,14 +843,6 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
           <button type="button" onClick={() => setShowFarmerModal(true)} className="billing-soft-button shrink-0">
             Change
           </button>
-        </section>
-
-        <section className="px-4 py-3">
-          <DatePicker
-            value={billDate}
-            onChange={setBillDate}
-            placeholder="Bill Date"
-          />
         </section>
 
         <section className="billing-quick-section">
@@ -600,7 +891,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
                       <div className="min-w-0">
                         <div className="truncate text-[0.8rem] sm:text-sm font-black text-slate-950 cursor-pointer hover:text-primary" onClick={() => handleEditItem(item)}>{item.product_name}</div>
                         <div className="truncate text-[0.65rem] sm:text-xs font-semibold text-slate-600 mt-0.5 flex items-center gap-1">
-                          <span>{item.quantity} x {item.unit || 'unit'} × {formatCurrency(unitPrice)}</span>
+                          <span>{formatQuantity(item.quantity, item.unit)} × {formatCurrency(unitPrice)}</span>
                           {item.product_type === 'medicine' && (
                             <span className="flex items-center text-[10px] ml-1 bg-slate-100/50 px-1.5 py-0.5 rounded">
                               <span className={item.discount_percentage === (item.default_discount_percentage || 0) ? "text-emerald-700 font-black" : "text-slate-500 font-bold"}>
@@ -656,7 +947,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
                         )}
                       </div>
                       <div className="text-right text-[0.8rem] sm:text-sm font-black text-slate-950 justify-self-end">
-                        {formatCurrency(getLineTotal(item))}
+                        {isEditingList ? <AmountInput item={item} onDiscount={updateItemDiscount} onPrice={updateItemPrice} /> : formatCurrency(getLineTotal(item))}
                       </div>
                     </div>
                   );
@@ -691,59 +982,73 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
       </footer>
 
       {/* DESKTOP LAYOUT */}
-      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_600px] lg:gap-8 lg:h-full lg:overflow-hidden lg:items-start lg:bg-transparent lg:px-8 lg:pb-8">
-        
+      <section className="hidden lg:flex lg:shrink-0 lg:items-center lg:gap-3 lg:border-b lg:border-slate-200 lg:bg-surface lg:px-8 lg:py-3">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+          <input
+            ref={desktopFarmerInputRef}
+            value={desktopFarmerSearch}
+            onFocus={() => setIsDesktopFarmerFocused(true)}
+            onChange={(event) => setDesktopFarmerSearch(event.target.value)}
+            placeholder="Search farmer by name, phone, or village"
+            className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+          />
+          {isDesktopFarmerFocused && desktopFarmerMatches.length > 0 ? (
+            <div className="absolute left-0 top-full z-30 mt-2 max-h-64 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+              {desktopFarmerMatches.map((farmer) => (
+                <button key={farmer.id} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { setFarmer(farmer.id, farmer.name, farmer.total_due, farmer.credit_limit); setDesktopFarmerSearch(farmer.name); setIsDesktopFarmerFocused(false); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-slate-50">
+                  <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-slate-900 break-words">{farmer.name}</span><span className="block truncate text-xs text-slate-500">{farmer.village || farmer.phone || 'Farmer'}</span></span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <button type="button" onClick={() => setShowWalkInDetails(true)} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
+          <User className="h-4 w-4" /> Walk-in Customer
+        </button>
+        <button type="button" onClick={() => setShowQuickAddFarmer(true)} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white transition hover:bg-primary/90">
+          <Plus className="h-4 w-4" /> Add New Farmer
+        </button>
+      </section>
+
+      <div className="hidden lg:flex lg:flex-row lg:flex-1 lg:min-h-0 lg:overflow-hidden lg:bg-surface">
+
         {/* LEFT COLUMN */}
-        <div className="flex flex-col gap-6 h-full overflow-hidden">
-          <section className="flex bg-white rounded-2xl border border-slate-200 p-4 items-center justify-between shrink-0 shadow-sm">
-             <div className="flex items-center gap-4 min-w-0">
-                <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 font-bold flex items-center justify-center text-lg shrink-0 overflow-hidden">
-                   {selectedFarmer?.image_url ? (
-                     <img src={selectedFarmer.image_url} alt={farmerName || 'Customer'} className="w-full h-full object-cover" />
-                   ) : (
-                     farmerName ? farmerName.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase() : <User />
-                   )}
-                </div>
-                <div className="min-w-0">
-                   <div className="text-lg font-bold text-slate-900 truncate">{farmerName || 'Walk-in Customer'}</div>
-                   {selectedFarmer?.village && <div className="text-sm text-slate-500 truncate">{selectedFarmer.village}</div>}
-                </div>
-             </div>
-             <button onClick={() => setShowFarmerModal(true)} className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-bold text-primary hover:bg-slate-50 transition-colors shrink-0">
-               <Pencil className="w-4 h-4" /> Change
-             </button>
-          </section>
-
-          <section className="bg-white rounded-2xl border border-slate-200 p-4 shrink-0 shadow-sm">
-             <div className="text-sm font-bold text-slate-500 mb-2">Bill Date</div>
-             <DatePicker
-               value={billDate}
-               onChange={setBillDate}
-               placeholder="Bill Date"
-             />
-          </section>
-
-          <section className="flex flex-col flex-1 min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-             <div className="flex p-1.5 mx-4 mt-4 mb-1 bg-slate-100 rounded-xl shrink-0 gap-1.5">
-               <button onClick={() => setDesktopTab('feed')} className={`flex items-center justify-center gap-2 flex-1 py-2 text-sm font-bold rounded-lg transition-all ${desktopTab === 'feed' ? '!bg-blue-600 !text-white shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
-                 <Wheat className="w-4 h-4" /> Feed ({typeCounts.feed})
-               </button>
-               <button onClick={() => setDesktopTab('medicine')} className={`flex items-center justify-center gap-2 flex-1 py-2 text-sm font-bold rounded-lg transition-all ${desktopTab === 'medicine' ? '!bg-blue-600 !text-white shadow-md' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
-                 <Pill className="w-4 h-4" /> Medicine ({typeCounts.medicine})
-               </button>
-             </div>
-             
-             <div className="px-4 pb-4 pt-1 border-b border-slate-100 flex gap-2 bg-white shrink-0">
-               <div className="relative flex-1">
-                 <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                 <input type="text" placeholder="Search products..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm placeholder:text-slate-400" />
+        <div className="flex flex-col flex-1 min-w-0 overflow-y-auto overscroll-contain lg:min-h-0 lg:border-r lg:border-slate-200">
+          <section className="flex flex-col">
+             <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-slate-200">
+               <div className="flex p-1.5 mx-4 mt-3 mb-1 bg-slate-100 rounded-xl shrink-0 gap-1.5">
+                 <button onClick={() => setDesktopTab('feed')} className={`flex items-center justify-center gap-2 flex-1 py-2 text-sm font-bold rounded-lg transition-all ${desktopTab === 'feed' ? '!bg-primary/15 !text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+                   <Wheat className="w-4 h-4" /> Feed ({typeCounts.feed})
+                 </button>
+                 <button onClick={() => setDesktopTab('medicine')} className={`flex items-center justify-center gap-2 flex-1 py-2 text-sm font-bold rounded-lg transition-all ${desktopTab === 'medicine' ? '!bg-primary/15 !text-primary shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
+                   <Pill className="w-4 h-4" /> Medicine ({typeCounts.medicine})
+                 </button>
                </div>
-               <button className="w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 shadow-sm shrink-0">
-                 <SlidersHorizontal className="w-5 h-5" />
-               </button>
+             
+               <div className="px-4 pb-4 pt-1 flex gap-2 shrink-0">
+                 <div className="relative flex-1 group">
+                   <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" />
+                   <input
+                     ref={searchInputRef}
+                     type="text"
+                     placeholder="Search products..."
+                     value={search}
+                     onChange={(e) => setSearch(e.target.value)}
+                     className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm placeholder:text-slate-400 transition-all"
+                   />
+                 </div>
+                 <button 
+                   onClick={() => setViewMode(v => v === 'list' ? 'grid' : 'list')}
+                   className={`w-11 h-11 flex items-center justify-center border rounded-xl shadow-sm shrink-0 transition-colors ${viewMode === 'grid' ? 'bg-blue-50 border-blue-200 text-blue-600' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                   title="Toggle View Mode"
+                 >
+                   <SlidersHorizontal className="w-5 h-5" />
+                 </button>
+               </div>
              </div>
 
-             <div className="overflow-y-auto flex-1 p-4 scrollbar-thin bg-white">
+             <div className="p-4 bg-slate-100/60">
                {renderProductList(desktopInventory, desktopCatalog, true, desktopTab)}
              </div>
           </section>
@@ -751,45 +1056,50 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
         </div>
 
         {/* RIGHT COLUMN */}
-        <div className="flex flex-col gap-6 h-full overflow-hidden pb-6">
-          <section className="flex flex-col flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100 shrink-0">
+        <div className="flex flex-col lg:w-[820px] lg:shrink-0 lg:min-h-0">
+          <section className="bg-white flex flex-col flex-1 min-h-0">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
                <h2 className="font-bold text-slate-900 text-lg">Selected Items ({items.length})</h2>
                {items.length > 0 && (
-                 <button onClick={clearItems} className="text-sm font-bold text-red-600 hover:text-red-700">Clear All</button>
+                 confirmClear ? (
+                   <div className="flex items-center gap-2">
+                     <span className="text-xs font-bold text-slate-500">Clear all items?</span>
+                     <button onClick={() => { clearItems(); setConfirmClear(false); }} className="text-xs font-black text-red-600 hover:text-red-700 px-2 py-1 rounded bg-red-50 hover:bg-red-100 transition-colors">Yes, clear</button>
+                     <button onClick={() => setConfirmClear(false)} className="text-xs font-bold text-slate-500 hover:text-slate-700 px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 transition-colors">Cancel</button>
+                   </div>
+                 ) : (
+                   <button onClick={() => setConfirmClear(true)} className="text-sm font-bold text-red-600 hover:text-red-700">Clear All</button>
+                 )
                )}
             </div>
-            
-            <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
+
+            <div className="relative flex-1 min-h-0 overflow-hidden">
+              <div ref={itemsScrollRef} onScroll={checkItemsScroll} className="h-full overflow-y-auto overscroll-contain px-5 pb-5 pt-1">
                {items.length > 0 ? (
-                 <div className="space-y-4">
-                   <div className="grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem_5.5rem_4.5rem_2rem] gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">
+                  <div className="space-y-0.5">
+                     <div className="grid grid-cols-none gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 py-1.5 bg-slate-100 rounded-lg mb-0.5" style={{ gridTemplateColumns: '1.5rem minmax(0,1fr) 4.25rem 6rem 4.75rem 3.5rem 5.25rem 1.5rem' }}>
+                     <span>#</span>
                      <span>Item</span>
-                     <span className="text-right">Rate</span>
+                     <span className="text-right">MRP</span>
                      <span className="text-center">Disc.</span>
+                     <span className="text-right">Rate</span>
                      <span className="text-center">Qty</span>
                      <span className="text-right">Amount</span>
                      <span></span>
                    </div>
-                   {items.map(item => {
+                   {items.map((item, index) => {
                      const unitPrice = Number((item.base_unit_price * (1 - item.discount_percentage / 100)).toFixed(2));
                      return (
-                       <div key={item.inventory_id} className="grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem_5.5rem_4.5rem_2rem] gap-2 items-center group px-2 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 rounded-lg">
+                        <div key={item.inventory_id} className="grid grid-cols-none gap-2 items-center group px-2 py-2 border-b border-dashed border-slate-200 last:border-0 hover:bg-slate-50 rounded-lg" style={{ gridTemplateColumns: '1.5rem minmax(0,1fr) 4.25rem 6rem 4.75rem 3.5rem 5.25rem 1.5rem' }}>
+                         <div className="text-[10px] font-bold text-slate-400 tabular-nums">{index + 1}</div>
                          <div className="flex items-center gap-3 min-w-0">
                            <div className="min-w-0">
                              <div className="text-sm font-bold text-slate-900 truncate">{item.product_name}</div>
-                             <div className="text-xs text-slate-500 truncate">{formatCurrency(item.base_unit_price)} / {item.unit || 'Bag'}</div>
+                             <div className="text-xs text-slate-500 truncate">{item.unit || 'Bag'}</div>
                            </div>
                          </div>
-                         <div className="flex justify-end">
-                           <input 
-                             type="number"
-                             value={item.base_unit_price || ''}
-                             onChange={(e) => updateItemPrice(item.inventory_id, item.lot_id, Number(e.target.value) || 0)}
-                             className="w-full px-1.5 py-1 text-right border border-slate-200 rounded text-sm font-bold focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white text-slate-900"
-                             placeholder="0"
-                             step="0.01"
-                           />
+                         <div className="text-right text-sm font-bold text-slate-600">
+                           {formatCurrency(item.mrp || 0)}
                          </div>
                          <div className="flex justify-center items-center group/edit cursor-pointer" onClick={() => handleEditItem(item)}>
                             {item.product_type === 'medicine' ? (
@@ -816,48 +1126,193 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
                               <span className="text-slate-300">-</span>
                             )}
                           </div>
-                         <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-1 w-[5.5rem] justify-self-center">
-                            <button aria-label="Decrease quantity" onClick={() => updateQuantity(item.inventory_id, item.lot_id, item.quantity - 1)} className="w-5 h-5 flex items-center justify-center text-primary hover:bg-slate-50 rounded"><Minus className="w-3 h-3" /></button>
-                           <span className="text-xs font-bold text-slate-900">{item.quantity}</span>
-                            <button aria-label="Increase quantity" onClick={() => updateQuantity(item.inventory_id, item.lot_id, item.quantity + 1)} className="w-5 h-5 flex items-center justify-center text-primary hover:bg-slate-50 rounded"><Plus className="w-3 h-3" /></button>
-                         </div>
-                         <div className="text-sm font-bold text-slate-900 text-right">{formatCurrency(unitPrice * item.quantity)}</div>
+                          <div className="flex justify-end">
+                             <RateInput
+                               item={item}
+                               unitPrice={unitPrice}
+                               onDiscount={updateItemDiscount}
+                               onPrice={updateItemPrice}
+                             />
+                           </div>
+                          <div className="flex justify-center">
+                            <QuantityInput 
+                              item={item} 
+                              onChange={updateQuantity} 
+                            />
+                          </div>
+                          <div className="flex justify-end">
+                            <AmountInput item={item} onDiscount={updateItemDiscount} onPrice={updateItemPrice} />
+                          </div>
                          <div className="flex items-center justify-end">
                             <button onClick={() => removeItem(item.inventory_id, item.lot_id)} className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"><Trash2 className="w-4 h-4" /></button>
                          </div>
                        </div>
                      );
                    })}
+                   {/* Items subtotal row */}
+                   <div className="grid grid-cols-none gap-2 items-center px-2 pt-2 border-t border-slate-200 mt-1" style={{ gridTemplateColumns: '1.5rem minmax(0,1fr) 4.25rem 6rem 4.75rem 3.5rem 5.25rem 1.5rem' }}>
+                     <span /><span /><span /><span /><span /><span />
+                     <span className="text-right text-sm font-black text-slate-800 tabular-nums">{formatCurrency(totals.subtotal)}</span>
+                     <span />
+                   </div>
                  </div>
                ) : (
-                 <div className="h-full flex flex-col items-center justify-center text-sm font-medium text-slate-400 min-h-[200px]">
-                   <Package2 className="w-12 h-12 text-slate-200 mb-3" />
-                   No items selected
+                 <div className="h-full flex flex-col items-center justify-center min-h-[250px] p-6 text-center animate-fade-in relative overflow-hidden rounded-2xl border-2 border-dashed border-slate-200/60 bg-slate-50/50">
+                   {/* Background Glow */}
+                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
+                   
+                   <div className="relative mb-5 p-4 bg-white rounded-full shadow-sm ring-1 ring-slate-900/5">
+                     <div className="absolute inset-0 bg-blue-50 rounded-full animate-ping opacity-20" style={{ animationDuration: '3s' }} />
+                     <Receipt className="w-10 h-10 text-blue-500 relative z-10" strokeWidth={1.5} />
+                   </div>
+                   
+                   <h3 className="text-sm font-bold text-slate-800 mb-1.5 relative z-10">Your cart is empty</h3>
+                   <p className="text-xs font-semibold text-slate-500 max-w-[200px] leading-relaxed relative z-10">
+                     Select your first item from the catalog to start building this invoice.
+                   </p>
                  </div>
                )}
+              </div>
+              {hasMoreBelow && (
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white via-white/50 to-transparent flex items-end justify-center pb-0.5">
+                  <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-white shadow-sm border border-slate-200 px-2.5 py-1 rounded-full">
+                    ↓ more items below
+                  </span>
+                </div>
+              )}
             </div>
-            
+
             <div className="p-6 border-t border-slate-100 bg-white shrink-0 space-y-4">
-               <div className="flex items-center justify-between text-sm">
-                 <span className="text-slate-500 font-medium">Subtotal ({totals.count} Items)</span>
-                 <span className="font-bold text-slate-900">{formatCurrency(totals.subtotal)}</span>
+               {/* Mobile/Tablet Subtotal & Total Headers */}
+               <div className="lg:hidden">
+                 <div className="flex items-center justify-between text-sm mb-2">
+                   <span className="text-slate-500 font-medium">Subtotal ({totals.count} Items)</span>
+                   <span className="font-bold text-slate-900">{formatCurrency(totals.subtotal)}</span>
+                 </div>
+                 <div className="flex items-center justify-between pt-1">
+                   <span className="text-base font-bold text-slate-900">Total Amount</span>
+                   <span className="text-2xl font-black text-slate-900">{formatCurrency(totals.finalTotal)}</span>
+                 </div>
                </div>
-               
-               <div className="flex items-center justify-between pt-1 mb-2">
-                 <span className="text-base font-bold text-slate-900">Total Amount</span>
-                 <span className="text-2xl font-black text-slate-900">{formatCurrency(totals.finalTotal)}</span>
-               </div>
-               
-               <div className="bg-[#0b5cff] text-white border border-blue-600 rounded-xl p-5 flex flex-col gap-4 shadow-sm">
-                 <div className="flex justify-between items-end">
-                   <div>
-                     <div className="text-blue-100 text-sm font-medium mb-1">Total Amount</div>
-                     <div className="text-3xl font-black text-white">{formatCurrency(totals.finalTotal)}</div>
-                     <div className="text-blue-100 text-[11px] font-medium mt-1">{totals.count} Items • {totals.count} Bags</div>
+
+               <div className="border-t-2 border-dashed border-slate-300 w-full mt-1 mb-3" />
+
+               {/* Desktop and Mobile Payment Fields (Zero-Step POS) */}
+               <div className="space-y-2 mb-4">
+                 <div className="flex items-start gap-3">
+                   <div className="flex-1">
+                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Payment Method</label>
+                     <div className="grid grid-cols-2 rounded-xl border border-slate-200 overflow-hidden">
+                       <button onClick={() => setPaymentType('cash')} className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-bold border-b border-r border-slate-200 transition-all ${paymentType === 'cash' ? 'bg-emerald-100 text-emerald-800' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+                         <Banknote className="w-3.5 h-3.5" /> Cash
+                       </button>
+                       <button onClick={() => setPaymentType('upi')} className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-bold border-b border-slate-200 transition-all ${paymentType === 'upi' ? 'bg-blue-100 text-blue-800' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+                         <QrCode className="w-3.5 h-3.5" /> UPI
+                       </button>
+                       <button onClick={() => setPaymentType('other')} className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-bold border-r border-slate-200 transition-all ${paymentType === 'other' ? 'bg-indigo-100 text-indigo-800' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+                         <CreditCard className="w-3.5 h-3.5" /> Bank
+                       </button>
+                       <button onClick={() => setPaymentType('credit')} className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-bold transition-all ${paymentType === 'credit' ? 'bg-rose-100 text-rose-800' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
+                         Credit
+                       </button>
+                     </div>
                    </div>
-                   <button onClick={onNext} disabled={items.length === 0} style={{ backgroundColor: 'white', color: '#0b5cff' }} className="hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed font-bold px-6 py-3 shadow-sm rounded-xl text-sm flex items-center justify-center gap-2 transition-colors shrink-0 h-[48px]">
-                     Continue to Payment
-                     <ChevronRight className="w-5 h-5" strokeWidth={3} />
+                   <div className="flex gap-2 shrink-0">
+                     <div className="w-[188px]">
+                       <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-2.5 shadow-sm">
+                         <div className="mb-1.5 flex items-center justify-between gap-2">
+                           <label className="text-xs font-bold leading-none text-slate-600 whitespace-nowrap">Amount Received</label>
+                           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shrink-0">
+                             <Banknote className="h-3.5 w-3.5" />
+                           </span>
+                         </div>
+                         <Input
+                           type="number"
+                           value={amountPaid || ''}
+                           onChange={(e) => setAmountPaid(Math.min(Number(e.target.value) || 0, effectiveTotal))}
+                           placeholder="0"
+                           leftIcon={<span className="text-sm font-black text-slate-400">₹</span>}
+                           className="min-h-9 border-emerald-200 bg-white text-right text-base font-black text-slate-800 shadow-sm focus:border-emerald-400 focus:ring-emerald-200"
+                         />
+                         <div className="mt-1.5 flex items-center justify-between">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Balance Due</span>
+                           <span className={`text-xs font-black tabular-nums ${balanceDue > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatCurrency(balanceDue)}</span>
+                         </div>
+                       </div>
+                     </div>
+                     {paymentType !== 'credit' && (
+                       <div className="w-[160px]">
+                         <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-2.5 shadow-sm">
+                           <div className="mb-1.5 flex items-center justify-between gap-2">
+                             <label className="text-xs font-bold leading-none text-slate-600 whitespace-nowrap">Settlement Disc.</label>
+                           </div>
+                           <Input
+                             type="number"
+                             min={0}
+                             max={totals.finalTotal}
+                             value={settlementDiscountAmount || ''}
+                             onChange={(e) => {
+                               const v = Math.min(Math.max(0, Number(e.target.value) || 0), totals.finalTotal);
+                               setSettlementDiscount(v);
+                               setAmountPaid(Math.min(amountPaid, Math.max(0, totals.finalTotal - v)));
+                             }}
+                             placeholder="0"
+                             leftIcon={<span className="text-sm font-black text-slate-400">₹</span>}
+                             className="min-h-9 border-slate-200 bg-white text-right text-base font-black text-slate-800 shadow-sm focus:border-emerald-400 focus:ring-emerald-200"
+                           />
+                           {settlementDiscountAmount > 0 && (
+                             <div className="mt-1.5 flex items-center justify-between">
+                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Effective</span>
+                               <span className="text-xs font-black tabular-nums text-emerald-600">{formatCurrency(effectiveTotal)}</span>
+                             </div>
+                           )}
+                         </div>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+                 {paymentType === 'upi' && (
+                   <Input label="UPI Reference" value={upiRef} onChange={(e) => setUpiRef(e.target.value)} placeholder="Transaction ID (optional)" />
+                 )}
+                 {paymentType === 'other' && (
+                   <Input label="Cheque / Transfer Ref" value={chequeNumber} onChange={(e) => setChequeNumber(e.target.value)} placeholder="Cheque or Ref number" />
+                 )}
+               </div>
+               
+               <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-[#0a46c2] text-white border border-blue-600/50 rounded-xl px-5 py-3 flex flex-col gap-2 shadow-lg">
+                 {/* Mesh Gradient Pattern (Premium Effect) */}
+                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1)_0%,transparent_50%),radial-gradient(circle_at_70%_80%,rgba(0,255,255,0.1)_0%,transparent_50%)] mix-blend-overlay" />
+                 <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+                 <div className="absolute bottom-0 left-0 w-32 h-32 bg-cyan-400/20 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none" />
+                 
+                 <div className="relative z-10 flex justify-between items-end">
+                   <div>
+                     <div className="text-blue-100/80 text-xs font-bold mb-1 tracking-wide uppercase">{settlementDiscountAmount > 0 ? 'Effective Total' : 'Total Amount'}</div>
+                     <div className="flex items-baseline gap-2">
+                       {settlementDiscountAmount > 0 && (
+                         <span className="text-base font-bold text-blue-300 line-through tabular-nums">{formatCurrency(totals.finalTotal)}</span>
+                       )}
+                       <span className="text-2xl font-black text-white tracking-tight drop-shadow-sm">{formatCurrency(effectiveTotal)}</span>
+                     </div>
+                     <div className="text-blue-100 text-xs font-bold mt-0.5 opacity-90">{totals.count} Items • {totals.count} Bags</div>
+                   </div>
+                   
+                   {/* Mobile Button: Continue to Payment */}
+                   <button onClick={onNext} disabled={items.length === 0} className="lg:hidden group relative overflow-hidden bg-white text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-black px-5 py-2 shadow-[0_4px_15px_rgba(0,0,0,0.1)] rounded-lg text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] hover:shadow-[0_8px_20px_rgba(255,255,255,0.2)] shrink-0 h-[38px]">
+                     <div className="absolute inset-0 -translate-x-[150%] bg-gradient-to-r from-transparent via-blue-600/10 to-transparent skew-x-[-20deg] transition-all duration-700 ease-in-out group-hover:translate-x-[150%]" />
+                     <span className="relative z-10 flex items-center gap-2">
+                       Next
+                       <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" strokeWidth={3} />
+                     </span>
+                   </button>
+
+                   {/* Desktop Button: Review & Sign */}
+                   <button onClick={onNext} disabled={items.length === 0} className="hidden lg:flex group relative overflow-hidden bg-white text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-black px-5 py-2 shadow-[0_4px_15px_rgba(0,0,0,0.1)] rounded-lg text-sm items-center justify-center gap-2 transition-all hover:scale-[1.02] hover:shadow-[0_8px_20px_rgba(255,255,255,0.2)] shrink-0 h-[38px]">
+                     <div className="absolute inset-0 -translate-x-[150%] bg-gradient-to-r from-transparent via-blue-600/10 to-transparent skew-x-[-20deg] transition-all duration-700 ease-in-out group-hover:translate-x-[150%]" />
+                     <span className="relative z-10 flex items-center gap-2">
+                       Review & Sign
+                       <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" strokeWidth={3} />
+                     </span>
                    </button>
                  </div>
                </div>
@@ -875,6 +1330,27 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
       >
         <FarmerSelector onSelect={() => setShowFarmerModal(false)} />
       </Modal>
+
+      <QuickAddWalkInModal
+        isOpen={showWalkInDetails}
+        onClose={() => setShowWalkInDetails(false)}
+        onSuccess={(farmer) => {
+          setFarmer(farmer.id, farmer.name, farmer.total_due, farmer.credit_limit);
+          setDesktopFarmerSearch(farmer.name);
+          setShowWalkInDetails(false);
+        }}
+      />
+
+      <QuickAddFarmerModal
+        isOpen={showQuickAddFarmer}
+        onClose={() => setShowQuickAddFarmer(false)}
+        initialName={desktopFarmerSearch}
+        onSuccess={(farmer) => {
+          setFarmer(farmer.id, farmer.name, farmer.total_due, farmer.credit_limit);
+          setDesktopFarmerSearch(farmer.name);
+          setShowQuickAddFarmer(false);
+        }}
+      />
 
       <Modal
         isOpen={!!sheetType}
@@ -896,6 +1372,12 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
         isOpen={!!editingCartItem}
         onClose={() => setEditingCartItem(null)}
         title="Edit Item"
+        footer={
+          <div className="flex gap-3 px-5 py-4 sm:px-6">
+            <Button variant="outline" className="flex-1" onClick={() => setEditingCartItem(null)}>Cancel</Button>
+            <Button className="flex-1" onClick={handleSaveEdit}>Save</Button>
+          </div>
+        }
       >
         <div className="p-4 space-y-4">
           {(() => {
@@ -935,7 +1417,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
                                </span>
                              )}
                            </div>
-                           <span className="text-xs font-semibold text-blue-600">{lot.remaining_quantity} available</span>
+                            <span className="text-xs font-semibold text-blue-600">{formatQuantity(lot.remaining_quantity, invItem.product.unit)} available</span>
                          </div>
                          <div className="flex items-center justify-between text-xs text-slate-500">
                            <span>MRP: {formatCurrency(lot.mrp || 0)}</span>
@@ -1013,10 +1495,6 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext }) => {
             min={0}
             step="0.01"
           />
-        </div>
-        <div className="flex gap-3 p-4 border-t border-slate-100 bg-slate-50">
-          <Button variant="outline" className="flex-1" onClick={() => setEditingCartItem(null)}>Cancel</Button>
-          <Button className="flex-1" onClick={handleSaveEdit}>Save</Button>
         </div>
       </Modal>
     </>

@@ -9,7 +9,8 @@ import { getStaffFeatureMode } from '@/lib/staffAccess';
 import { useCreateFarmer } from '../hooks/useFarmers';
 import { uploadFarmerImage, updateFarmer } from '../services/farmerService';
 import FarmerForm from '../components/FarmerForm';
-import { ArrowLeft } from 'lucide-react';
+import ImportFarmersExcelModal from '../components/ImportFarmersExcelModal';
+import { ArrowLeft, FileUp } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const AddFarmerPage: React.FC = () => {
@@ -21,6 +22,7 @@ export const AddFarmerPage: React.FC = () => {
   const { data: limits, isLoading: limitsLoading } = useSubscriptionLimits();
   const { mutateAsync: createFarmer, isPending } = useCreateFarmer();
   const [formKey, setFormKey] = React.useState(0);
+  const [importOpen, setImportOpen] = React.useState(false);
 
   const handleSubmit = async (data: any) => {
     try {
@@ -35,6 +37,7 @@ export const AddFarmerPage: React.FC = () => {
         crop_status: data.crop_status,
         risk_status: data.risk_status,
         credit_limit: data.credit_limit,
+        opening_balance: data.opening_balance,
         default_medicine_discount_percentage: data.default_medicine_discount_percentage,
         branch_id: data.branch_id,
         notes: data.notes,
@@ -108,11 +111,25 @@ export const AddFarmerPage: React.FC = () => {
         <h1 className="text-xl font-extrabold text-text-primary tracking-tight">
           {t('farmers.addFarmer', 'Add Farmer')}
         </h1>
+        <button
+          onClick={() => setImportOpen(true)}
+          className="ml-auto flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-900 transition-all active:scale-95 hover:bg-sky-100"
+        >
+          <FileUp className="w-4 h-4" />
+          <span className="hidden sm:inline">Import from Excel</span>
+          <span className="sm:hidden">Excel</span>
+        </button>
       </div>
 
       <div className="bg-white rounded-2xl p-4 border border-border shadow-sm">
         <FarmerForm key={formKey} mode="create" onSubmit={handleSubmit} loading={isPending} />
       </div>
+
+      <ImportFarmersExcelModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImported={() => navigate('/farmers')}
+      />
     </div>
   );
 };

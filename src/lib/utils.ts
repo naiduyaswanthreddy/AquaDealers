@@ -13,6 +13,23 @@ export function formatCurrency(amount: number): string {
 }
 
 /**
+ * Format stock quantities consistently across the app.
+ * Numeric pack-size units read as "2 × 12 kg"; named units read as "2 bags".
+ */
+export function formatQuantity(quantity: number, unit?: string | null): string {
+  const numericQuantity = Number.isFinite(Number(quantity)) ? Number(quantity) : 0;
+  const formattedQuantity = new Intl.NumberFormat('en-IN', {
+    maximumFractionDigits: 2,
+  }).format(numericQuantity);
+  const rawUnit = (unit || 'units').trim() || 'units';
+  const formattedUnit = rawUnit.replace(/^(\d+(?:\.\d+)?)([a-zA-Z])/, '$1 $2');
+
+  return /^\d/.test(formattedUnit)
+    ? `${formattedQuantity} × ${formattedUnit}`
+    : `${formattedQuantity} ${formattedUnit}`;
+}
+
+/**
  * Format date as DD-MM-YYYY
  */
 export function formatDate(date: string | Date): string {
@@ -105,7 +122,7 @@ export function getAgeingBucket(days: number): '0-30' | '31-60' | '61-90' | '90+
  * text into supabase .or(...) filters.
  */
 export function sanitizeSearchTerm(term: string): string {
-  return term.replace(/[,()\\%*]/g, ' ').replace(/\s+/g, ' ').trim();
+  return term.replace(/[,()\\%*_]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /**

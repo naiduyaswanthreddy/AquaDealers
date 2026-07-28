@@ -12,6 +12,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { inventoryService } from '../services/inventoryService';
 import { useInventory } from '../hooks/useInventory';
 import { toast } from 'sonner';
+import { RateAdjustmentPreviewModal } from '../components/RateAdjustmentPreviewModal';
 
 interface AdjustmentTarget {
   farmer_id: string;
@@ -60,6 +61,9 @@ export default function RateAdjustmentPage() {
   const [rateDifference, setRateDifference] = useState<number | ''>(state?.rateDifference || '');
   const [isApplying, setIsApplying] = useState(false);
 
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<any>(null);
+
   const handleSearch = async () => {
     if (!user?.id || !selectedProductId) return;
     
@@ -92,7 +96,23 @@ export default function RateAdjustmentPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.productId, user?.id]);
 
-  const handleApply = async () => {
+  const handlePreview = () => {
+    const selectedTargets = targets.filter(t => t.selected);
+    if (!selectedProductId || !rateDifference || selectedTargets.length === 0) return;
+
+    const product = products.find(p => p.id === selectedProductId);
+
+    setPreviewData({
+      productName: product?.name || 'Selected Product',
+      rateDifference: Number(rateDifference),
+      totalBags: totalBags,
+      totalAmount: totalAmount,
+      targetCount: selectedTargets.length
+    });
+    setIsPreviewOpen(true);
+  };
+
+  const handleConfirmApply = async () => {
     if (!user?.id || !selectedProductId || rateDifference === '' || Number(rateDifference) <= 0) return;
     
     const selectedTargets = targets.filter(t => t.selected);
@@ -120,11 +140,12 @@ export default function RateAdjustmentPage() {
 
       await inventoryService.applyRateAdjustments(user.id, branchId ?? null, adjustments);
       
-      toast.success(`Successfully applied rate adjustment to ${selectedTargets.length} farmers`);
+      toast.success(t('inventory.adjustmentSuccess', 'Rate adjustments applied successfully'));
+      setIsPreviewOpen(false);
       navigate('/inventory');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Failed to apply adjustments');
+      toast.error(error.message || t('common.error'));
     } finally {
       setIsApplying(false);
     }
@@ -294,12 +315,11 @@ export default function RateAdjustmentPage() {
                   <Button
                     size="lg"
                     variant="primary"
-                    onClick={handleApply}
-                    loading={isApplying}
+                    onClick={handlePreview}
                     disabled={totalAmount <= 0 || !rateDifference}
                     leftIcon={<Calculator className="w-5 h-5" />}
                   >
-                    Apply Adjustment & Update Ledgers
+                    Preview Adjustment
                   </Button>
                 </div>
               </>
@@ -307,6 +327,14 @@ export default function RateAdjustmentPage() {
           </div>
         )}
       </div>
+
+      <RateAdjustmentPreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        onConfirm={handleConfirmApply}
+        isSubmitting={isApplying}
+        data={previewData}
+      />
     </PageShell>
   );
 }

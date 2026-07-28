@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useFarmer, useFarmerTransactions } from '../hooks/useFarmerLedger';
+import { useFarmer, useFarmerBillsPage, useFarmerPaymentsPage, useFarmerTransactions, useFarmerLedgerPage, useFarmerStatement } from '../hooks/useFarmerLedger';
 import { Skeleton, Button, DateRangeFilter, FarmerAvatar } from '@/components/ui';
 import { ListLoadMore } from '@/components/ui/ListLoadMore';
 import CollectPaymentModal from '../components/CollectPaymentModal';
@@ -15,7 +15,6 @@ import FarmerSummaryRow from '../components/FarmerSummaryRow';
 import FarmerTabs, { TabType } from '../components/FarmerTabs';
 import FarmerLedgerList from '../components/FarmerLedgerList';
 import FarmerFooterSummary from '../components/FarmerFooterSummary';
-import { useLoadMoreList } from '@/lib/useLoadMoreList';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
@@ -26,12 +25,16 @@ import type { FarmerItemBill } from '../types/farmerItems';
 
 interface FarmerTransactionItem {
   id: string;
-  type: 'bill' | 'payment';
+  type: 'bill' | 'payment' | 'return';
   refNumber: string;
   date: string;
   amount: number;
   runningBalance: number;
+  branchName?: string | null;
 }
+
+const toLocalDateString = (date: Date) =>
+  new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 
 const DetailItem: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -48,27 +51,62 @@ export const FarmerLedgerPage: React.FC = () => {
   const { t } = useTranslation();
   const hasFarmerDiscountFeature = useSubscriptionStore((state) => state.hasFeature('farmer_product_discounts'));
   const dealer = useAuthStore((state) => state.user);
-  const now = useMemo(() => new Date(), []);
-  const defaultFirstDay = useMemo(() => new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10), [now]);
-  const defaultLastDay = useMemo(() => new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10), [now]);
 
   const [isCollectModalOpen, setIsCollectModalOpen] = useState(false);
   const [collectPreset, setCollectPreset] = useState<FarmerItemBill | null>(null);
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
+  const { data: allTimeStatement } = useFarmerStatement(id || '', '2000-01-01', new Date().toISOString().slice(0, 10));
   const [activeTab, setActiveTab] = useState<TabType>('ledger');
-  const [startDate, setStartDate] = useState(defaultFirstDay);
-  const [endDate, setEndDate] = useState(defaultLastDay);
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return toLocalDateString(date);
+  });
+  const [endDate, setEndDate] = useState(() => toLocalDateString(new Date()));
+
+  // Fallback to ledger tab if resizing to desktop while on details tab
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024 && activeTab === 'details') {
+        setActiveTab('ledger');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    return () => window.removeEventListener('resize', handleResize);
+  }, [activeTab]);
 
   const { data: farmer, isLoading: farmerLoading } = useFarmer(id!);
-  const { data: transactions = [], isLoading: txLoading } = useFarmerTransactions(id!);
+  // Items tab still needs the full transaction list for per-product aggregation.
+  // Ledger tab moved to server-paginated fetch to avoid mobile freezes on 10k+ txns.
+  const { data: transactions = [], isLoading: txLoading } = useFarmerTransactions(id!, activeTab === 'items');
+  const ledgerQuery = useFarmerLedgerPage({
+    farmerId: id!,
+    startDate,
+    endDate,
+    enabled: activeTab === 'ledger',
+    pageSize: 25,
+  });
+  const billsQuery = useFarmerBillsPage({
+    farmerId: id!,
+    startDate,
+    endDate,
+    enabled: activeTab === 'bills',
+  });
+  const paymentsQuery = useFarmerPaymentsPage({
+    farmerId: id!,
+    startDate,
+    endDate,
+    enabled: activeTab === 'payments',
+  });
 
   const filteredAndSortedTransactions = useMemo(() => {
     let result = [...transactions];
 
-    if (startDate && endDate) {
+    if (startDate || endDate) {
       result = result.filter((tx) => {
         const txDateStr = tx.date.slice(0, 10);
-        return txDateStr >= startDate && txDateStr <= endDate;
+        return (!startDate || txDateStr >= startDate) && (!endDate || txDateStr <= endDate);
       });
     }
 
@@ -76,23 +114,44 @@ export const FarmerLedgerPage: React.FC = () => {
   }, [transactions, startDate, endDate]);
 
   const bills = useMemo(
-    () => filteredAndSortedTransactions.filter((tx): tx is FarmerTransactionItem => tx.type === 'bill'),
+    () => filteredAndSortedTransactions.filter((tx) => tx.type === 'bill'),
     [filteredAndSortedTransactions]
   );
   const payments = useMemo(
-    () => filteredAndSortedTransactions.filter((tx): tx is FarmerTransactionItem => tx.type === 'payment'),
+    () => filteredAndSortedTransactions.filter((tx) => tx.type === 'payment'),
     [filteredAndSortedTransactions]
   );
-  const pagedBills = useLoadMoreList(bills, {
-    initialCount: 10,
-    step: 10,
-    resetDeps: [bills.length, startDate, endDate],
-  });
-  const pagedPayments = useLoadMoreList(payments, {
-    initialCount: 10,
-    step: 10,
-    resetDeps: [payments.length, startDate, endDate],
-  });
+  const pagedBills = useMemo(() => billsQuery.data?.pages.flatMap((page) => page.rows) || [], [billsQuery.data]);
+  const pagedBillsTotal = billsQuery.data?.pages[0]?.total || 0;
+  const pagedPayments = useMemo(() => paymentsQuery.data?.pages.flatMap((page) => page.rows) || [], [paymentsQuery.data]);
+  const pagedPaymentsTotal = paymentsQuery.data?.pages[0]?.total || 0;
+
+  // Paginated ledger — flatten pages and compute per-row running balance walking
+  // newest → oldest starting from farmer.total_due. Small caveat: cash-paid bills
+  // and bill edits/cancellations aren't reflected in this simple walk (impact is
+  // treated as bill=+amount, payment=-amount). Balance number is a running
+  // estimate; the footer summary shows the authoritative current due.
+  const pagedLedger = useMemo<FarmerTransactionItem[]>(() => {
+    const flat = ledgerQuery.data?.pages.flatMap((p) => p.data) || [];
+    const currentDue = farmer?.total_due ?? 0;
+    let running = currentDue;
+    return flat.map((tx, i) => {
+      if (i > 0) {
+        const prev = flat[i - 1];
+        running -= prev.type === 'bill' ? Number(prev.amount) : -Number(prev.amount);
+      }
+      return {
+        id: tx.id,
+        type: tx.type,
+        refNumber: tx.ref_number,
+        date: tx.date,
+        amount: Number(tx.amount),
+        runningBalance: running,
+        branchName: (tx as any).branch_name || null,
+      };
+    });
+  }, [ledgerQuery.data, farmer?.total_due]);
+  const pagedLedgerTotal = ledgerQuery.data?.pages[0]?.total || 0;
 
   if (farmerLoading) {
     return (
@@ -123,8 +182,13 @@ export const FarmerLedgerPage: React.FC = () => {
     );
   }
 
-  const totalDebit = bills.reduce((acc, curr) => acc + curr.amount, 0);
-  const totalCredit = payments.reduce((acc, curr) => acc + curr.amount, 0);
+  // On the ledger tab the transactions list is server-paginated (pagedLedger),
+  // so the footer's debit/credit reflect only the rows loaded so far. Elsewhere
+  // fall back to the full transactions dataset (used by items/details tabs).
+  const debitCreditSource = activeTab === 'ledger' ? pagedLedger : filteredAndSortedTransactions;
+  const totalDebit = debitCreditSource.filter((t) => t.type === 'bill').reduce((acc, t) => acc + t.amount, 0);
+  const totalCredit = debitCreditSource.filter((t) => t.type === 'payment').reduce((acc, t) => acc + t.amount, 0);
+  const totalReturns = debitCreditSource.filter((t) => t.type === 'return').reduce((acc, t) => acc + t.amount, 0);
   const cropLabel = CROP_STATUSES.find((crop) => crop.value === farmer.crop_status)?.label || 'Active';
   const riskLabel: 'Low Risk' | 'Medium Risk' | 'High Risk' =
     farmer.risk_status === 'risky'
@@ -149,7 +213,7 @@ export const FarmerLedgerPage: React.FC = () => {
     { label: 'Crop Status', value: cropLabel },
     { label: 'Risk Status', value: riskLabel },
     { label: 'Credit Limit', value: formatCurrency(farmer.credit_limit) },
-    { label: 'Opening Balance', value: formatCurrency(farmer.opening_balance || 0) },
+    { label: 'Previous Due', value: formatCurrency(farmer.opening_balance || 0) },
     { label: 'Current Due', value: formatCurrency(farmer.total_due) },
   ];
 
@@ -184,16 +248,8 @@ export const FarmerLedgerPage: React.FC = () => {
   );
 
   const renderBills = () => {
-    if (txLoading) {
+    if (billsQuery.isLoading) {
       return <Skeleton className="h-36 w-full rounded-[24px]" />;
-    }
-
-    if (!bills.length) {
-      return (
-        <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm font-medium text-slate-500">
-          No bills found for this farmer.
-        </div>
-      );
     }
 
     return (
@@ -203,11 +259,15 @@ export const FarmerLedgerPage: React.FC = () => {
           {renderDateFilter()}
         </div>
         <div className="flex flex-col">
-        {pagedBills.visibleItems.map((bill, index) => {
+        {!pagedBills.length ? (
+          <div className="m-4 rounded-[20px] border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm font-medium text-slate-500">
+            No bills found for this farmer.
+          </div>
+        ) : pagedBills.map((bill, index) => {
           const billDate = new Date(bill.date);
           const day = billDate.getDate();
           const month = billDate.toLocaleDateString('en-US', { month: 'short' });
-          const isLast = index === pagedBills.visibleItems.length - 1;
+          const isLast = index === pagedBills.length - 1;
 
           return (
             <React.Fragment key={bill.id}>
@@ -223,12 +283,22 @@ export const FarmerLedgerPage: React.FC = () => {
                   </div>
 
                   <div className="min-w-0">
-                    <div className="truncate text-[1rem] font-bold tracking-tight text-slate-900">Bill</div>
-                    <div className="mt-0.5 truncate text-[0.82rem] font-medium text-slate-500">
-                      {bill.refNumber}
+                    {bill.items.length ? (
+                      <div className="truncate text-[0.95rem] font-bold tracking-tight text-slate-900">
+                        {bill.items.map(i => i.product_name).join(', ')}
+                      </div>
+                    ) : (
+                      <div className="truncate text-[0.95rem] font-bold tracking-tight text-slate-900">{bill.refNumber}</div>
+                    )}
+                    <div className="mt-0.5 flex flex-wrap gap-x-2 text-[0.78rem] font-medium text-slate-500">
+                      {bill.items.length ? (
+                        bill.items.map(i => (
+                          <span key={i.product_name}>{i.quantity} {i.product_name.split(' ')[0]}</span>
+                        ))
+                      ) : null}
                     </div>
-                    <div className="mt-0.5 truncate text-[0.82rem] font-medium text-slate-500">
-                      {formatDateTime(bill.date)}
+                    <div className="mt-0.5 truncate text-[0.75rem] font-medium text-slate-400">
+                      {formatDate(bill.date)} · {bill.refNumber}
                     </div>
                   </div>
                 </div>
@@ -253,27 +323,21 @@ export const FarmerLedgerPage: React.FC = () => {
         })}
         </div>
       </div>
-      <ListLoadMore
-        shown={pagedBills.visibleCount}
-        total={pagedBills.totalCount}
-        onLoadMore={pagedBills.loadMore}
-        label={t('common.loadMore', 'Load more')}
-      />
+      {pagedBillsTotal > pagedBills.length ? (
+        <ListLoadMore
+          shown={pagedBills.length}
+          total={pagedBillsTotal}
+          onLoadMore={() => { void billsQuery.fetchNextPage(); }}
+          label={billsQuery.isFetchingNextPage ? t('common.loading', 'Loading...') : t('common.loadMore', 'Load more')}
+        />
+      ) : null}
       </>
     );
   };
 
   const renderPayments = () => {
-    if (txLoading) {
+    if (paymentsQuery.isLoading) {
       return <Skeleton className="h-36 w-full rounded-[24px]" />;
-    }
-
-    if (!payments.length) {
-      return (
-        <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm font-medium text-slate-500">
-          No payments recorded for this farmer.
-        </div>
-      );
     }
 
     return (
@@ -283,8 +347,12 @@ export const FarmerLedgerPage: React.FC = () => {
           {renderDateFilter()}
         </div>
         <div className="flex flex-col">
-          {pagedPayments.visibleItems.map((payment, index) => {
-            const isLast = index === pagedPayments.visibleItems.length - 1;
+          {!pagedPayments.length ? (
+            <div className="m-4 rounded-[20px] border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm font-medium text-slate-500">
+              No payments recorded for this farmer.
+            </div>
+          ) : pagedPayments.map((payment, index) => {
+            const isLast = index === pagedPayments.length - 1;
             return (
               <React.Fragment key={payment.id}>
                 <div className="flex items-center justify-between px-4 py-3.5 bg-emerald-50/20">
@@ -303,12 +371,14 @@ export const FarmerLedgerPage: React.FC = () => {
           })}
         </div>
       </div>
-      <ListLoadMore
-        shown={pagedPayments.visibleCount}
-        total={pagedPayments.totalCount}
-        onLoadMore={pagedPayments.loadMore}
-        label={t('common.loadMore', 'Load more')}
-      />
+      {pagedPaymentsTotal > pagedPayments.length ? (
+        <ListLoadMore
+          shown={pagedPayments.length}
+          total={pagedPaymentsTotal}
+          onLoadMore={() => { void paymentsQuery.fetchNextPage(); }}
+          label={paymentsQuery.isFetchingNextPage ? t('common.loading', 'Loading...') : t('common.loadMore', 'Load more')}
+        />
+      ) : null}
       </>
     );
   };
@@ -364,7 +434,7 @@ export const FarmerLedgerPage: React.FC = () => {
     <PageShell width="wide">
       <PageHeader
         title={farmer.name}
-        eyebrow={t('farmers.farmerDetails', 'Farmer Details')}
+        className="[&_.page-header__title]:text-[clamp(1.5rem,4vw,2rem)]"
         onBack={() => navigate(backTo)}
         avatar={
           <FarmerAvatar 
@@ -374,16 +444,7 @@ export const FarmerLedgerPage: React.FC = () => {
             className="border-2 border-white/20" 
           />
         }
-        topRightAction={
-          <button
-            type="button"
-            onClick={() => navigate(`/farmers/${farmer.id}/edit`)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-white/90 hover:bg-white/10 hover:text-white transition-all active:scale-95"
-            aria-label="Edit Farmer"
-          >
-            <Edit2 className="h-4.5 w-4.5" />
-          </button>
-        }
+        action={<div className="flex gap-2"><button type="button" onClick={() => setIsStatementModalOpen(true)} className="px-4 py-2 rounded-full bg-white text-primary transition-all shadow-sm active:scale-95 text-[0.8rem] font-bold uppercase tracking-wider">View Statement</button><button type="button" onClick={() => navigate(`/farmers/${farmer.id}/edit`)} className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-all ring-1 ring-white/20 hover:ring-white/40 shadow-sm backdrop-blur-sm active:scale-95 text-[0.8rem] font-bold uppercase tracking-wider" aria-label="Edit Farmer"><Edit2 className="h-4 w-4" />Edit</button></div>}
         description={
           <div className="mt-1.5 space-y-3">
             <div className="flex flex-wrap items-center gap-2.5 text-xs font-bold text-white/80">
@@ -398,33 +459,41 @@ export const FarmerLedgerPage: React.FC = () => {
               </span>
             </div>
             
-            <div className="grid grid-cols-3 gap-2 rounded-2xl bg-black/15 p-3 border border-white/[0.06] backdrop-blur-md shadow-inner">
-              <div className="text-left">
-                <span className="text-[10px] font-black uppercase tracking-wider text-white/40 block">Total Due</span>
-                <span className="mt-0.5 text-[1rem] font-black text-white">{formatCurrency(farmer.total_due)}</span>
-              </div>
-              <div className="text-left border-l border-white/[0.08] pl-3">
-                <span className="text-[10px] font-black uppercase tracking-wider text-white/40 block">Credit Limit</span>
-                <span className="mt-0.5 text-[1rem] font-black text-white/90">{formatCurrency(farmer.credit_limit)}</span>
-              </div>
-              <div className="text-left border-l border-white/[0.08] pl-3">
-                <span className="text-[10px] font-black uppercase tracking-wider text-white/40 block">Available</span>
-                <span className={`mt-0.5 text-[1rem] font-black ${
-                  (farmer.credit_limit - farmer.total_due) < 0 ? 'text-rose-300' : 'text-emerald-300'
-                }`}>
-                  {formatCurrency(farmer.credit_limit - farmer.total_due)}
-                </span>
-              </div>
-            </div>
           </div>
         }
       />
 
-      <div className="animate-fade-in space-y-4 pb-14">
+      <div className="animate-fade-in pb-14 lg:pb-8 lg:grid lg:grid-cols-[1fr_350px] lg:gap-6 lg:items-start lg:mt-6">
+        {/* Left Column (Main Flow) */}
+        <div className="space-y-4 min-w-0">
+          
+          {/* Dashboard KPI Cards (Desktop & Mobile) */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-4 lg:mt-0">
+            <div className="rounded-[20px] bg-white p-3 sm:p-4 shadow-sm border border-slate-200 flex flex-col justify-center">
+              <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-slate-400 block">Total Due</span>
+              <span className="mt-1 block text-base sm:text-xl font-black text-slate-900 truncate">{formatCurrency(farmer.total_due)}</span>
+            </div>
+            <div className="rounded-[20px] bg-white p-3 sm:p-4 shadow-sm border border-slate-200 flex flex-col justify-center">
+              <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-slate-400 block">Credit Limit</span>
+              <span className="mt-1 block text-base sm:text-xl font-black text-slate-700 truncate">{formatCurrency(farmer.credit_limit)}</span>
+            </div>
+            <div className="rounded-[20px] bg-white p-3 sm:p-4 shadow-sm border border-slate-200 flex flex-col justify-center">
+              <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-slate-400 block">Available</span>
+              <span className={`mt-1 block text-base sm:text-xl font-black truncate ${
+                (farmer.credit_limit - farmer.total_due) < 0 ? 'text-rose-500' : 'text-emerald-500'
+              }`}>
+                {formatCurrency(farmer.credit_limit - farmer.total_due)}
+              </span>
+            </div>
+          </div>
 
-        <div className="mt-3">
-          <div className="mb-3 flex items-center justify-between gap-3 px-1">
-            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Quick Contact</div>
+          <div className="grid grid-cols-2 gap-x-5 gap-y-4 rounded-[20px] border border-sky-100 bg-gradient-to-br from-sky-50 via-white to-blue-50 p-4 shadow-sm sm:grid-cols-5 sm:gap-2 sm:border-slate-200 sm:bg-white sm:p-3">
+            {[['Opening Balance', allTimeStatement?.openingBalance ?? (farmer.opening_balance || 0), 'text-slate-800'], ['Total Debit', allTimeStatement?.totalDebit ?? totalDebit, 'text-rose-600'], ['Total Credit', allTimeStatement?.totalCredit ?? totalCredit, 'text-emerald-600'], ['Returned Value', allTimeStatement?.totalReturns ?? totalReturns, 'text-amber-700'], ['Closing Balance', allTimeStatement?.closingBalance ?? farmer.total_due, 'text-primary']].map(([label, value, tone]) => <div key={label as string} className="min-w-0 last:col-span-2 last:rounded-xl last:border last:border-primary/15 last:bg-white/80 last:px-3 last:py-2 sm:last:col-span-1 sm:last:border-0 sm:last:bg-transparent sm:last:px-0 sm:last:py-0"><div className="text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</div><div className={`mt-1 truncate text-base font-black sm:text-sm ${tone}`}>{formatCurrency(Number(value))}</div></div>)}
+          </div>
+
+          <div className="mt-3 lg:hidden rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3 px-1">
+              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Quick Contact</div>
             {farmer.phone ? (
               <div className="hidden items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500 sm:flex">
                 <Phone className="h-3.5 w-3.5" />
@@ -453,19 +522,28 @@ export const FarmerLedgerPage: React.FC = () => {
           <div className="py-2">
             {activeTab === 'ledger' ? (
               <>
-                <FarmerLedgerList 
-                  transactions={filteredAndSortedTransactions} 
-                  isLoading={txLoading} 
-                  backTo={`/farmers/${farmer.id}`} 
+                <FarmerLedgerList
+                  transactions={pagedLedger}
+                  isLoading={ledgerQuery.isLoading}
+                  backTo={`/farmers/${farmer.id}`}
                   headerComponent={renderDateFilter()}
+                  serverPagination={{
+                    total: pagedLedgerTotal,
+                    hasMore: !!ledgerQuery.hasNextPage,
+                    isFetchingMore: ledgerQuery.isFetchingNextPage,
+                    onLoadMore: () => ledgerQuery.fetchNextPage(),
+                  }}
                 />
-                <FarmerFooterSummary
-                  openingBalance={farmer.opening_balance || 0}
-                  totalDebit={totalDebit}
-                  totalCredit={totalCredit}
-                  currentDue={farmer.total_due}
-                  onViewStatement={() => setIsStatementModalOpen(true)}
-                />
+                <div className="sticky bottom-4 z-20 mt-4 -mx-4 px-4 sm:mx-0 sm:px-0 drop-shadow-2xl">
+                  <FarmerFooterSummary
+                    hideDetails
+                    openingBalance={farmer.opening_balance || 0}
+                    totalDebit={totalDebit}
+                    totalCredit={totalCredit}
+                    currentDue={farmer.total_due}
+                    onViewStatement={() => setIsStatementModalOpen(true)}
+                  />
+                </div>
               </>
             ) : null}
             {activeTab === 'items' ? (
@@ -473,6 +551,7 @@ export const FarmerLedgerPage: React.FC = () => {
                 farmerId={farmer.id}
                 farmerName={farmer.name}
                 stockingDate={farmer.stocking_date}
+                firstActivityDate={transactions.length ? transactions[transactions.length - 1]?.date : farmer.created_at}
                 onCollect={(bill) => {
                   setCollectPreset(bill);
                   setIsCollectModalOpen(true);
@@ -483,7 +562,40 @@ export const FarmerLedgerPage: React.FC = () => {
             {activeTab === 'payments' ? renderPayments() : null}
             {activeTab === 'details' ? renderDetails() : null}
           </div>
+          </div>
         </div>
+
+        {/* Right Column (Sidebar - Desktop Only) */}
+        <div className="hidden lg:block sticky top-24 space-y-6">
+          <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Quick Contact</div>
+              {farmer.phone ? (
+                <div className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                  <Phone className="h-3.5 w-3.5" />
+                  {farmer.phone}
+                </div>
+              ) : null}
+            </div>
+            <LedgerActions
+              farmerId={farmer.id}
+              farmerName={farmer.name}
+              farmerPhone={farmer.phone}
+              shareToken={farmer.share_token}
+              totalDue={farmer.total_due}
+              onCollect={() => {
+                setCollectPreset(null);
+                setIsCollectModalOpen(true);
+              }}
+            />
+          </div>
+          
+          {/* Render details content in sidebar */}
+          <div className="details-sidebar-container">
+            {renderDetails()}
+          </div>
+        </div>
+
       </div>
 
       <CollectPaymentModal

@@ -22,6 +22,16 @@ export interface BookPayment {
   isSameDaySale: boolean;
 }
 
+export interface BookReturn {
+  id: string;
+  return_number: string | null;
+  return_date: string;
+  total_amount: number;
+  notes: string | null;
+  created_at: string;
+  farmers?: { name: string } | null;
+}
+
 export interface BookStockReceipt {
   id: string;
   product_id: string;
@@ -77,6 +87,7 @@ export interface DailyBook {
   date: string;
   bills: BookBill[];
   payments: BookPayment[];
+  returns: BookReturn[];
   expenses: Expense[];
   stockReceipts: BookStockReceipt[];
   cashEntries: CashBookEntry[];
@@ -93,6 +104,7 @@ export interface DailyBook {
     creditGiven: number;
     creditFarmers: number;
     receivedTotal: number;
+    returnsTotal: number;
     oldCollections: number;
     expensesTotal: number;
     supplierPaid: number;

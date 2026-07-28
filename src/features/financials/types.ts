@@ -1,7 +1,9 @@
 import { CashClosing, Expense, CashBookEntry as DbCashBookEntry } from '@/types/database';
 
 export interface ExpenseItem extends Expense {}
-export interface CashBookEntry extends DbCashBookEntry {}
+export interface CashBookEntry extends DbCashBookEntry {
+  farmer_name?: string | null;
+}
 
 export interface CashBookLedger {
   entries: CashBookEntry[];

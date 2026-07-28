@@ -4,6 +4,7 @@ import type { Farmer } from '@/types/database';
 import { formatCurrency, getDaysOverdue } from '@/lib/utils';
 import { FarmerAvatar } from '@/components/ui';
 import { RISK_STATUSES, CROP_STATUSES } from '@/lib/constants';
+import { useBranchStore } from '@/stores/branchStore';
 
 interface FarmerCardProps {
   farmer: Farmer;
@@ -14,6 +15,7 @@ interface FarmerCardProps {
 
 export const FarmerCard: React.FC<FarmerCardProps> = ({ farmer, variant = 'default' }) => {
   const navigate = useNavigate();
+  const branches = useBranchStore((state) => state.branches);
   const risk = RISK_STATUSES.find((r) => r.value === farmer.risk_status);
   const crop = CROP_STATUSES.find((c) => c.value === farmer.crop_status);
 
@@ -37,6 +39,9 @@ export const FarmerCard: React.FC<FarmerCardProps> = ({ farmer, variant = 'defau
     .join(' \u2022 ');
 
   const isListVariant = variant === 'list';
+  const isWalkIn = Boolean(farmer.is_walk_in);
+  const walkInDate = new Date(farmer.created_at);
+  const walkInBranch = branches.find((branch) => branch.id === farmer.branch_id)?.name || 'All branches';
   const listStatusLabel = crop?.label || 'Growing';
   const statusColor = isListVariant ? (crop?.color || '#10B981') : risk?.color || '#10B981';
 
@@ -55,13 +60,22 @@ export const FarmerCard: React.FC<FarmerCardProps> = ({ farmer, variant = 'defau
       {isListVariant ? (
         <>
           <div className="flex items-center gap-3 min-w-0">
-            <FarmerAvatar imageUrl={farmer.image_url} name={farmer.name} size="lg" />
+            {isWalkIn ? (
+              <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-full border border-slate-200 bg-slate-50 shadow-sm">
+                <span className="text-[0.95rem] font-black leading-none text-slate-800">{walkInDate.getDate()}</span>
+                <span className="mt-0.5 text-[0.56rem] font-black uppercase tracking-[0.16em] text-slate-400">{walkInDate.toLocaleDateString('en-US', { month: 'short' })}</span>
+              </div>
+            ) : <FarmerAvatar imageUrl={farmer.image_url} name={farmer.name} size="lg" />}
 
             <div className="min-w-0">
-              <div className="truncate text-[1rem] font-bold tracking-tight text-slate-900">
+              <div className="text-[1rem] font-bold tracking-tight text-slate-900 break-words">
                 {farmer.name}
               </div>
-              {details && (
+              {isWalkIn ? (
+                <div className="mt-0.5 truncate text-[0.82rem] font-medium text-slate-500">
+                  Walk-in customer <span className="ml-2 inline-flex rounded bg-sky-50 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-sky-700 ring-1 ring-sky-200">{walkInBranch}</span>
+                </div>
+              ) : details && (
                 <div className="mt-0.5 truncate text-[0.82rem] font-medium text-slate-500">
                   {details}
                 </div>
@@ -83,7 +97,7 @@ export const FarmerCard: React.FC<FarmerCardProps> = ({ farmer, variant = 'defau
               </div>
               <div className="mt-0">
                 <span className="text-[0.78rem] font-semibold text-slate-400">
-                  {listStatusLabel}
+                  {isWalkIn ? walkInDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : listStatusLabel}
                 </span>
               </div>
             </div>

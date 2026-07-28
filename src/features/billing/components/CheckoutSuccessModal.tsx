@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, CloudOff, MessageCircle, Printer, ArrowRight, Sparkles, FileText, ChevronRight } from 'lucide-react';
+import { CheckCircle2, CloudOff, MessageCircle, Printer, ArrowRight, Sparkles, FileText, ChevronRight, KeyRound, Copy, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { Modal, Button } from '@/components/ui';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -109,6 +110,21 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
           </div>
         )}
 
+        {/* Verify-later note — dealer doesn't see the PIN. The farmer will
+             read it out from their share-balance link when goods arrive. */}
+        {bill && bill.is_verified === false && (
+          <div className="mt-3 w-full rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-[12px] font-semibold text-blue-900 text-left">
+            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-blue-800">
+              <KeyRound className="w-3.5 h-3.5" /> Not verified yet
+            </div>
+            <p className="mt-1 leading-5">
+              The farmer will see a 4-digit delivery PIN on their share-balance
+              link. When goods are delivered, ask them for the PIN and enter
+              it on this bill's detail page to mark it verified.
+            </p>
+          </div>
+        )}
+
         {/* Receipt Overview Card */}
         <div className="mt-6 w-full rounded-[20px] border border-slate-200 bg-slate-50 p-4.5 text-[13px] text-left space-y-3.5 shadow-sm">
           <div className="flex justify-between border-b border-slate-200/80 pb-3">
@@ -209,5 +225,45 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
         </div>
       )}
     </Modal>
+  );
+};
+
+const DeliveryPinCard: React.FC<{ pin: string; farmerPhone?: string | null; farmerName: string | null; shopName?: string | null }> = ({ pin, farmerPhone, farmerName, shopName }) => {
+  const [copied, setCopied] = useState(false);
+  const digits = String(pin).split('');
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(pin); setCopied(true); setTimeout(() => setCopied(false), 1500); toast.success('PIN copied'); }
+    catch { toast.error('Copy failed'); }
+  };
+  const whatsApp = () => {
+    const msg = encodeURIComponent(
+      `Namaste ${farmerName || ''}! Delivery PIN from ${shopName || 'our shop'}: *${pin}*. Please share this PIN with the driver on delivery.`
+    );
+    window.open(farmerPhone ? `https://wa.me/91${farmerPhone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+  };
+  return (
+    <div className="mt-3 w-full rounded-2xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-sky-50 p-4 text-left">
+      <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-blue-800">
+        <KeyRound className="w-3.5 h-3.5" /> Delivery PIN — bill is <span className="text-amber-700">not verified yet</span>
+      </div>
+      <div className="mt-2 flex justify-center gap-2">
+        {digits.map((d, i) => (
+          <div key={i} className="flex h-12 w-11 items-center justify-center rounded-xl bg-white text-2xl font-black text-blue-900 shadow-inner ring-2 ring-blue-200 tabular-nums">
+            {d}
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-[11px] font-semibold text-slate-600 text-center">
+        Share this PIN with the driver / farmer. When goods are delivered, open this bill and enter the PIN to mark it verified.
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={copy} leftIcon={copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}>
+          {copied ? 'Copied' : 'Copy PIN'}
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={whatsApp} leftIcon={<MessageCircle className="w-4 h-4" />} className="border-[#25D366]/30 text-[#1DA851] hover:bg-[#25D366]/10">
+          WhatsApp PIN
+        </Button>
+      </div>
+    </div>
   );
 };

@@ -26,7 +26,7 @@ BEGIN
   SELECT id, dealer_id, name, village, total_due
     INTO v_farmer
     FROM farmers
-   WHERE share_token = p_token
+   WHERE (share_token = p_token OR id = p_token)
      AND is_active = true;
 
   IF NOT FOUND THEN

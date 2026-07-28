@@ -158,7 +158,7 @@ export const useAuthStore = create<AuthState>()(
         const allComplete = requiredSteps.every((s) => completedSteps.includes(s));
 
         set({
-          user: dealer as Dealer,
+          user: dealer as unknown as Dealer,
           isAuthenticated: true,
           onboardingComplete: allComplete,
         });

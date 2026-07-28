@@ -15,12 +15,24 @@ const ProductRow: React.FC<{ product: BookProductSummary; date: string }> = ({ p
     to={`/book/products/${encodeURIComponent(product.productId)}?date=${date}`}
     accent={product.unpaidBillCount > 0 ? 'unpaid' : 'paid'}
   >
-    <div className="text-sm font-extrabold">{product.name}</div>
-    <div className="book-num mt-0.5 text-xs text-[color:var(--book-ink-soft)]">
-      {formatQty(product.quantity, product.unit)} · {product.farmerCount}{' '}
-      {product.farmerCount === 1 ? 'farmer' : 'farmers'} · {bookMoney(product.revenue)}
+    {/* Product name */}
+    <div className="text-base font-extrabold text-[color:var(--book-ink)]">{product.name}</div>
+
+    {/* Qty · farmers · revenue */}
+    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+      <span className="book-num text-sm font-bold text-[color:var(--book-ink)]">
+        {formatQty(product.quantity, product.unit)}
+      </span>
+      <span className="text-sm text-[color:var(--book-ink-soft)]">
+        {product.farmerCount} {product.farmerCount === 1 ? 'farmer' : 'farmers'}
+      </span>
+      <span className="book-num text-sm font-bold text-[color:var(--book-ink)]">
+        {bookMoney(product.revenue)}
+      </span>
     </div>
-    <div className="mt-0.5 text-xs font-bold">
+
+    {/* Paid status */}
+    <div className="mt-1 text-sm font-bold">
       {product.unpaidBillCount > 0 ? (
         <span className="text-[color:var(--book-red)]">
           ✗ {bookMoney(product.unpaidAmount)} unpaid on {product.unpaidBillCount} bill

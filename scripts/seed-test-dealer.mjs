@@ -24,10 +24,10 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 dotenv.config({ path: path.join(rootDir, '.env.e2e') });
 
 const SUPABASE_URL =
-  process.env.VITE_SUPABASE_URL || 'https://xttuxtyjtqegjvirtpbr.supabase.co';
+  process.env.VITE_SUPABASE_URL || 'https://fvcafioxkgbljcjomixs.supabase.co';
 const SUPABASE_ANON_KEY =
   process.env.VITE_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dHV4dHlqdHFlZ2p2aXJ0cGJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyMDkyNDksImV4cCI6MjA5NTc4NTI0OX0.Wj5dvvzMX5VXNBo2DY2j_5jhsEPzHCC_OUmsZvjrU3A';
+  'sb_publishable_4xT4NDR8E-Zj5wqTrh-WsA_DLqEcVvn';
 const EMAIL = process.env.E2E_DEALER_EMAIL || 'e2e.dealer@aquadealers.in';
 const PASSWORD = process.env.E2E_DEALER_PASSWORD || 'change-me-please';
 const SERVICE_ROLE_KEY = process.env.E2E_SUPABASE_SERVICE_ROLE_KEY;

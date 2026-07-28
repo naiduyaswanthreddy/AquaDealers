@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatQuantity } from '@/lib/utils';
 import type { FarmerItemSummary, FarmerItemsSummary } from '../types/farmerItems';
 
 const safeCurrency = (value: number) => formatCurrency(value).replace(/₹/g, 'Rs ');
@@ -72,7 +72,7 @@ export function generateFarmerItemsPdf(params: {
     doc.text(doc.splitTextToSize(item.product_name, 75)[0], margin + 2, y + 3);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(71, 85, 105);
-    doc.text(`${item.total_quantity} ${item.unit}`, 112, y + 3, { align: 'right' });
+    doc.text(formatQuantity(item.total_quantity, item.unit), 112, y + 3, { align: 'right' });
     doc.text(safeCurrency(item.total_value), 148, y + 3, { align: 'right' });
     doc.setTextColor(item.unpaid_amount > 0 ? 220 : 22, item.unpaid_amount > 0 ? 38 : 163, item.unpaid_amount > 0 ? 38 : 74);
     doc.text(safeCurrency(item.unpaid_amount), pageWidth - margin - 2, y + 3, { align: 'right' });

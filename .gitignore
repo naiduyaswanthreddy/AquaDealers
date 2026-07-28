@@ -38,3 +38,8 @@ vite.config.ts.timestamp-*.mjs
 
 # Added by code-review-graph
 .code-review-graph/
+
+# Migration secrets and exported data (never commit)
+scripts/migrate/.env.migration
+scripts/migrate/data/
+supabase/.temp/

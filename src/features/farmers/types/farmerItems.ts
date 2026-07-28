@@ -49,6 +49,7 @@ export interface FarmerItemBill {
   amount_paid: number;
   bill_total: number;
   payment_status: FarmerItemPaymentStatus;
+  branch_name_snapshot?: string | null;
 }
 
 export type FarmerItemsPeriod =
@@ -56,6 +57,7 @@ export type FarmerItemsPeriod =
   | 'this-month'
   | 'last-month'
   | 'this-season'
+  | 'all-history'
   | 'last-3-months'
   | 'last-6-months'
   | 'this-year'

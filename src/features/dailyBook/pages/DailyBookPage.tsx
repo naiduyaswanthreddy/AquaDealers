@@ -3,15 +3,19 @@ import { getLocalDateString } from '@/lib/utils';
 import { BookDateNav, BookPage, bookDateLabel, useBookDate } from '../components/BookPage';
 import { BookEmpty, BookLoading, BookMoney, BookRow, bookMoney } from '../components/bookUi';
 import { useDailyBook } from '../hooks/useDailyBook';
+import { useBranchStore } from '@/stores/branchStore';
 
 export const DailyBookPage: React.FC = () => {
   const date = useBookDate();
   const { data: book, isLoading } = useDailyBook(date);
+  const { activeBranch, isAllBranches } = useBranchStore();
+  const outstandingDues = book?.farmers.reduce((sum, farmer) => sum + Number(farmer.outstanding || 0), 0) ?? 0;
 
   const shareText = book
     ? `📔 Daily Book — ${bookDateLabel(date)}\n` +
       `Sales: ${bookMoney(book.totals.salesTotal)} (${book.totals.billCount} bills)\n` +
       `Received: ${bookMoney(book.totals.receivedTotal)}\n` +
+      `Returns: ${bookMoney(book.totals.returnsTotal)}\n` +
       `Expenses: ${bookMoney(book.totals.expensesTotal)}\n` +
       `Cash in hand: ${bookMoney(book.closingCash)}`
     : undefined;
@@ -20,12 +24,13 @@ export const DailyBookPage: React.FC = () => {
     !!book &&
     (book.bills.length > 0 ||
       book.payments.length > 0 ||
+      book.returns.length > 0 ||
       book.expenses.length > 0 ||
       book.stockReceipts.length > 0 ||
       book.cashEntries.length > 0);
 
   return (
-    <BookPage title="Daily Book" date={date} shareText={shareText} backTo="/more">
+    <BookPage title="Daily Book" subtitle={isAllBranches ? 'All shops' : activeBranch?.name || 'Current shop'} date={date} shareText={shareText} backTo="/more">
       {isLoading ? (
         <BookLoading />
       ) : !hasAnything ? (
@@ -41,16 +46,44 @@ export const DailyBookPage: React.FC = () => {
         </>
       ) : book ? (
         <>
+          <BookRow to={`/book/sales?date=${date}`}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex min-w-0 items-center gap-2 text-base font-extrabold">
+                <span className="book-icon">🧾</span> Sales
+              </span>
+              <span className="book-num text-base font-bold">
+                {book.bills.length} bills · {bookMoney(book.totals.salesTotal)}
+              </span>
+            </div>
+          </BookRow>
+
           <BookRow to={`/book/cash?date=${date}`}>
             <div className="flex items-center justify-between gap-2">
               <span className="flex min-w-0 items-center gap-2 text-sm font-extrabold">
-                <span className="book-icon">💵</span> Cash in Hand
+                <span className="book-icon">💰</span> Collections
               </span>
-              <BookMoney value={book.closingCash} className="text-base" />
+              <BookMoney value={book.totals.receivedTotal} className="text-base font-bold" />
             </div>
-            <p className="mt-0.5 pl-[2.35rem] text-xs text-[color:var(--book-ink-soft)]">
-              Every rupee in and out today, line by line
-            </p>
+          </BookRow>
+
+          {book.returns.length > 0 ? (
+            <BookRow to="/returns">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex min-w-0 items-center gap-2 text-sm font-extrabold">
+                  <span className="book-icon">↩</span> Returns
+                </span>
+                <span className="book-num text-base font-bold">{book.returns.length} · {bookMoney(book.totals.returnsTotal)}</span>
+              </div>
+            </BookRow>
+          ) : null}
+
+          <BookRow to={`/book/cash?date=${date}`}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex min-w-0 items-center gap-2 text-base font-extrabold">
+                <span className="book-icon">💵</span> Counter Cash
+              </span>
+              <BookMoney value={book.closingCash} className="text-xl font-black" />
+            </div>
           </BookRow>
 
           <BookRow to={`/book/products?date=${date}`}>
@@ -58,42 +91,11 @@ export const DailyBookPage: React.FC = () => {
               <span className="flex min-w-0 items-center gap-2 text-sm font-extrabold">
                 <span className="book-icon">📋</span> Products Sold
               </span>
-              <span className="book-num text-sm font-bold">
+              <span className="book-num text-base font-bold">
                 {book.products.length} · {bookMoney(book.totals.salesTotal)}
               </span>
             </div>
-            <p className="mt-0.5 pl-[2.35rem] text-xs text-[color:var(--book-ink-soft)]">
-              What went out of the shop, and who bought it
-            </p>
           </BookRow>
-
-          <BookRow to={`/book/farmers?date=${date}`}>
-            <div className="flex items-center justify-between gap-2">
-              <span className="flex min-w-0 items-center gap-2 text-sm font-extrabold">
-                <span className="book-icon">👨‍🌾</span> Farmers
-              </span>
-              <span className="book-num text-sm font-bold">{book.farmers.length} today</span>
-            </div>
-            <p className="mt-0.5 pl-[2.35rem] text-xs text-[color:var(--book-ink-soft)]">
-              Everyone who visited, in the order they came
-            </p>
-          </BookRow>
-
-          {book.totals.receivedTotal > 0 ? (
-            <BookRow to={`/book/cash?date=${date}`}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex min-w-0 items-center gap-2 text-sm font-extrabold">
-                  <span className="book-icon">💰</span> Collections
-                </span>
-                <BookMoney value={book.totals.receivedTotal} className="text-sm" />
-              </div>
-              <p className="mt-0.5 pl-[2.35rem] text-xs text-[color:var(--book-ink-soft)]">
-                {book.totals.oldCollections > 0
-                  ? `${bookMoney(book.totals.oldCollections)} of it against old dues`
-                  : 'All received against today’s bills'}
-              </p>
-            </BookRow>
-          ) : null}
 
           {book.stockReceipts.length > 0 ? (
             <BookRow to={`/book/stock?date=${date}`}>
@@ -101,7 +103,7 @@ export const DailyBookPage: React.FC = () => {
                 <span className="flex min-w-0 items-center gap-2 text-sm font-extrabold">
                   <span className="book-icon">📦</span> Stock Received
                 </span>
-                <span className="book-num text-sm font-bold">{book.stockReceipts.length} deliveries</span>
+                <span className="book-num text-base font-bold">{book.stockReceipts.length} deliveries</span>
               </div>
             </BookRow>
           ) : null}
@@ -109,12 +111,9 @@ export const DailyBookPage: React.FC = () => {
           <BookRow to={`/book/stock-position?date=${date}`}>
             <div className="flex items-center justify-between gap-2">
               <span className="flex min-w-0 items-center gap-2 text-sm font-extrabold">
-                <span className="book-icon">🧮</span> Stock Position
+                <span className="book-icon">🧮</span> Stock Movement
               </span>
             </div>
-            <p className="mt-0.5 pl-[2.35rem] text-xs text-[color:var(--book-ink-soft)]">
-              Opening → sold → received → closing, per product
-            </p>
           </BookRow>
 
           {book.expenses.length > 0 ? (
@@ -123,21 +122,27 @@ export const DailyBookPage: React.FC = () => {
                 <span className="flex min-w-0 items-center gap-2 text-sm font-extrabold">
                   <span className="book-icon">🏪</span> Expenses
                 </span>
-                <BookMoney value={book.totals.expensesTotal} className="text-sm" />
+                <BookMoney value={book.totals.expensesTotal} className="text-base font-bold" />
               </div>
             </BookRow>
           ) : null}
+
+          <BookRow to={`/book/farmers?date=${date}`}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex min-w-0 items-center gap-2 text-sm font-extrabold">
+                <span className="book-icon">👨‍🌾</span> Farmers
+              </span>
+              <span className="book-num text-base font-bold">{book.farmers.length} today</span>
+            </div>
+          </BookRow>
 
           <BookRow to={`/book/closing?date=${date}`}>
             <div className="flex items-center justify-between gap-2">
               <span className="flex min-w-0 items-center gap-2 text-sm font-extrabold">
                 <span className="book-icon">📊</span> Day Closing
               </span>
-              <BookMoney value={book.totals.salesTotal} className="text-sm" />
+              <BookMoney value={book.totals.salesTotal} className="text-base font-bold" />
             </div>
-            <p className="mt-0.5 pl-[2.35rem] text-xs text-[color:var(--book-ink-soft)]">
-              The bottom-of-the-page totals, print-ready for your CA
-            </p>
           </BookRow>
 
           <BookDateNav date={date} />

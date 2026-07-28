@@ -4,21 +4,21 @@ import { cn } from '@/lib/utils';
 
 const buttonVariants = {
   primary:
-    'bg-[#0052cc] text-white shadow-lg hover:bg-[#003380] hover:brightness-[1.03]',
+    'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.23)] hover:brightness-110 hover:-translate-y-0.5',
   secondary:
-    'bg-[#0052cc]/12 text-[#0052cc] border border-[#0052cc]/20 hover:bg-[#0052cc]/18 hover:border-[#0052cc]/30',
+    'bg-[#0052cc]/12 text-[#0052cc] border border-[#0052cc]/20 hover:bg-[#0052cc]/18 hover:border-[#0052cc]/30 hover:-translate-y-0.5',
   accent:
-    'bg-[#ea8e1b] text-white shadow-lg hover:bg-[#d97706] hover:brightness-[1.03]',
+    'bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-[0_4px_14px_0_rgba(245,158,11,0.39)] hover:shadow-[0_6px_20px_rgba(245,158,11,0.23)] hover:brightness-110 hover:-translate-y-0.5',
   danger:
-    'bg-rose-600 text-white shadow-lg shadow-rose-500/20 hover:bg-rose-700 hover:brightness-[1.03]',
-  ghost: 'bg-transparent text-[#0052cc] hover:bg-[#0052cc]/8',
-  outline: 'bg-[#0052cc]/8 text-[#0052cc] border border-[#0052cc]/20 shadow-sm hover:bg-[#0052cc]/14 hover:border-[#0052cc]/30',
+    'bg-gradient-to-br from-rose-500 to-rose-700 text-white shadow-[0_4px_14px_0_rgba(225,29,72,0.39)] hover:shadow-[0_6px_20px_rgba(225,29,72,0.23)] hover:brightness-110 hover:-translate-y-0.5',
+  ghost: 'bg-transparent text-[#0052cc] hover:bg-[#0052cc]/8 hover:-translate-y-0.5',
+  outline: 'bg-white text-[#0052cc] border-2 border-[#0052cc]/20 shadow-sm hover:bg-[#0052cc]/5 hover:border-[#0052cc]/40 hover:-translate-y-0.5',
   success:
-    'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 hover:brightness-[1.03]',
+    'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-[0_4px_14px_0_rgba(16,185,129,0.39)] hover:shadow-[0_6px_20px_rgba(16,185,129,0.23)] hover:brightness-110 hover:-translate-y-0.5',
   dark:
-    'bg-[#173042] text-white shadow-lg shadow-[#173042]/20 hover:bg-[#0f212e]',
+    'bg-gradient-to-br from-slate-700 to-slate-900 text-white shadow-[0_4px_14px_0_rgba(15,23,42,0.39)] hover:shadow-[0_6px_20px_rgba(15,23,42,0.23)] hover:brightness-110 hover:-translate-y-0.5',
   darkOutline:
-    'bg-[#173042]/8 text-[#173042] border border-[#173042]/20 hover:bg-[#173042]/14 hover:border-[#173042]/30',
+    'bg-[#173042]/8 text-[#173042] border border-[#173042]/20 hover:bg-[#173042]/14 hover:border-[#173042]/30 hover:-translate-y-0.5',
 } as const;
 
 const sizeVariants = {
@@ -91,26 +91,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           fullWidth && 'w-full',
           className
         )}
-        style={{
-          ...(variant === 'primary' ? {
-            backgroundColor: '#0052cc',
-            color: '#ffffff',
-            border: 'none',
-          } : variant === 'success' ? {
-            backgroundColor: '#059669',
-            color: '#ffffff',
-            border: 'none',
-          } : variant === 'danger' ? {
-            backgroundColor: '#e11d48',
-            color: '#ffffff',
-            border: 'none',
-          } : variant === 'outline' ? {
-            backgroundColor: 'transparent',
-            color: '#0052cc',
-            border: '1px solid rgba(0, 82, 204, 0.2)',
-          } : {}),
-          ...props.style
-        }}
         {...props}
       >
         {loading ? (

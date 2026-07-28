@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useExpiringMedicinesAlerts } from '../hooks/useDashboardData';
 import { Card, CardContent, Skeleton, Button } from '@/components/ui';
 import { Clock, Pill, Share2 } from 'lucide-react';
@@ -8,7 +9,8 @@ import { useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { shareExpiryReportViaWhatsApp } from '../utils/expiryReportPdf';
 
-export const ExpiringMedicines: React.FC = () => {
+const ExpiringMedicinesComponent: React.FC = () => {
+  const navigate = useNavigate();
   const { data: items, isLoading } = useExpiringMedicinesAlerts();
   const [isSharing, setIsSharing] = useState(false);
   const dealer = useAuthStore(s => s.user);
@@ -67,8 +69,9 @@ export const ExpiringMedicines: React.FC = () => {
           return (
             <Card
               key={item.id}
-              className={`flex-shrink-0 w-[140px] border shadow-none rounded-xl ${
-                isExpired ? 'border-danger/40 bg-danger/5' : 'border-orange-200 bg-orange-50'
+              onClick={() => navigate(`/inventory/${item.inventory_id}`)}
+              className={`flex-shrink-0 w-[140px] border shadow-none rounded-xl cursor-pointer hover:shadow-md transition-all ${
+                isExpired ? 'border-danger/40 bg-danger/5 hover:bg-danger/10' : 'border-orange-200 bg-orange-50 hover:bg-orange-100'
               }`}
             >
               <CardContent className="p-3">
@@ -92,5 +95,6 @@ export const ExpiringMedicines: React.FC = () => {
     </div>
   );
 };
-
+export const ExpiringMedicines = React.memo(ExpiringMedicinesComponent);
+ExpiringMedicines.displayName = 'ExpiringMedicines';
 export default ExpiringMedicines;
