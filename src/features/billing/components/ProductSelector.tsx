@@ -12,6 +12,7 @@ import { useCartStore } from '../stores/cartStore';
 import { FarmerSelector } from './FarmerSelector';
 import { QuickAddFarmerModal } from './QuickAddFarmerModal';
 import { QuickAddWalkInModal } from './QuickAddWalkInModal';
+import { FarmerActionModal } from './FarmerActionModal';
 import { useFarmers, useFarmerProductDiscounts } from '@/features/farmers/hooks/useFarmers';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
@@ -268,6 +269,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
   };
   const [sheetType, setSheetType] = useState<ProductTypeFilter | null>(null);
   const [desktopTab, setDesktopTab] = useState<ProductTypeFilter>('feed');
+  const [farmerActionMode, setFarmerActionMode] = useState<'payment' | 'return' | null>(null);
 
   const { data: farmerDiscounts = [] } = useFarmerProductDiscounts(farmerId || '');
   const selectedFarmer = useMemo(() => farmers?.find(f => f.id === farmerId), [farmers, farmerId]);
@@ -983,7 +985,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
 
       {/* DESKTOP LAYOUT */}
       <section className="hidden lg:flex lg:shrink-0 lg:items-center lg:gap-3 lg:border-b lg:border-slate-200 lg:bg-surface lg:px-8 lg:py-3">
-        <div className="relative min-w-0 flex-1">
+        <div className="relative min-w-0 max-w-2xl flex-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
           <input
             ref={desktopFarmerInputRef}
@@ -1008,6 +1010,12 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
         </button>
         <button type="button" onClick={() => setShowQuickAddFarmer(true)} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-white transition hover:bg-primary/90">
           <Plus className="h-4 w-4" /> Add New Farmer
+        </button>
+        <button type="button" onClick={() => setFarmerActionMode('payment')} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-900 transition hover:bg-emerald-100">
+          <Receipt className="h-4 w-4" /> Payments
+        </button>
+        <button type="button" onClick={() => setFarmerActionMode('return')} className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-bold text-amber-900 transition hover:bg-amber-100">
+          <Receipt className="h-4 w-4" /> Returns
         </button>
       </section>
 
@@ -1058,7 +1066,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
         {/* RIGHT COLUMN */}
         <div className="flex flex-col lg:w-[820px] lg:shrink-0 lg:min-h-0">
           <section className="bg-white flex flex-col flex-1 min-h-0">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 shrink-0">
+            <div className="flex items-center justify-between px-5 py-2.5 border-b border-slate-100 shrink-0">
                <h2 className="font-bold text-slate-900 text-lg">Selected Items ({items.length})</h2>
                {items.length > 0 && (
                  confirmClear ? (
@@ -1077,7 +1085,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
               <div ref={itemsScrollRef} onScroll={checkItemsScroll} className="h-full overflow-y-auto overscroll-contain px-5 pb-5 pt-1">
                {items.length > 0 ? (
                   <div className="space-y-0.5">
-                     <div className="grid grid-cols-none gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3 py-1.5 bg-slate-100 rounded-lg mb-0.5" style={{ gridTemplateColumns: '1.5rem minmax(0,1fr) 4.25rem 6rem 4.75rem 3.5rem 5.25rem 1.5rem' }}>
+                     <div className="sticky top-0 z-10 grid grid-cols-none gap-2 text-[11px] font-black text-slate-600 uppercase tracking-wider px-3 py-2 bg-slate-100 rounded-lg mb-0.5 shadow-sm" style={{ gridTemplateColumns: '1.5rem minmax(0,1fr) 4.25rem 6rem 4.75rem 3.5rem 5.25rem 1.5rem' }}>
                      <span>#</span>
                      <span>Item</span>
                      <span className="text-right">MRP</span>
@@ -1151,7 +1159,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
                    })}
                    {/* Items subtotal row */}
                    <div className="grid grid-cols-none gap-2 items-center px-2 pt-2 border-t border-slate-200 mt-1" style={{ gridTemplateColumns: '1.5rem minmax(0,1fr) 4.25rem 6rem 4.75rem 3.5rem 5.25rem 1.5rem' }}>
-                     <span /><span /><span /><span /><span /><span />
+                     <span /><span /><span /><span /><span />
+                     <span className="text-right text-[10px] font-black uppercase tracking-wider text-slate-500">Subtotal</span>
                      <span className="text-right text-sm font-black text-slate-800 tabular-nums">{formatCurrency(totals.subtotal)}</span>
                      <span />
                    </div>
@@ -1182,7 +1191,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
               )}
             </div>
 
-            <div className="p-6 border-t border-slate-100 bg-white shrink-0 space-y-4">
+            <div className="p-4 border-t border-slate-100 bg-white shrink-0 space-y-3">
                {/* Mobile/Tablet Subtotal & Total Headers */}
                <div className="lg:hidden">
                  <div className="flex items-center justify-between text-sm mb-2">
@@ -1195,91 +1204,81 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
                  </div>
                </div>
 
-               <div className="border-t-2 border-dashed border-slate-300 w-full mt-1 mb-3" />
-
                {/* Desktop and Mobile Payment Fields (Zero-Step POS) */}
-               <div className="space-y-2 mb-4">
-                 <div className="flex items-start gap-3">
-                   <div className="flex-1">
-                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">Payment Method</label>
-                     <div className="grid grid-cols-2 rounded-xl border border-slate-200 overflow-hidden">
-                       <button onClick={() => setPaymentType('cash')} className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-bold border-b border-r border-slate-200 transition-all ${paymentType === 'cash' ? 'bg-emerald-100 text-emerald-800' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
-                         <Banknote className="w-3.5 h-3.5" /> Cash
-                       </button>
-                       <button onClick={() => setPaymentType('upi')} className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-bold border-b border-slate-200 transition-all ${paymentType === 'upi' ? 'bg-blue-100 text-blue-800' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
-                         <QrCode className="w-3.5 h-3.5" /> UPI
-                       </button>
-                       <button onClick={() => setPaymentType('other')} className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-bold border-r border-slate-200 transition-all ${paymentType === 'other' ? 'bg-indigo-100 text-indigo-800' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
-                         <CreditCard className="w-3.5 h-3.5" /> Bank
-                       </button>
-                       <button onClick={() => setPaymentType('credit')} className={`flex items-center justify-center gap-1.5 py-2 px-2 text-xs font-bold transition-all ${paymentType === 'credit' ? 'bg-rose-100 text-rose-800' : 'bg-white text-slate-600 hover:bg-slate-50'}`}>
-                         Credit
-                       </button>
-                     </div>
-                   </div>
-                   <div className="flex gap-2 shrink-0">
-                     <div className="w-[188px]">
-                       <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-2.5 shadow-sm">
-                         <div className="mb-1.5 flex items-center justify-between gap-2">
-                           <label className="text-xs font-bold leading-none text-slate-600 whitespace-nowrap">Amount Received</label>
-                           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shrink-0">
-                             <Banknote className="h-3.5 w-3.5" />
-                           </span>
-                         </div>
-                         <Input
-                           type="number"
-                           value={amountPaid || ''}
-                           onChange={(e) => setAmountPaid(Math.min(Number(e.target.value) || 0, effectiveTotal))}
-                           placeholder="0"
-                           leftIcon={<span className="text-sm font-black text-slate-400">₹</span>}
-                           className="min-h-9 border-emerald-200 bg-white text-right text-base font-black text-slate-800 shadow-sm focus:border-emerald-400 focus:ring-emerald-200"
-                         />
-                         <div className="mt-1.5 flex items-center justify-between">
-                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Balance Due</span>
-                           <span className={`text-xs font-black tabular-nums ${balanceDue > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatCurrency(balanceDue)}</span>
-                         </div>
-                       </div>
-                     </div>
-                     {paymentType !== 'credit' && (
-                       <div className="w-[160px]">
-                         <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-2.5 shadow-sm">
-                           <div className="mb-1.5 flex items-center justify-between gap-2">
-                             <label className="text-xs font-bold leading-none text-slate-600 whitespace-nowrap">Settlement Disc.</label>
-                           </div>
-                           <Input
-                             type="number"
-                             min={0}
-                             max={totals.finalTotal}
-                             value={settlementDiscountAmount || ''}
-                             onChange={(e) => {
-                               const v = Math.min(Math.max(0, Number(e.target.value) || 0), totals.finalTotal);
-                               setSettlementDiscount(v);
-                               setAmountPaid(Math.min(amountPaid, Math.max(0, totals.finalTotal - v)));
-                             }}
-                             placeholder="0"
-                             leftIcon={<span className="text-sm font-black text-slate-400">₹</span>}
-                             className="min-h-9 border-slate-200 bg-white text-right text-base font-black text-slate-800 shadow-sm focus:border-emerald-400 focus:ring-emerald-200"
-                           />
-                           {settlementDiscountAmount > 0 && (
-                             <div className="mt-1.5 flex items-center justify-between">
-                               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Effective</span>
-                               <span className="text-xs font-black tabular-nums text-emerald-600">{formatCurrency(effectiveTotal)}</span>
-                             </div>
-                           )}
-                         </div>
-                       </div>
-                     )}
+               <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 space-y-2.5">
+                 <div>
+                   <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Payment Method</label>
+                   <div className="grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1">
+                     <button onClick={() => setPaymentType('cash')} className={`flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-xs font-bold transition-all ${paymentType === 'cash' ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-100' : 'text-slate-500 hover:text-slate-700'}`}>
+                       <Banknote className="w-3.5 h-3.5" /> Cash
+                     </button>
+                     <button onClick={() => setPaymentType('upi')} className={`flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-xs font-bold transition-all ${paymentType === 'upi' ? 'bg-white text-blue-700 shadow-sm ring-1 ring-blue-100' : 'text-slate-500 hover:text-slate-700'}`}>
+                       <QrCode className="w-3.5 h-3.5" /> UPI
+                     </button>
+                     <button onClick={() => setPaymentType('other')} className={`flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-xs font-bold transition-all ${paymentType === 'other' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100' : 'text-slate-500 hover:text-slate-700'}`}>
+                       <CreditCard className="w-3.5 h-3.5" /> Bank
+                     </button>
+                     <button onClick={() => setPaymentType('credit')} className={`flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-xs font-bold transition-all ${paymentType === 'credit' ? 'bg-white text-rose-700 shadow-sm ring-1 ring-rose-100' : 'text-slate-500 hover:text-slate-700'}`}>
+                       <Receipt className="w-3.5 h-3.5" /> Credit
+                     </button>
                    </div>
                  </div>
+
+                 <div className={`grid gap-2.5 ${paymentType === 'credit' ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                   <div>
+                     <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Amount Received</label>
+                     <Input
+                       type="number"
+                       value={amountPaid || ''}
+                       onChange={(e) => setAmountPaid(Math.min(Number(e.target.value) || 0, effectiveTotal))}
+                       placeholder="0"
+                       leftIcon={<span className="text-sm font-black text-slate-400">₹</span>}
+                       className="min-h-9 border-slate-200 bg-white text-right text-base font-black text-slate-800 shadow-sm focus:border-emerald-400 focus:ring-emerald-200"
+                     />
+                   </div>
+                   {paymentType !== 'credit' && (
+                     <div>
+                       <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Settlement Disc.</label>
+                       <Input
+                         type="number"
+                         min={0}
+                         max={totals.finalTotal}
+                         value={settlementDiscountAmount || ''}
+                         onChange={(e) => {
+                           const v = Math.min(Math.max(0, Number(e.target.value) || 0), totals.finalTotal);
+                           setSettlementDiscount(v);
+                           setAmountPaid(Math.min(amountPaid, Math.max(0, totals.finalTotal - v)));
+                         }}
+                         placeholder="0"
+                         leftIcon={<span className="text-sm font-black text-slate-400">₹</span>}
+                         className="min-h-9 border-slate-200 bg-white text-right text-base font-black text-slate-800 shadow-sm focus:border-emerald-400 focus:ring-emerald-200"
+                       />
+                     </div>
+                   )}
+                 </div>
+
                  {paymentType === 'upi' && (
                    <Input label="UPI Reference" value={upiRef} onChange={(e) => setUpiRef(e.target.value)} placeholder="Transaction ID (optional)" />
                  )}
                  {paymentType === 'other' && (
                    <Input label="Cheque / Transfer Ref" value={chequeNumber} onChange={(e) => setChequeNumber(e.target.value)} placeholder="Cheque or Ref number" />
                  )}
+
+                 <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5">
+                   <div className="flex-1">
+                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Balance Due</div>
+                     <div className={`text-sm font-black tabular-nums ${balanceDue > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatCurrency(balanceDue)}</div>
+                   </div>
+                   {settlementDiscountAmount > 0 && (
+                     <div className="flex-1 border-l border-slate-100 pl-2.5">
+                       <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Effective Total</div>
+                       <div className="text-sm font-black tabular-nums text-emerald-600">{formatCurrency(effectiveTotal)}</div>
+                     </div>
+                   )}
+                 </div>
                </div>
                
-               <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-[#0a46c2] text-white border border-blue-600/50 rounded-xl px-5 py-3 flex flex-col gap-2 shadow-lg">
+               <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-[#0a46c2] text-white border border-blue-600/50 rounded-xl px-4 py-2.5 flex flex-col gap-2 shadow-lg">
                  {/* Mesh Gradient Pattern (Premium Effect) */}
                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1)_0%,transparent_50%),radial-gradient(circle_at_70%_80%,rgba(0,255,255,0.1)_0%,transparent_50%)] mix-blend-overlay" />
                  <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
@@ -1350,6 +1349,12 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
           setDesktopFarmerSearch(farmer.name);
           setShowQuickAddFarmer(false);
         }}
+      />
+
+      <FarmerActionModal
+        isOpen={!!farmerActionMode}
+        mode={farmerActionMode || 'payment'}
+        onClose={() => setFarmerActionMode(null)}
       />
 
       <Modal
