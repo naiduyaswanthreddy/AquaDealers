@@ -141,13 +141,14 @@ export async function fetchProducts(type?: string) {
  */
 export async function setDealerPin(
   dealerId: string,
-  pinHash: string,
+  rawPin: string,
   timeoutMinutes: number
 ): Promise<void> {
+  // Sent raw over TLS — the DB trigger bcrypts it before storage.
   const { error } = await supabase
     .from('dealers')
     .update({
-      pin_hash: pinHash,
+      pin_hash: rawPin,
       pin_timeout_minutes: timeoutMinutes,
     })
     .eq('id', dealerId);

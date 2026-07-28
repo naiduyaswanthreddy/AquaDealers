@@ -5,7 +5,7 @@ import { setDealerPin, completeStep } from '../services/onboardingService';
 import { toast } from 'sonner';
 import { Shield, Key, ArrowRight, Delete, CheckCircle } from 'lucide-react';
 import { Button, Card, CardContent } from '@/components/ui';
-import { cn, hashPin } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface Step5Props {
   onFinish: () => void;
@@ -78,9 +78,8 @@ export const Step5SetPin: React.FC<Step5Props> = ({ onFinish, onBack }) => {
 
     setLoading(true);
     try {
-      // 1. Hash the PIN on the client and save in Supabase
-      const hashedPin = await hashPin(enteredPin);
-      await setDealerPin(user.id, hashedPin, timeoutMin);
+      // 1. Save the raw PIN over TLS — the DB trigger bcrypts it before storage.
+      await setDealerPin(user.id, enteredPin, timeoutMin);
 
       // 2. Update local Pin Store
       setPinSet(true);

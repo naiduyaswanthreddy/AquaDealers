@@ -3,7 +3,8 @@ import { Lock, Delete, LogOut } from 'lucide-react';
 import { usePinStore } from '@/stores/pinStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useStaffStore } from '@/stores/staffStore';
-import { cn, hashPin } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 import { ConfirmModal } from '@/components/ui';
 
 export const PinLockOverlay: React.FC = () => {
@@ -90,24 +91,14 @@ export const PinLockOverlay: React.FC = () => {
   }, [isLocked, isPinSet, isStaffMode, isLogoutModalOpen, pin, error]);
 
   const verifyPin = async (enteredPin: string) => {
-    if (!user?.pin_hash) {
-      // If there's no pin_hash, something is wrong with state (isPinSet shouldn't be true)
-      setError(true);
-      setTimeout(() => {
-        setPin('');
-        setError(false);
-      }, 600);
-      return;
-    }
+    const { data, error: rpcError } = await supabase.rpc('verify_dealer_pin', { p_pin: enteredPin });
 
-    const hashedEnteredPin = await hashPin(enteredPin);
-
-    if (hashedEnteredPin === user.pin_hash) {
+    if (!rpcError && data === true) {
       setPin('');
       setError(false);
       unlock();
     } else {
-      // Trigger error shake
+      // Trigger error shake (also covers the lockout error and any other failure)
       setError(true);
       setTimeout(() => {
         setPin('');

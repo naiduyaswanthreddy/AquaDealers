@@ -204,7 +204,9 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'aquadealers-auth',
       partialize: (state) => ({
-        user: state.user,
+        // pin_hash is a bcrypt hash now verified server-side (verify_dealer_pin)
+        // and never read client-side — don't persist it to localStorage.
+        user: state.user ? { ...state.user, pin_hash: null } : null,
         isAuthenticated: state.isAuthenticated,
         onboardingComplete: state.onboardingComplete,
       }),

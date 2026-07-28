@@ -16,7 +16,6 @@ import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Dealer } from '@/types/database';
-import { hashPin } from '@/lib/utils';
 import SignaturePad from '@/features/billing/components/SignaturePad';
 
 interface SettingsForm {
@@ -177,8 +176,14 @@ const SettingsPage: React.FC = () => {
       }
 
       if (user.pin_hash) {
-        const currentPinHash = await hashPin(data.currentPin);
-        if (currentPinHash !== user.pin_hash) {
+        const { data: pinOk, error: pinError } = await supabase.rpc('verify_dealer_pin', {
+          p_pin: data.currentPin,
+        });
+        if (pinError) {
+          toast.error(pinError.message || 'Current PIN is incorrect.');
+          return;
+        }
+        if (pinOk !== true) {
           toast.error('Current PIN is incorrect.');
           return;
         }
@@ -192,7 +197,8 @@ const SettingsPage: React.FC = () => {
       };
 
       if (data.newPin) {
-        updates.pin_hash = await hashPin(data.newPin);
+        // Sent raw over TLS — the DB trigger bcrypts it before storage.
+        updates.pin_hash = data.newPin;
       }
 
       const { data: updatedUser, error } = await supabase
