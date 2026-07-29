@@ -205,6 +205,8 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     isSavingSignature,
     duplicateWarning,
     setDuplicateWarning,
+    creditLimitWarning,
+    setCreditLimitWarning,
   } = useCheckout();
 
   const onCheckoutClick = (ignoreWarning = false, mode: 'sign' | 'transport' | 'in_person' = 'sign') => {
@@ -553,6 +555,37 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               loading={isSubmitting}
             >
               Yes, Create Another
+            </Button>
+          </div>
+        </div>
+      </Modal>
+      {/* Credit Limit Warning Modal */}
+      <Modal
+        isOpen={creditLimitWarning?.show || false}
+        onClose={() => setCreditLimitWarning(null)}
+        title="Over Credit Limit"
+      >
+        <div className="p-4">
+          <p className="text-slate-600 mb-6">
+            This bill will take <strong>{creditLimitWarning?.farmerName}</strong>'s outstanding due to{' '}
+            <strong>{creditLimitWarning ? formatCurrency(creditLimitWarning.projectedDue) : ''}</strong>, above their{' '}
+            <strong>{creditLimitWarning ? formatCurrency(creditLimitWarning.creditLimit) : ''}</strong> credit limit.
+            <br /><br />
+            Continue anyway?
+          </p>
+          <div className="flex items-center justify-end gap-3">
+            <Button variant="outline" onClick={() => setCreditLimitWarning(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setCreditLimitWarning(null);
+                onCheckoutClick(true, getCheckoutMode());
+              }}
+              loading={isSubmitting}
+            >
+              Bill Anyway
             </Button>
           </div>
         </div>

@@ -45,6 +45,7 @@ export const useCheckout = () => {
   const idempotencyKeyRef = useRef<string | null>(null);
   const [isSavingSignature, setIsSavingSignature] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<{ show: boolean; farmerName: string; amount: number } | null>(null);
+  const [creditLimitWarning, setCreditLimitWarning] = useState<{ show: boolean; farmerName: string; projectedDue: number; creditLimit: number } | null>(null);
 
   const {
     items,
@@ -159,6 +160,18 @@ export const useCheckout = () => {
     const signatureRequired = signatureEnabled && (paymentType === 'credit' || balanceDue > 0);
     if (signatureRequired && mode === 'sign' && signatureStrokes.length === 0) {
       toast.error('Customer signature is required for credit or pending bills.');
+      return;
+    }
+
+    const projectedDue = Math.max(0, farmerTotalDue + totals.total - amountPaid);
+    const overLimit = !!farmerId && farmerCreditLimit > 0 && projectedDue > farmerCreditLimit;
+    if (!ignoreWarning && overLimit) {
+      setCreditLimitWarning({
+        show: true,
+        farmerName: farmerName || 'this farmer',
+        projectedDue,
+        creditLimit: farmerCreditLimit,
+      });
       return;
     }
 
@@ -308,5 +321,7 @@ export const useCheckout = () => {
     isSavingSignature,
     duplicateWarning,
     setDuplicateWarning,
+    creditLimitWarning,
+    setCreditLimitWarning,
   };
 };
