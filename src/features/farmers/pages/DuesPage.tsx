@@ -11,6 +11,7 @@ import { SectionCard } from '@/components/layout/SectionCard';
 import DuesFarmerRow from '../components/DuesFarmerRow';
 import AgeingBlocks, { AgeingBucketKey } from '../components/AgeingBlocks';
 import FollowUpModal from '../components/FollowUpModal';
+import CollectPaymentModal from '../components/CollectPaymentModal';
 import { useFarmers, useDuesAgeing } from '../hooks/useFarmers';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
@@ -39,6 +40,7 @@ export const DuesPage: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [selectedBucket, setSelectedBucket] = useState<AgeingBucketKey | null>(null);
   const [followUpFarmer, setFollowUpFarmer] = useState<Farmer | null>(null);
+  const [collectFarmer, setCollectFarmer] = useState<Farmer | null>(null);
   const dealer = useAuthStore(s => s.user);
 
   const { data: allFarmers = [], isLoading } = useFarmers({
@@ -263,6 +265,7 @@ export const DuesPage: React.FC = () => {
                     farmer={farmer}
                     oldestDueDays={ageingRow ? ageingRow.oldest_due_days : null}
                     onFollowUp={setFollowUpFarmer}
+                    onCollect={setCollectFarmer}
                   />
                 </div>
               </div>
@@ -276,6 +279,16 @@ export const DuesPage: React.FC = () => {
           isOpen={!!followUpFarmer}
           onClose={() => setFollowUpFarmer(null)}
           farmer={followUpFarmer}
+        />
+      )}
+
+      {collectFarmer && (
+        <CollectPaymentModal
+          isOpen={!!collectFarmer}
+          onClose={() => setCollectFarmer(null)}
+          farmerId={collectFarmer.id}
+          farmerName={collectFarmer.name}
+          totalDue={collectFarmer.total_due}
         />
       )}
     </PageShell>

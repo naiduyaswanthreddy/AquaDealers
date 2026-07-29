@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarClock, CalendarPlus } from 'lucide-react';
+import { CalendarClock, CalendarPlus, Wallet } from 'lucide-react';
 import type { Farmer } from '@/types/database';
 import { formatCurrency, formatDate, getAgeingBucket } from '@/lib/utils';
 import { AGEING_BUCKETS } from '@/lib/constants';
@@ -10,13 +10,14 @@ interface DuesFarmerRowProps {
   farmer: Farmer;
   oldestDueDays: number | null;
   onFollowUp: (farmer: Farmer) => void;
+  onCollect: (farmer: Farmer) => void;
 }
 
 /**
  * Dues page row: outstanding amount with an age band (green → red by how long
  * the oldest unpaid bill has been open) plus the collection follow-up state.
  */
-export const DuesFarmerRow: React.FC<DuesFarmerRowProps> = ({ farmer, oldestDueDays, onFollowUp }) => {
+export const DuesFarmerRow: React.FC<DuesFarmerRowProps> = ({ farmer, oldestDueDays, onFollowUp, onCollect }) => {
   const navigate = useNavigate();
 
   const bucket =
@@ -70,6 +71,15 @@ export const DuesFarmerRow: React.FC<DuesFarmerRowProps> = ({ farmer, oldestDueD
           </div>
           <div className="text-[0.72rem] font-semibold text-slate-400">outstanding</div>
         </div>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onCollect(farmer)}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-600 transition-all active:scale-95 hover:bg-emerald-100"
+        aria-label={`Collect payment from ${farmer.name}`}
+      >
+        <Wallet className="h-4.5 w-4.5" />
       </button>
 
       <button
