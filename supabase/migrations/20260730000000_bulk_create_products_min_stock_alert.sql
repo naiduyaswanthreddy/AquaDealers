@@ -3,6 +3,12 @@
 -- low-stock alert until someone manually edited each one afterward. Add an
 -- optional min_stock_alert column to the row payload; omitted/NULL still
 -- defaults to 0, matching prior behavior exactly for any existing caller.
+--
+-- This also restores SET LOCAL session_replication_role = 'replica' to the
+-- function, which was silently dropped by migration 20260720000000_fix_inventory_quantity_column.sql.
+-- Without it, the trigger trg_fanout_product_to_branches (which inserts inventory
+-- rows with min_stock_alert hardcoded to 0) wins the ON CONFLICT DO NOTHING race,
+-- defeating the dealer-entered threshold value.
 
 CREATE OR REPLACE FUNCTION public.bulk_create_products(p_rows JSONB)
 RETURNS INTEGER
