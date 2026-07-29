@@ -286,12 +286,24 @@ const BillDetailsPage: React.FC = () => {
             >
               {t('billing.downloadInvoice')}
             </Button>
-            {bill.type !== 'adjustment' && (
+            {bill.type !== 'adjustment' && hasProPlus && (
                 <Button
                   variant="ghost"
                   size="sm"
                   leftIcon={<Edit className="w-4 h-4 text-white" />}
                   onClick={() => setIsEditModalOpen(true)}
+                  className="rounded-[24px] hover:bg-white/25 transition-all text-white border-solid font-semibold text-xs px-5 sm:px-6"
+                  style={{ background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.22)' }}
+                >
+                  Edit Bill
+                </Button>
+            )}
+            {bill.type !== 'adjustment' && !hasProPlus && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<Edit className="w-4 h-4 text-white" />}
+                  onClick={() => toast.info('Editing bills is a Pro+ feature. Upgrade your plan to enable it.')}
                   className="rounded-[24px] hover:bg-white/25 transition-all text-white border-solid font-semibold text-xs px-5 sm:px-6"
                   style={{ background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.22)' }}
                 >
