@@ -119,9 +119,11 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         await supabase.auth.signOut();
         useStaffStore.getState().clearStaffSession();
+        setImpersonating(false);
         set({
           user: null,
           session: null,
+          impersonator: null,
           isAuthenticated: false,
           onboardingComplete: false,
         });

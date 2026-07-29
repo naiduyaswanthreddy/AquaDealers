@@ -38,7 +38,13 @@ export const setImpersonating = (active: boolean) => {
 // activates during the rare, admin-only impersonation path, so a missed
 // write-style RPC name is a residual risk to track, not a regression for
 // normal dealer usage (which never sets `impersonating`).
-const READ_ONLY_RPC_PREFIXES = ['get_', 'search_', 'verify_', 'check_'];
+// 'admin_' RPCs are exempt too: they're independently access-controlled
+// server-side via admin_assert_access and already audited, and impersonation
+// reuses the same client/tab (adminImpersonationService.ts injects a session
+// into the same dealer auth store rather than opening an isolated context) —
+// so without this, an admin who navigates back to /admin/* mid-impersonation
+// finds the whole admin portal write-dead.
+const READ_ONLY_RPC_PREFIXES = ['get_', 'search_', 'verify_', 'check_', 'admin_'];
 
 export const isBlockedByImpersonation = (url: string, method: string): boolean => {
   if (!impersonating) return false;
@@ -57,6 +63,11 @@ export const isBlockedByImpersonation = (url: string, method: string): boolean =
     const fnName = rpcMatch[1];
     return !READ_ONLY_RPC_PREFIXES.some((prefix) => fnName.startsWith(prefix));
   }
+
+  // Supabase Storage (farmer photos, product images, signatures, bill PDFs)
+  // isn't under /rest/v1/ — block any non-GET write there too while
+  // impersonating.
+  if (path.startsWith('/storage/v1/')) return true;
 
   return path.startsWith('/rest/v1/');
 };

@@ -87,7 +87,8 @@ export const useCheckout = () => {
     if (!user?.id) return null;
 
     const { subtotal, gstAmount, total } = overrideTotals;
-    const projectedDue = Math.max(0, farmerTotalDue + total - amountPaid);
+    const effectiveTotal = Math.max(0, total - (settlementDiscountAmount || 0));
+    const projectedDue = Math.max(0, farmerTotalDue + effectiveTotal - amountPaid);
     const exceedsCreditLimit = !!farmerId && farmerCreditLimit > 0 && projectedDue > farmerCreditLimit;
 
     return {
@@ -134,7 +135,8 @@ export const useCheckout = () => {
 
   const handleCheckout = async (options: CheckoutOptions) => {
     const { totals, signatureStrokes = [], sigCanvasDims, ignoreCreditLimitWarning = false, ignoreDuplicateWarning = false, mode = 'sign', onSuccess } = options;
-    const balanceDue = Math.max(0, totals.total - amountPaid);
+    const effectiveTotal = Math.max(0, totals.total - (settlementDiscountAmount || 0));
+    const balanceDue = Math.max(0, effectiveTotal - amountPaid);
 
     if (!items.length || !user?.id) return;
 
@@ -152,7 +154,6 @@ export const useCheckout = () => {
       toast.error(t('billing.errorOverpaid', 'Amount paid cannot exceed the total.'));
       return;
     }
-    const effectiveTotal = Math.max(0, totals.total - (settlementDiscountAmount || 0));
     if (farmerId === null && amountPaid < effectiveTotal) {
       toast.error(t('billing.walkinFullPayment', 'Walk-in bills must be paid in full.'));
       return;
@@ -165,7 +166,7 @@ export const useCheckout = () => {
       return;
     }
 
-    const projectedDue = Math.max(0, farmerTotalDue + totals.total - amountPaid);
+    const projectedDue = Math.max(0, farmerTotalDue + effectiveTotal - amountPaid);
     const overLimit = !!farmerId && farmerCreditLimit > 0 && projectedDue > farmerCreditLimit;
     if (!ignoreCreditLimitWarning && overLimit) {
       setCreditLimitWarning({

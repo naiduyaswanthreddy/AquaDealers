@@ -12,6 +12,7 @@ vi.mock('@/lib/supabase', () => ({
     from: vi.fn(() => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), lte: vi.fn().mockResolvedValue({ data: [] }) })),
     rpc: vi.fn().mockResolvedValue({ data: { bill_id: 'b1', bill_number: 'B-1', balance_due: 0 }, error: null }),
   },
+  setImpersonating: vi.fn(),
 }));
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -50,10 +51,13 @@ describe('useCheckout credit limit guard', () => {
 
 describe('useCheckout walk-in settlement discount', () => {
   beforeEach(() => {
-    useAuthStore.setState({ user: { id: 'u1', bill_signature_enabled: false } as any });
+    // bill_signature_enabled: true (the default) — a test with signatures
+    // disabled would mask the bug where balanceDue/projectedDue were derived
+    // from the raw total instead of the settlement-discounted effectiveTotal.
+    useAuthStore.setState({ user: { id: 'u1', bill_signature_enabled: true } as any });
   });
 
-  it('allows a walk-in to check out fully paid after a settlement discount', async () => {
+  it('allows a walk-in to check out fully paid after a settlement discount, even with signatures enabled', async () => {
     useCartStore.setState({
       items: [{ inventory_id: 'i1', product_id: 'p1', product_name: 'Feed', hsn_code: '', quantity: 1, base_unit_price: 500, discount_percentage: 0, gst_rate: 0, mrp: null, discount_source: 'default', discount_label: '', default_discount_percentage: 0, farmer_discount_percentage: 0, product_type: 'feed' } as any],
       farmerId: null,

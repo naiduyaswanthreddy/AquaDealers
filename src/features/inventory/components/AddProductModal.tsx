@@ -117,7 +117,6 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
           unit: row['Unit'] || 'Bag',
           gst_rate: Number(row['GST rate %'] || row['GST Rate (%)'] || 0),
           medicine_discount_percentage: Number(row['Default Discount (%)'] || 0),
-          min_stock_alert: Number(row['Low Stock Alert'] || row['Min Stock Alert'] || 0),
         })).filter(item => item.name); // Filter out empty rows
 
         if (mappedData.length === 0) {
@@ -148,7 +147,11 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
         unit: String(item.unit),
         gst_rate: Number(item.gst_rate) || 0,
         medicine_discount_percentage: Number(item.medicine_discount_percentage) || 0,
-        min_stock_alert: Number(item.min_stock_alert) || 0,
+        // Shared/common threshold from the same form state as the manual tab
+        // (batch-wide, matching every other per-batch field in this RPC) —
+        // not per-row, since the Excel column would silently be discarded by
+        // the SQL anyway (it only reads row 1's value for the whole batch).
+        min_stock_alert: Number(watch('min_stock_alert') || 0),
         track_expiry: item.type === 'medicine',
         is_active: true,
       }));
@@ -172,8 +175,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
         "Company": "LEO",
         "Unit": "500 g",
         "GST rate %": 0,
-        "Default Discount (%)": 40,
-        "Low Stock Alert": 10
+        "Default Discount (%)": 40
       }
     ]);
     const wb = XLSX.utils.book_new();
@@ -332,6 +334,16 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
             <Button variant="outline" size="sm" onClick={downloadTemplate}>
               <Download className="w-4 h-4 mr-2" /> Template
             </Button>
+          </div>
+
+          <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+            <Input
+              label="Low Stock Alert (units) — applies to this whole batch"
+              type="number"
+              min="0"
+              {...register('min_stock_alert', { valueAsNumber: true })}
+              placeholder="e.g. 5"
+            />
           </div>
 
           <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50 hover:bg-gray-100 transition-colors relative cursor-pointer">

@@ -47,25 +47,21 @@ export function useBusinessSnapshot() {
   const startDate = ALL_TIME_START;
   const endDate = new Date().toISOString().slice(0, 10);
 
-  const { data: realizedProfitData } = useQuery({
-    queryKey: ['realized-profit', dealerId, startDate, endDate, branchId],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_realized_profit', {
+  return useQuery<BusinessSnapshot>({
+    queryKey: ['business-snapshot', dealerId, branchId],
+    queryFn: async (): Promise<BusinessSnapshot> => {
+      // Realized-profit RPC is folded into this same queryFn (not a separate
+      // useQuery) so an RPC failure (e.g. PGRST202 before the migration is
+      // applied) propagates through this hook's normal error path instead of
+      // being silently swallowed and defaulted to 0 — which would otherwise
+      // surface a fabricated negative "profit" to the dealer.
+      const realizedProfitP = supabase.rpc('get_realized_profit', {
         p_dealer_id: dealerId,
         p_start: startDate,
         p_end: endDate,
         p_branch_id: branchId,
       });
-      if (error) throw error;
-      return Number(data) || 0;
-    },
-    enabled: !!dealerId,
-    staleTime: 5 * 60 * 1000,
-  });
 
-  return useQuery<BusinessSnapshot>({
-    queryKey: ['business-snapshot', dealerId, branchId, realizedProfitData],
-    queryFn: async (): Promise<BusinessSnapshot> => {
       // ── 1. All-time purchases (total invested) ─────────────────────────────
       let purchasesQ = supabase
         .from('stock_purchases')
@@ -126,7 +122,9 @@ export function useBusinessSnapshot() {
         { data: cashEntries },
         { data: farmers },
         { data: returns },
-      ] = await Promise.all([purchasesQ, inventoryQ, billsQ, expensesQ, cashQ, farmersQ, returnsQ]);
+        { data: realizedProfitData, error: realizedProfitError },
+      ] = await Promise.all([purchasesQ, inventoryQ, billsQ, expensesQ, cashQ, farmersQ, returnsQ, realizedProfitP]);
+      if (realizedProfitError) throw realizedProfitError;
 
       // ── Calculations ────────────────────────────────────────────────────────
       const totalInvested = (purchases || []).reduce((s, p) => s + Number(p.total_amount || 0), 0);
@@ -155,7 +153,7 @@ export function useBusinessSnapshot() {
       // inventory-delta approximation (totalSales − (totalInvested −
       // currentInventoryValue) − totalExpenses), which drifted whenever
       // purchases and sales weren't time-aligned.
-      const grossMargin = realizedProfitData ?? 0;
+      const grossMargin = Number(realizedProfitData) || 0;
       const realizedProfit = grossMargin - totalExpenses - totalReturns;
 
       const cashEntryList = cashEntries || [];
