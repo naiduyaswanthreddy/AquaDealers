@@ -118,17 +118,19 @@ function summarizeFarmers(bills: BookBill[], farmerDues: Map<string, number>): B
 function buildCashLines(
   entries: CashBookEntry[],
   paymentMethods: Map<string, string>,
-  supplierPaymentMethods: Map<string, string>
+  supplierPaymentMethods: Map<string, string>,
+  paymentFarmerNames: Map<string, string>
 ): BookCashLine[] {
   return entries.map((entry) => {
     const rawMethod =
       (entry.reference_id ? paymentMethods.get(entry.reference_id) : null) ||
       (entry.reference_id ? supplierPaymentMethods.get(entry.reference_id) : null) ||
       'cash';
+    const farmerName = entry.reference_id ? paymentFarmerNames.get(entry.reference_id) : null;
     return {
       id: entry.id,
       time: entry.created_at,
-      label: entry.notes || entry.source || (entry.entry_type === 'income' ? 'Money in' : 'Money out'),
+      label: (farmerName ? `Payment received from ${farmerName}` : null) || entry.notes || entry.source || (entry.entry_type === 'income' ? 'Money in' : 'Money out'),
       amount: Number(entry.amount || 0),
       direction: entry.entry_type === 'income' ? 'in' : 'out',
       method: classifyMethod(rawMethod),
@@ -262,7 +264,10 @@ export const dailyBookService = {
 
     const paymentMethods = new Map(payments.map((p) => [p.id, p.method || 'cash']));
     const supplierPaymentMethods = new Map(supplierPayments.map((p) => [p.id, p.method || 'cash']));
-    const cashLines = buildCashLines(cashEntries, paymentMethods, supplierPaymentMethods);
+    const paymentFarmerNames = new Map(
+      payments.filter((p) => (p as any).farmers?.name).map((p) => [p.id, (p as any).farmers.name as string])
+    );
+    const cashLines = buildCashLines(cashEntries, paymentMethods, supplierPaymentMethods, paymentFarmerNames);
 
     const openingRows = ((openingRes as any).data || []) as { amount: number; entry_type: string }[];
     const openingCash = openingRows.reduce(
