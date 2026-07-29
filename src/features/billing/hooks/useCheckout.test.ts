@@ -10,6 +10,7 @@ vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: { getSession: vi.fn().mockResolvedValue({ data: { session: { user: { id: 'u1' } } } }) },
     from: vi.fn(() => ({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), lte: vi.fn().mockResolvedValue({ data: [] }) })),
+    rpc: vi.fn().mockResolvedValue({ data: { bill_id: 'b1', bill_number: 'B-1', balance_due: 0 }, error: null }),
   },
 }));
 
