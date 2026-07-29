@@ -22,9 +22,55 @@ if (import.meta.env.DEV && !import.meta.env.VITE_SUPABASE_URL) {
   );
 }
 
+// Set by authStore whenever admin impersonation starts/ends. Kept as a plain
+// module flag (not a zustand import) to avoid a supabase.ts <-> authStore.ts
+// circular import.
+let impersonating = false;
+export const setImpersonating = (active: boolean) => {
+  impersonating = active;
+};
+
+// RPC function names are assumed read-only (never blocked) when they start
+// with one of these prefixes — the codebase's existing naming convention for
+// query-shaped RPCs (get_dashboard_aggregates, get_sales_register_data, etc.).
+// Anything else routed through rpc() is treated as a mutation during
+// impersonation. This is a heuristic, not a full allowlist audit — it only
+// activates during the rare, admin-only impersonation path, so a missed
+// write-style RPC name is a residual risk to track, not a regression for
+// normal dealer usage (which never sets `impersonating`).
+const READ_ONLY_RPC_PREFIXES = ['get_', 'search_', 'verify_', 'check_'];
+
+export const isBlockedByImpersonation = (url: string, method: string): boolean => {
+  if (!impersonating) return false;
+  const upperMethod = (method || 'GET').toUpperCase();
+  if (upperMethod === 'GET' || upperMethod === 'HEAD' || upperMethod === 'OPTIONS') return false;
+
+  let path: string;
+  try {
+    path = new URL(url, 'https://placeholder.invalid').pathname;
+  } catch {
+    return false;
+  }
+
+  const rpcMatch = path.match(/\/rest\/v1\/rpc\/([a-zA-Z0-9_]+)/);
+  if (rpcMatch) {
+    const fnName = rpcMatch[1];
+    return !READ_ONLY_RPC_PREFIXES.some((prefix) => fnName.startsWith(prefix));
+  }
+
+  return path.startsWith('/rest/v1/');
+};
+
 // Attaches the staff/admin session tokens (when present) so the database can
 // enforce staff RLS policies and admin RPC access server-side.
 const fetchWithSessionHeaders: typeof fetch = (input, init) => {
+  const method = init?.method || 'GET';
+  const url = typeof input === 'string' ? input : (input as Request).url;
+
+  if (isBlockedByImpersonation(url, method)) {
+    return Promise.reject(new Error('Action blocked: admin impersonation is read-only.'));
+  }
+
   const staffToken = getStaffSessionToken();
   const adminToken = getAdminSessionToken();
   if (!staffToken && !adminToken) {

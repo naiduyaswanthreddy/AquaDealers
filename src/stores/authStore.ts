@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Session } from '@supabase/supabase-js';
 import type { Dealer } from '@/types/database';
-import { supabase } from '@/lib/supabase';
+import { supabase, setImpersonating } from '@/lib/supabase';
 import { buildStaffDealerProfile } from '@/lib/staffAccess';
 import { useStaffStore } from './staffStore';
 
@@ -50,8 +50,14 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user) => set({ user, isAuthenticated: !!user }),
       setSession: (session) => set({ session }),
-      setImpersonator: (adminName) => set({ impersonator: adminName }),
-      clearSession: () => set({ session: null, impersonator: null }),
+      setImpersonator: (adminName) => {
+        setImpersonating(!!adminName);
+        set({ impersonator: adminName });
+      },
+      clearSession: () => {
+        setImpersonating(false);
+        set({ session: null, impersonator: null });
+      },
       setLoading: (isLoading) => set({ isLoading }),
       setOnboardingComplete: (onboardingComplete) => set({ onboardingComplete }),
 
