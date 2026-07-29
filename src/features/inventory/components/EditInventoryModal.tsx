@@ -19,6 +19,7 @@ interface EditInventoryForm {
   cost_percentage: number;
   mrp: number;
   product_name: string;
+  company: string;
 }
 
 interface EditInventoryModalProps {
@@ -34,6 +35,7 @@ interface EditInventoryModalProps {
     medicine_discount_percentage?: number;
     image_url?: string | null;
     product_name?: string;
+    company?: string | null;
     mrp?: number | null;
   };
 }
@@ -112,6 +114,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
       medicine_discount_percentage: initialDiscount,
       mrp: initialMrp,
       product_name: initialData.product_name || '',
+      company: initialData.company || '',
     }
   });
 
@@ -130,6 +133,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
         medicine_discount_percentage: disc,
         mrp: mrp,
         product_name: initialData.product_name || '',
+        company: initialData.company || '',
       });
       setImagePreview(initialData.image_url || null);
       setImageFile(null);
@@ -180,8 +184,14 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
         },
       });
 
-      if (productId && data.product_name && data.product_name !== initialData.product_name) {
-        await updateProduct({ productId, updates: { name: data.product_name } });
+      if (productId && (
+        (data.product_name && data.product_name !== initialData.product_name) ||
+        (data.company !== (initialData.company || ''))
+      )) {
+        await updateProduct({ productId, updates: {
+          ...(data.product_name ? { name: data.product_name } : {}),
+          company: data.company || null,
+        }});
       }
 
       toast.success(t('inventory.updatedSuccessfully', 'Inventory details updated successfully'));
@@ -292,6 +302,15 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
             label={t('inventory.productName', 'Product Name')}
             {...register('product_name')}
             error={errors.product_name?.message}
+          />
+        )}
+
+        {productId && (
+          <Input
+            label="Company Name (Optional)"
+            placeholder="e.g. Growel, Adisseo"
+            {...register('company')}
+            error={errors.company?.message}
           />
         )}
 

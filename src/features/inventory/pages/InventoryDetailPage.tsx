@@ -1326,6 +1326,7 @@ const InventoryDetailPage: React.FC = () => {
           min_stock_alert: inventory.min_stock_alert,
           medicine_discount_percentage: inventory.medicine_discount_percentage,
           product_name: inventory.product.name,
+          company: inventory.product.company,
           image_url: inventory.image_url,
         }}
       />
