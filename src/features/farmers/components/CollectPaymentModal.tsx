@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
-import { useCollectPayment, useFarmerOpenBills } from '../hooks/useFarmerLedger';
+import { useCollectPayment, useFarmerOpenBills, useSettleRemainingBalance } from '../hooks/useFarmerLedger';
 import { Modal, Input, Select, Textarea, Button } from '@/components/ui';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { PAYMENT_METHODS } from '@/lib/constants';
@@ -30,8 +30,10 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
 }) => {
   const user = useAuthStore((s) => s.user);
   const activeBranchId = useBranchStore((s) => s.getActiveBranchId());
-  const { mutateAsync: collectPayment, isPending } = useCollectPayment();
+  const { mutateAsync: collectPayment, isPending: isCollecting } = useCollectPayment();
+  const { mutateAsync: settleBalance, isPending: isSettling } = useSettleRemainingBalance();
   const { data: openBills = [] } = useFarmerOpenBills(isOpen ? farmerId : '');
+  const isPending = isCollecting || isSettling;
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const [amount, setAmount] = useState('');
@@ -42,12 +44,16 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
   const [upiRef, setUpiRef] = useState('');
   const [chequeNo, setChequeNo] = useState('');
   const [notes, setNotes] = useState('');
+  const [settleRemaining, setSettleRemaining] = useState(false);
+  const [settlementReason, setSettlementReason] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
     setAmount(initialAmount ? String(initialAmount) : '');
     setAllocationMode(initialBillId ? 'specific_bill' : 'oldest_first');
     setTargetBillId(initialBillId || '');
+    setSettleRemaining(false);
+    setSettlementReason('');
   }, [initialAmount, initialBillId, isOpen]);
 
   const paymentOptions = PAYMENT_METHODS.map((m) => ({ value: m.value, label: m.label }));
@@ -73,12 +79,16 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
       return;
     }
 
+    const parsedAmount = Number(amount);
+    const remainingAfterPayment = totalDue - parsedAmount;
+    const willSettle = settleRemaining && remainingAfterPayment > 0;
+
     try {
       await collectPayment({
         dealerId: user!.id,
         branchId: activeBranchId,
         farmerId,
-        amount: Number(amount),
+        amount: parsedAmount,
         method,
         allocationMode,
         targetBillId: allocationMode === 'specific_bill' ? targetBillId : undefined,
@@ -87,9 +97,19 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
         chequeNo: method === 'cheque' ? chequeNo : undefined,
         notes,
       });
-      toast.success('Payment recorded successfully!');
+
+      if (willSettle) {
+        await settleBalance({
+          dealerId: user!.id,
+          farmerId,
+          reason: settlementReason || undefined,
+        });
+        toast.success(`Payment recorded. ${formatCurrency(remainingAfterPayment)} settled — farmer balance is now ₹0.`);
+      } else {
+        toast.success('Payment recorded successfully!');
+      }
+
       onClose();
-      // Reset form
       setAmount('');
       setMethod('cash');
       setAllocationMode('oldest_first');
@@ -98,6 +118,8 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
       setChequeNo('');
       setPaymentDate(todayStr);
       setNotes('');
+      setSettleRemaining(false);
+      setSettlementReason('');
     } catch (err) {
       // Error is handled in the hook
     }
@@ -181,6 +203,33 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
             value={chequeNo}
             onChange={(e) => setChequeNo(e.target.value)}
           />
+        )}
+
+        {Number(amount) > 0 && Number(amount) < totalDue && (
+          <div className="rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-3 space-y-2">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded accent-fuchsia-600"
+                checked={settleRemaining}
+                onChange={(e) => setSettleRemaining(e.target.checked)}
+              />
+              <span className="text-sm font-semibold text-fuchsia-900 leading-snug">
+                Settle remaining {formatCurrency(totalDue - Number(amount))}
+                <span className="block text-xs font-normal text-fuchsia-700 mt-0.5">
+                  Write off the remaining balance — farmer will owe ₹0
+                </span>
+              </span>
+            </label>
+            {settleRemaining && (
+              <Input
+                label="Settlement Reason (Optional)"
+                placeholder="e.g. Rounding off, Goodwill"
+                value={settlementReason}
+                onChange={(e) => setSettlementReason(e.target.value)}
+              />
+            )}
+          </div>
         )}
 
         <Textarea

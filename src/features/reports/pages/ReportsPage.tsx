@@ -477,7 +477,6 @@ const ReportsPage: React.FC = () => {
   const [gstExpanded, setGstExpanded] = useState(false);
 
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-  const [settlementModalOpen, setSettlementModalOpen] = useState(false);
   const { data: settlementSummary } = useSettlementSummary();
 
   // Query params
@@ -714,30 +713,9 @@ const ReportsPage: React.FC = () => {
           <ReportCard id="dues"     title="Customer Dues"  liveValue={formatCurrency(pack.rawTotals.outstandingDues)}   icon={Users}      color="text-orange-600" bg="bg-orange-50" action={() => navigate('/dues')} trend={getTrend(pack.rawTotals.outstandingDues, prevPack?.rawTotals.outstandingDues)} />
           <ReportCard id="stock"    title="Stock Report"   icon={Package} color="text-violet-600" bg="bg-violet-50" action={() => navigate('/inventory/report')} />
           <ReportCard id="products" title="Top Products"   icon={Award}   color="text-indigo-600" bg="bg-indigo-50" action={() => handleOpenReport('topProducts')} />
-          <ReportCard id="settlements" title="Settlements (All Time)" liveValue={settlementSummary?.total ? formatCurrency(settlementSummary.total) : undefined} icon={IndianRupee} color="text-fuchsia-600" bg="bg-fuchsia-50" action={() => setSettlementModalOpen(true)} />
+          <ReportCard id="settlements" title="Settlements (All Time)" liveValue={settlementSummary?.total ? formatCurrency(settlementSummary.total) : undefined} icon={IndianRupee} color="text-fuchsia-600" bg="bg-fuchsia-50" action={() => navigate('/reports/settlements')} />
         </div>
       </ReportGroup>
-
-      <Modal isOpen={settlementModalOpen} onClose={() => setSettlementModalOpen(false)} title="Settlement Discounts — All Time" contentClassName="max-w-lg">
-        <div className="grid gap-3">
-          <div className="rounded-xl bg-slate-900 p-4 text-white">
-            <div className="text-[10px] font-black uppercase tracking-wider text-slate-300">Total settlement given so far</div>
-            <div className="mt-1 text-2xl font-black">{formatCurrency(settlementSummary?.total || 0)}</div>
-          </div>
-          <div className="max-h-80 overflow-y-auto rounded-xl border border-slate-200">
-            {!settlementSummary?.byFarmer.length ? (
-              <div className="px-4 py-8 text-center text-sm font-semibold text-slate-500">No settlement discounts recorded yet.</div>
-            ) : (
-              settlementSummary.byFarmer.map((row) => (
-                <div key={row.farmerId} className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5 last:border-0">
-                  <span className="text-sm font-bold text-slate-900">{row.farmerName}</span>
-                  <span className="text-sm font-black text-fuchsia-700">{formatCurrency(row.amount)}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </Modal>
 
       {/* ── Tax Reports (collapsible) ──────────────────────────────────────── */}
       <ReportGroup title="Tax Reports" icon={FileText}>

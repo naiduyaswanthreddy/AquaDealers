@@ -9,6 +9,7 @@ import {
   getFarmerAgeing,
   getOpenBillsForFarmer,
   collectPayment,
+  settleRemainingBalance,
   getFarmerStatement,
 } from '../services/farmerService';
 import { toast } from 'sonner';
@@ -177,9 +178,29 @@ export function useCollectPayment() {
       queryClient.invalidateQueries({ queryKey: ['financials'] });
       queryClient.invalidateQueries({ queryKey: ['farmer-items'] });
       queryClient.invalidateQueries({ queryKey: ['farmer-item-bills'] });
+      queryClient.invalidateQueries({ queryKey: ['settlement-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['settlement-details'] });
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to record payment.');
+    },
+  });
+}
+
+export function useSettleRemainingBalance() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: settleRemainingBalance,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['farmer'] });
+      queryClient.invalidateQueries({ queryKey: ['farmers'] });
+      queryClient.invalidateQueries({ queryKey: ['bills'] });
+      queryClient.invalidateQueries({ queryKey: ['settlement-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['settlement-details'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to settle balance.');
     },
   });
 }

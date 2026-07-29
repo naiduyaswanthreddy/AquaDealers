@@ -363,7 +363,7 @@ export async function getFarmerBillsPage(params: {
 
   let query = supabase
     .from('bills')
-    .select('id, bill_number, bill_date, total, created_at, bill_items(product_name, quantity)', { count: 'exact' })
+    .select('id, bill_number, bill_date, total, created_at, bill_items(product_name_snapshot, quantity)', { count: 'exact' })
     .eq('dealer_id', params.dealerId)
     .eq('farmer_id', params.farmerId)
     .neq('status', 'cancelled');
@@ -385,7 +385,7 @@ export async function getFarmerBillsPage(params: {
       date: bill.bill_date,
       amount: Number(bill.total),
       createdAt: bill.created_at,
-      items: ((bill as any).bill_items ?? []).map((i: any) => ({ product_name: i.product_name, quantity: i.quantity })),
+      items: ((bill as any).bill_items ?? []).map((i: any) => ({ product_name: i.product_name_snapshot, quantity: i.quantity })),
     })),
     total: count || 0,
     limit: params.limit,
@@ -687,6 +687,20 @@ export async function collectPayment(params: {
     allocated_amount: number;
     unallocated_amount: number;
   };
+}
+
+export async function settleRemainingBalance(params: {
+  dealerId: string;
+  farmerId: string;
+  reason?: string;
+}): Promise<number> {
+  const { data, error } = await supabase.rpc('settle_farmer_remaining_balance', {
+    p_dealer_id: params.dealerId,
+    p_farmer_id: params.farmerId,
+    p_reason: params.reason || null,
+  });
+  if (error) throw error;
+  return data as number;
 }
 
 export async function getUniqueVillages(dealerId: string): Promise<string[]> {

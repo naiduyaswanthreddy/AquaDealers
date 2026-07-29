@@ -90,6 +90,7 @@ const BookExpensesPage        = React.lazy(() => import('@/features/dailyBook/pa
 
 // Reports & Settings
 const ReportsPage             = React.lazy(() => import('@/features/reports/pages/ReportsPage'));
+const SettlementsPage         = React.lazy(() => import('@/features/reports/pages/SettlementsPage'));
 const BillingTemplatesPage    = React.lazy(() => import('@/features/settings/pages/BillingTemplatesPage').then(m => ({ default: m.BillingTemplatesPage })));
 const SettingsPage            = React.lazy(() => import('@/features/settings/pages/SettingsPage'));
 const MorePage                = React.lazy(() => import('@/features/placeholder/MorePage'));
@@ -330,6 +331,7 @@ const App: React.FC = () => {
 
             {/* Reports & Settings */}
             <Route path="/reports"              element={<FeatureGate allowed={['reports']}  title="Reports"          description="You do not have access to reports."><ReportsPage /></FeatureGate>} />
+            <Route path="/reports/settlements"  element={<FeatureGate allowed={['reports']}  title="Settlements"      description="You do not have access to reports."><SettlementsPage /></FeatureGate>} />
             <Route path="/settings"             element={<FeatureGate allowed={['settings']} title="Settings"         description="You do not have access to settings."><SettingsPage /></FeatureGate>} />
             <Route path="/settings/templates"   element={<FeatureGate allowed={['settings']} title="Billing Templates" description="You do not have access to settings."><BillingTemplatesPage /></FeatureGate>} />
             <Route path="/settings/:section"    element={<FeatureGate allowed={['settings']} title="Settings"         description="You do not have access to settings."><SettingsPage /></FeatureGate>} />
