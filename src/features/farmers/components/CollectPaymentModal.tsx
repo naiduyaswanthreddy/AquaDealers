@@ -150,6 +150,33 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
           <IndianRupee className="absolute left-3 top-[34px] w-4 h-4 text-text-muted" />
         </div>
 
+        {Number(amount) > 0 && Number(amount) < totalDue && (
+          <div className="rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-3 space-y-2">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded accent-fuchsia-600"
+                checked={settleRemaining}
+                onChange={(e) => setSettleRemaining(e.target.checked)}
+              />
+              <span className="text-sm font-semibold text-fuchsia-900 leading-snug">
+                Settle remaining {formatCurrency(totalDue - Number(amount))}
+                <span className="block text-xs font-normal text-fuchsia-700 mt-0.5">
+                  Write off the remaining balance — farmer will owe ₹0
+                </span>
+              </span>
+            </label>
+            {settleRemaining && (
+              <Input
+                label="Settlement Reason (Optional)"
+                placeholder="e.g. Rounding off, Goodwill"
+                value={settlementReason}
+                onChange={(e) => setSettlementReason(e.target.value)}
+              />
+            )}
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-semibold text-text-primary mb-1">Payment Date</label>
           <DatePicker
@@ -203,33 +230,6 @@ export const CollectPaymentModal: React.FC<CollectPaymentModalProps> = ({
             value={chequeNo}
             onChange={(e) => setChequeNo(e.target.value)}
           />
-        )}
-
-        {Number(amount) > 0 && Number(amount) < totalDue && (
-          <div className="rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-3 space-y-2">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded accent-fuchsia-600"
-                checked={settleRemaining}
-                onChange={(e) => setSettleRemaining(e.target.checked)}
-              />
-              <span className="text-sm font-semibold text-fuchsia-900 leading-snug">
-                Settle remaining {formatCurrency(totalDue - Number(amount))}
-                <span className="block text-xs font-normal text-fuchsia-700 mt-0.5">
-                  Write off the remaining balance — farmer will owe ₹0
-                </span>
-              </span>
-            </label>
-            {settleRemaining && (
-              <Input
-                label="Settlement Reason (Optional)"
-                placeholder="e.g. Rounding off, Goodwill"
-                value={settlementReason}
-                onChange={(e) => setSettlementReason(e.target.value)}
-              />
-            )}
-          </div>
         )}
 
         <Textarea
