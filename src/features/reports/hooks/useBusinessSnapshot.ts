@@ -48,12 +48,13 @@ export function useBusinessSnapshot() {
   const endDate = new Date().toISOString().slice(0, 10);
 
   const { data: realizedProfitData } = useQuery({
-    queryKey: ['realized-profit', dealerId, startDate, endDate],
+    queryKey: ['realized-profit', dealerId, startDate, endDate, branchId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_realized_profit', {
         p_dealer_id: dealerId,
         p_start: startDate,
         p_end: endDate,
+        p_branch_id: branchId,
       });
       if (error) throw error;
       return Number(data) || 0;
