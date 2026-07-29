@@ -152,7 +152,8 @@ export const useCheckout = () => {
       toast.error(t('billing.errorOverpaid', 'Amount paid cannot exceed the total.'));
       return;
     }
-    if (farmerId === null && amountPaid < totals.total) {
+    const effectiveTotal = Math.max(0, totals.total - (settlementDiscountAmount || 0));
+    if (farmerId === null && amountPaid < effectiveTotal) {
       toast.error(t('billing.walkinFullPayment', 'Walk-in bills must be paid in full.'));
       return;
     }

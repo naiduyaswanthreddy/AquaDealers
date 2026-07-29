@@ -46,3 +46,32 @@ describe('useCheckout credit limit guard', () => {
     expect(result.current.creditLimitWarning?.projectedDue).toBe(9100);
   });
 });
+
+describe('useCheckout walk-in settlement discount', () => {
+  beforeEach(() => {
+    useAuthStore.setState({ user: { id: 'u1', bill_signature_enabled: false } as any });
+  });
+
+  it('allows a walk-in to check out fully paid after a settlement discount', async () => {
+    useCartStore.setState({
+      items: [{ inventory_id: 'i1', product_id: 'p1', product_name: 'Feed', hsn_code: '', quantity: 1, base_unit_price: 500, discount_percentage: 0, gst_rate: 0, mrp: null, discount_source: 'default', discount_label: '', default_discount_percentage: 0, farmer_discount_percentage: 0, product_type: 'feed' } as any],
+      farmerId: null,
+      farmerName: null,
+      farmerTotalDue: 0,
+      farmerCreditLimit: 0,
+      amountPaid: 480,
+      paymentType: 'cash',
+      discountAmount: 0,
+      settlementDiscountAmount: 20,
+    } as any);
+    const onSuccess = vi.fn();
+    const { result } = renderHook(() => useCheckout(), { wrapper });
+    await act(async () => {
+      await result.current.handleCheckout({
+        totals: { subtotal: 500, gstAmount: 0, total: 500 },
+        onSuccess,
+      });
+    });
+    expect(onSuccess).toHaveBeenCalled();
+  });
+});
