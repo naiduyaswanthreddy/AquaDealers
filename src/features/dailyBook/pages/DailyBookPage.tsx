@@ -57,7 +57,7 @@ export const DailyBookPage: React.FC = () => {
             </div>
           </BookRow>
 
-          <BookRow to={`/book/cash?date=${date}`}>
+          <BookRow to={`/book/collections?date=${date}`}>
             <div className="flex items-center justify-between gap-2">
               <span className="flex min-w-0 items-center gap-2 text-sm font-extrabold">
                 <span className="book-icon">💰</span> Collections

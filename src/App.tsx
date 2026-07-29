@@ -82,6 +82,7 @@ const BookFarmersPage         = React.lazy(() => import('@/features/dailyBook/pa
 const BookFarmerPage          = React.lazy(() => import('@/features/dailyBook/pages/BookFarmerPage'));
 const BookBillPage            = React.lazy(() => import('@/features/dailyBook/pages/BookBillPage'));
 const BookCashPage            = React.lazy(() => import('@/features/dailyBook/pages/BookCashPage'));
+const BookCollectionsPage     = React.lazy(() => import('@/features/dailyBook/pages/BookCollectionsPage'));
 const BookClosingPage         = React.lazy(() => import('@/features/dailyBook/pages/BookClosingPage'));
 const BookStockPage           = React.lazy(() => import('@/features/dailyBook/pages/BookStockPage'));
 const BookStockPositionPage   = React.lazy(() => import('@/features/dailyBook/pages/BookStockPositionPage'));
@@ -321,6 +322,7 @@ const App: React.FC = () => {
             <Route path="/book/farmers/:farmerId"      element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookFarmerPage /></FeatureGate>} />
             <Route path="/book/bills/:billId"          element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookBillPage /></FeatureGate>} />
             <Route path="/book/cash"                   element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookCashPage /></FeatureGate>} />
+            <Route path="/book/collections"            element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookCollectionsPage /></FeatureGate>} />
             <Route path="/book/closing"                element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookClosingPage /></FeatureGate>} />
             <Route path="/book/stock"                  element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookStockPage /></FeatureGate>} />
             <Route path="/book/stock-position"         element={<FeatureGate allowed={['reports']} title="Daily Book" description="You do not have access to the daily book."><BookStockPositionPage /></FeatureGate>} />
