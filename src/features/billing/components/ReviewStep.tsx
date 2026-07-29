@@ -209,7 +209,21 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     setCreditLimitWarning,
   } = useCheckout();
 
-  const onCheckoutClick = (ignoreWarning = false, mode: 'sign' | 'transport' | 'in_person' = 'sign') => {
+  // Each warning is confirmed independently, but confirmations must accumulate
+  // across retries within one checkout attempt — otherwise confirming the
+  // duplicate-bill warning (which only sets its own flag) would reset the
+  // credit-limit flag back to false and re-trigger that modal in a loop.
+  // Refs (not state) because the confirm handlers need the flag to take
+  // effect on the very next synchronous call, before a re-render could land.
+  const ignoreCreditLimitRef = React.useRef(false);
+  const ignoreDuplicateRef = React.useRef(false);
+
+  const onCheckoutClick = (
+    overrides: { ignoreCreditLimitWarning?: boolean; ignoreDuplicateWarning?: boolean } = {},
+    mode: 'sign' | 'transport' | 'in_person' = 'sign'
+  ) => {
+    if (overrides.ignoreCreditLimitWarning) ignoreCreditLimitRef.current = true;
+    if (overrides.ignoreDuplicateWarning) ignoreDuplicateRef.current = true;
     handleCheckout({
       totals: {
         subtotal: totals.subtotal,
@@ -218,7 +232,8 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
       },
       signatureStrokes,
       sigCanvasDims,
-      ignoreWarning,
+      ignoreCreditLimitWarning: ignoreCreditLimitRef.current,
+      ignoreDuplicateWarning: ignoreDuplicateRef.current,
       mode,
       onSuccess,
     });
@@ -514,7 +529,9 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
           <button
             type="button"
             onClick={() => {
-              onCheckoutClick(false, getCheckoutMode());
+              ignoreCreditLimitRef.current = false;
+              ignoreDuplicateRef.current = false;
+              onCheckoutClick({}, getCheckoutMode());
             }}
             disabled={items.length === 0 || isSubmitting || isSavingSignature}
             className={`billing-save-button flex-1 ${signatureEnabled && mobileSignatureMode === 'verify_later' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20' : ''}`}
@@ -550,7 +567,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               variant="primary"
               onClick={() => {
                 setDuplicateWarning(null);
-                onCheckoutClick(true, getCheckoutMode());
+                onCheckoutClick({ ignoreDuplicateWarning: true }, getCheckoutMode());
               }}
               loading={isSubmitting}
             >
@@ -581,7 +598,7 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
               variant="primary"
               onClick={() => {
                 setCreditLimitWarning(null);
-                onCheckoutClick(true, getCheckoutMode());
+                onCheckoutClick({ ignoreCreditLimitWarning: true }, getCheckoutMode());
               }}
               loading={isSubmitting}
             >

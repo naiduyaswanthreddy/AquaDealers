@@ -22,7 +22,8 @@ interface CheckoutOptions {
   };
   signatureStrokes?: SignatureStroke[];
   sigCanvasDims?: { w: number; h: number };
-  ignoreWarning?: boolean;
+  ignoreCreditLimitWarning?: boolean;
+  ignoreDuplicateWarning?: boolean;
   mode?: 'sign' | 'transport' | 'in_person';
   onSuccess: (data: {
     billId: string;
@@ -132,7 +133,7 @@ export const useCheckout = () => {
   }, [activeBranch?.id, amountPaid, chequeNumber, discountAmount, settlementDiscountAmount, farmerCreditLimit, farmerId, farmerName, farmerTotalDue, gstEnabled, items, notes, paymentType, effectiveBillDate, upiRef, user?.id]);
 
   const handleCheckout = async (options: CheckoutOptions) => {
-    const { totals, signatureStrokes = [], sigCanvasDims, ignoreWarning = false, mode = 'sign', onSuccess } = options;
+    const { totals, signatureStrokes = [], sigCanvasDims, ignoreCreditLimitWarning = false, ignoreDuplicateWarning = false, mode = 'sign', onSuccess } = options;
     const balanceDue = Math.max(0, totals.total - amountPaid);
 
     if (!items.length || !user?.id) return;
@@ -165,7 +166,7 @@ export const useCheckout = () => {
 
     const projectedDue = Math.max(0, farmerTotalDue + totals.total - amountPaid);
     const overLimit = !!farmerId && farmerCreditLimit > 0 && projectedDue > farmerCreditLimit;
-    if (!ignoreWarning && overLimit) {
+    if (!ignoreCreditLimitWarning && overLimit) {
       setCreditLimitWarning({
         show: true,
         farmerName: farmerName || 'this farmer',
@@ -175,7 +176,7 @@ export const useCheckout = () => {
       return;
     }
 
-    if (!ignoreWarning && farmerId && navigator.onLine) {
+    if (!ignoreDuplicateWarning && farmerId && navigator.onLine) {
       try {
         const billStart = new Date(`${billDate}T00:00:00.000Z`);
         const billEnd = new Date(`${billDate}T23:59:59.999Z`);
