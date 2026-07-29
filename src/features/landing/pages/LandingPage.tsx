@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import Seo from '@/components/seo/Seo';
+import PricingSection from '../components/PricingSection';
 import { 
   ArrowRight, CheckCircle2, Package, CreditCard, 
   FileText, BarChart3, Clock, Check, Settings,
@@ -59,6 +60,7 @@ const LandingPage: React.FC = () => {
           <div className="hidden lg:flex items-center gap-8 font-medium text-slate-600 text-sm">
             <a href="#benefits" className="hover:text-blue-600 transition-colors">Benefits</a>
             <a href="#features" className="hover:text-blue-600 transition-colors">Features</a>
+            <a href="#pricing" className="hover:text-blue-600 transition-colors">Pricing</a>
             <a href="#tutorials" className="hover:text-blue-600 transition-colors">Tutorials</a>
             <a href="#contact" className="hover:text-blue-600 transition-colors">Contact</a>
           </div>
@@ -864,6 +866,9 @@ const LandingPage: React.FC = () => {
           </div>
         </section>
       </div>
+
+      {/* 8. PRICING SECTION */}
+      <PricingSection />
 
       {/* 11. FLOATING DARK CARD (CTA + FOOTER) */}
       <div className="px-4 md:px-8 max-w-[1400px] mx-auto mb-8">
