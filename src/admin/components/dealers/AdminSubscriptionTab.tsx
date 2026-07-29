@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, Edit2, Save, X } from 'lucide-react';
 import type { FeatureKey } from '@/stores/subscriptionStore';
+import { useAdminAuthStore } from '@/admin/stores/adminAuthStore';
 
 const ALL_FEATURES: { key: FeatureKey; label: string }[] = [
   { key: 'core', label: 'Core Features' },
@@ -31,6 +32,7 @@ export const AdminSubscriptionTab: React.FC<AdminSubscriptionTabProps> = ({ deal
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [selectedFeatures, setSelectedFeatures] = useState<FeatureKey[]>([]);
+  const { adminUser } = useAdminAuthStore();
 
   // Fetch Dealer's current custom features
   const { data: dealer, isLoading } = useQuery({
@@ -48,15 +50,18 @@ export const AdminSubscriptionTab: React.FC<AdminSubscriptionTabProps> = ({ deal
 
   const { mutateAsync: updateFeatures, isPending } = useMutation({
     mutationFn: async (features: FeatureKey[]) => {
-      const { error } = await supabase
-        .from('dealers')
-        .update({ custom_features: features })
-        .eq('id', dealerId);
+      if (!adminUser) throw new Error('Admin session not found.');
+      const { error } = await supabase.rpc('admin_update_dealer_addons', {
+        p_admin_id: adminUser.id,
+        p_dealer_id: dealerId,
+        p_features: features,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin_dealer_features', dealerId] });
       queryClient.invalidateQueries({ queryKey: ['admin_dealer', dealerId] });
+      queryClient.invalidateQueries({ queryKey: ['admin_audit_log'] });
       setIsEditing(false);
     },
   });
