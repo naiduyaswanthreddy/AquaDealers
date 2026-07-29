@@ -1,6 +1,11 @@
--- Single source of truth for "realized profit" over a date range, using the
--- same item-level cost-basis formula useDashboardStats/useProfitReportData
--- already use for their (correct) numbers. useBusinessSnapshot's own
+-- Single source of truth for GROSS item margin over a date range — i.e.
+-- SUM((unit_price - cost_price) * quantity) across bill items in [p_start,
+-- p_end], using the same item-level cost-basis formula
+-- useDashboardStats/useProfitReportData already use for their (correct)
+-- numbers. This function does NOT subtract expenses or returns for the
+-- period — callers (e.g. useBusinessSnapshot.ts) must net those out
+-- themselves to match the Dashboard's "todayProfit" formula shape
+-- (grossMargin - expenses - returns). useBusinessSnapshot's own
 -- inventory-delta approximation and the monthly finance pack's
 -- purchases-in-period approximation both drift from this whenever
 -- purchases and sales aren't time-aligned. This function is read-only,

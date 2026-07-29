@@ -20,7 +20,7 @@ export interface BusinessSnapshot {
   totalSales: number;
   /** Total expenses (all time) */
   totalExpenses: number;
-  /** Realized profit = SUM((unit_price − cost_price) × quantity) over all bill items, all time (via get_realized_profit RPC) */
+  /** Realized profit = grossMargin(get_realized_profit RPC) − totalExpenses − totalReturns, over the same period, matching the Dashboard's "today's profit" formula shape */
   realizedProfit: number;
   /** Net business worth = currentInventoryValue + cashAvailable + outstandingDues */
   netBusinessWorth: number;
@@ -30,9 +30,13 @@ export interface BusinessSnapshot {
   insight: string;
 }
 
-// All-time lower bound: this hook has no period selector today, so the new
-// realized-profit RPC is queried across "all time" to match the rest of the
-// snapshot's all-time figures (totalSales, totalInvested, etc).
+// All-time lower bound: this hook has no period selector today, so its whole
+// snapshot — including the realized-profit RPC below — is scoped to "all
+// time" (this IS the hook's period, matching totalSales/totalInvested/etc).
+// get_realized_profit only returns gross item margin for that range; expenses
+// and returns for the same range are netted out below, same formula shape as
+// the Dashboard's todayProfit (trueProfit − expenses − returns), just over
+// this hook's all-time period instead of "today".
 const ALL_TIME_START = '2000-01-01';
 
 export function useBusinessSnapshot() {
@@ -104,6 +108,15 @@ export function useBusinessSnapshot() {
         .eq('dealer_id', dealerId)
         .eq('is_active', true);
 
+      // ── 7. Returns in period, same table/shape as useDashboardStats' todayReturns ──
+      let returnsQ = supabase
+        .from('bill_returns')
+        .select('total_amount')
+        .eq('dealer_id', dealerId)
+        .gte('return_date', startDate)
+        .lte('return_date', endDate);
+      if (branchId) returnsQ = returnsQ.eq('branch_id', branchId);
+
       const [
         { data: purchases },
         { data: inventory },
@@ -111,7 +124,8 @@ export function useBusinessSnapshot() {
         { data: expenses },
         { data: cashEntries },
         { data: farmers },
-      ] = await Promise.all([purchasesQ, inventoryQ, billsQ, expensesQ, cashQ, farmersQ]);
+        { data: returns },
+      ] = await Promise.all([purchasesQ, inventoryQ, billsQ, expensesQ, cashQ, farmersQ, returnsQ]);
 
       // ── Calculations ────────────────────────────────────────────────────────
       const totalInvested = (purchases || []).reduce((s, p) => s + Number(p.total_amount || 0), 0);
@@ -129,13 +143,19 @@ export function useBusinessSnapshot() {
 
       const totalSales = (bills || []).reduce((s, b) => s + Number(b.total || 0), 0);
       const totalExpenses = (expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
+      const totalReturns = (returns || []).reduce((s, r) => s + Number(r.total_amount || 0), 0);
 
-      // Realized profit: item-level cost basis from get_realized_profit RPC,
-      // the same formula useDashboardStats/useProfitReportData use — no longer
-      // the inventory-delta approximation (totalSales − (totalInvested −
+      // Realized profit = grossMargin − expenses − returns, over this hook's
+      // period — same formula shape as useDashboardStats' todayProfit
+      // (trueProfit − todayExpenses − todayReturns). grossMargin comes from
+      // get_realized_profit RPC (item-level cost basis, same as
+      // useDashboardStats/useProfitReportData); it does not itself subtract
+      // expenses/returns, so that netting happens here. This replaces the old
+      // inventory-delta approximation (totalSales − (totalInvested −
       // currentInventoryValue) − totalExpenses), which drifted whenever
       // purchases and sales weren't time-aligned.
-      const realizedProfit = realizedProfitData ?? 0;
+      const grossMargin = realizedProfitData ?? 0;
+      const realizedProfit = grossMargin - totalExpenses - totalReturns;
 
       const cashEntryList = cashEntries || [];
       const cashAvailable = cashEntryList.reduce(
