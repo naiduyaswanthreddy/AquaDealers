@@ -17,6 +17,7 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({ onNext }) => {
   const [showItemsBreakdown, setShowItemsBreakdown] = useState(false);
   const [highlightPayment, setHighlightPayment] = useState(true);
   const paymentMethodRef = useRef<HTMLDivElement>(null);
+  const lastAutoAmountRef = useRef<number | null>(null);
 
   const {
     items,
@@ -268,7 +269,12 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({ onNext }) => {
                       const v = Number(e.target.value);
                       const clamped = Math.min(Math.max(0, Number.isNaN(v) ? 0 : v), totals.total);
                       setSettlementDiscount(clamped);
-                      setAmountPaid(Math.max(0, totals.total - clamped));
+                      const untouched = amountPaid === totals.total || amountPaid === lastAutoAmountRef.current;
+                      if (untouched) {
+                        const newAmount = Math.max(0, totals.total - clamped);
+                        lastAutoAmountRef.current = newAmount;
+                        setAmountPaid(newAmount);
+                      }
                     }}
                     className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white transition-all shadow-sm"
                     placeholder="0.00"
