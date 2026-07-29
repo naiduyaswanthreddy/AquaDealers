@@ -809,9 +809,10 @@ const InventoryDetailPage: React.FC = () => {
                                  movement.reference_type === 'manual_adjustment' ? 'Manual Adjustment' :
                                  getMovementLabel(movement.reference_type, movement.quantity_change);
                    
-                   const subtitle = movement.bill?.bill_number ? `Bill ${movement.bill.bill_number}` :
-                                    movement.purchase?.invoice_number ? `Purchase record` :
-                                    movement.notes || (movement.quantity_change < 0 ? 'Stock reduced' : 'Stock increased');
+                   const subtitle = movement.bill?.bill_number
+                                    ? `Bill ${movement.bill.bill_number}${movement.bill.farmer_name_snapshot ? ` • ${movement.bill.farmer_name_snapshot}` : ''}`
+                                    : movement.purchase?.invoice_number ? `Purchase record`
+                                    : movement.notes || (movement.quantity_change < 0 ? 'Stock reduced' : 'Stock increased');
                    
                    return (
                      <div key={movement.id} className={`flex items-center justify-between p-3 ${idx !== 0 ? 'border-t border-slate-50' : ''}`}>
