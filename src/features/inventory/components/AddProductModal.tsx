@@ -14,6 +14,7 @@ import { ProductInsert } from '@/types/database';
 interface AddProductForm {
   type: string;
   company: string;
+  min_stock_alert: number;
   products: {
     name: string;
     unit: string;
@@ -42,6 +43,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
     defaultValues: {
       type: 'feed',
       company: '',
+      min_stock_alert: 5,
       products: [
         {
           name: '',
@@ -78,6 +80,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
         unit: product.unit || (data.type === 'medicine' ? 'Unit' : 'Bag'),
         gst_rate: Number(product.gst_rate || 0),
         medicine_discount_percentage: Number(product.medicine_discount_percentage || 0),
+        min_stock_alert: Number(data.min_stock_alert || 0),
         track_expiry: data.type === 'medicine',
         is_active: true,
       }));
@@ -114,6 +117,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
           unit: row['Unit'] || 'Bag',
           gst_rate: Number(row['GST rate %'] || row['GST Rate (%)'] || 0),
           medicine_discount_percentage: Number(row['Default Discount (%)'] || 0),
+          min_stock_alert: Number(row['Low Stock Alert'] || row['Min Stock Alert'] || 0),
         })).filter(item => item.name); // Filter out empty rows
 
         if (mappedData.length === 0) {
@@ -144,6 +148,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
         unit: String(item.unit),
         gst_rate: Number(item.gst_rate) || 0,
         medicine_discount_percentage: Number(item.medicine_discount_percentage) || 0,
+        min_stock_alert: Number(item.min_stock_alert) || 0,
         track_expiry: item.type === 'medicine',
         is_active: true,
       }));
@@ -167,7 +172,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
         "Company": "LEO",
         "Unit": "500 g",
         "GST rate %": 0,
-        "Default Discount (%)": 40
+        "Default Discount (%)": 40,
+        "Low Stock Alert": 10
       }
     ]);
     const wb = XLSX.utils.book_new();
@@ -227,6 +233,14 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
                 label="Company (Optional)"
                 {...register('company')}
                 placeholder="e.g. LEO"
+              />
+
+              <Input
+                label="Low Stock Alert (units)"
+                type="number"
+                min="0"
+                {...register('min_stock_alert', { valueAsNumber: true })}
+                placeholder="e.g. 5"
               />
             </div>
           </div>

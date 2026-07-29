@@ -473,6 +473,7 @@ export const inventoryService = {
       default_price: (p as any).default_price ?? null,
       track_expiry: (p as any).track_expiry ?? false,
       medicine_discount_percentage: (p as any).medicine_discount_percentage ?? 0,
+      min_stock_alert: (p as any).min_stock_alert ?? 0,
     }));
     const { data: count, error } = await supabase.rpc('bulk_create_products', { p_rows: payload });
     if (error) throw error;

@@ -212,6 +212,7 @@ export interface ProductInsert {
   track_expiry?: boolean;
   is_active?: boolean;
   medicine_discount_percentage?: number;
+  min_stock_alert?: number;
 }
 
 export interface FarmerProductDiscount {
