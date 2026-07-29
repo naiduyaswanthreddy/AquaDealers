@@ -698,7 +698,10 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 8. WHATSAPP WORKFLOWS - PROFESSIONAL IMAGE */}
+      {/* 8. PRICING SECTION */}
+      <PricingSection />
+
+      {/* 9. WHATSAPP WORKFLOWS - PROFESSIONAL IMAGE */}
       <section className="py-24 bg-green-50 border-y border-green-200 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-green-400/10 rounded-full blur-3xl -z-10" />
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
@@ -769,7 +772,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 9. VIDEO TUTORIALS */}
+      {/* 10. VIDEO TUTORIALS */}
       <section id="tutorials" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-4">Learn Every Feature in Minutes</h2>
@@ -789,7 +792,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 10. FLOATING BLUE CARD (CUSTOMIZATION) */}
+      {/* 11. FLOATING BLUE CARD (CUSTOMIZATION) */}
       <div className="px-4 md:px-8 max-w-[1400px] mx-auto mb-6">
         <section className="py-12 md:py-16 bg-gradient-to-br from-blue-600 to-[#0033cc] rounded-[2rem] md:rounded-[3rem] text-white relative overflow-hidden shadow-2xl shadow-blue-900/20">
           {/* Subtle background patterns */}
@@ -867,10 +870,7 @@ const LandingPage: React.FC = () => {
         </section>
       </div>
 
-      {/* 8. PRICING SECTION */}
-      <PricingSection />
-
-      {/* 11. FLOATING DARK CARD (CTA + FOOTER) */}
+      {/* 12. FLOATING DARK CARD (CTA + FOOTER) */}
       <div className="px-4 md:px-8 max-w-[1400px] mx-auto mb-8">
         <section id="contact" className="pt-20 md:pt-28 pb-8 bg-[#0a0f1d] rounded-[2rem] md:rounded-[3rem] text-white text-center relative overflow-hidden shadow-2xl">
           {/* Subtle dots background and gradients */}
