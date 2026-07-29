@@ -20,7 +20,7 @@ export interface BusinessSnapshot {
   totalSales: number;
   /** Total expenses (all time) */
   totalExpenses: number;
-  /** Realized profit = totalSales − totalPurchasesForSoldGoods − totalExpenses */
+  /** Realized profit = SUM((unit_price − cost_price) × quantity) over all bill items, all time (via get_realized_profit RPC) */
   realizedProfit: number;
   /** Net business worth = currentInventoryValue + cashAvailable + outstandingDues */
   netBusinessWorth: number;
@@ -30,14 +30,36 @@ export interface BusinessSnapshot {
   insight: string;
 }
 
+// All-time lower bound: this hook has no period selector today, so the new
+// realized-profit RPC is queried across "all time" to match the rest of the
+// snapshot's all-time figures (totalSales, totalInvested, etc).
+const ALL_TIME_START = '2000-01-01';
+
 export function useBusinessSnapshot() {
   const user = useAuthStore((state) => state.user);
   const { activeBranch, isAllBranches } = useBranchStore();
   const branchId = isAllBranches ? null : (activeBranch?.id || null);
   const dealerId = user?.id || '';
+  const startDate = ALL_TIME_START;
+  const endDate = new Date().toISOString().slice(0, 10);
+
+  const { data: realizedProfitData } = useQuery({
+    queryKey: ['realized-profit', dealerId, startDate, endDate],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_realized_profit', {
+        p_dealer_id: dealerId,
+        p_start: startDate,
+        p_end: endDate,
+      });
+      if (error) throw error;
+      return Number(data) || 0;
+    },
+    enabled: !!dealerId,
+    staleTime: 5 * 60 * 1000,
+  });
 
   return useQuery<BusinessSnapshot>({
-    queryKey: ['business-snapshot', dealerId, branchId],
+    queryKey: ['business-snapshot', dealerId, branchId, realizedProfitData],
     queryFn: async (): Promise<BusinessSnapshot> => {
       // ── 1. All-time purchases (total invested) ─────────────────────────────
       let purchasesQ = supabase
@@ -108,10 +130,12 @@ export function useBusinessSnapshot() {
       const totalSales = (bills || []).reduce((s, b) => s + Number(b.total || 0), 0);
       const totalExpenses = (expenses || []).reduce((s, e) => s + Number(e.amount || 0), 0);
 
-      // Realized profit: Sales − Purchases (cost of goods sold) − Expenses
-      // We approximate cost of goods sold = totalInvested − currentInventoryValue
-      const costOfGoodsSold = Math.max(0, totalInvested - currentInventoryValue);
-      const realizedProfit = totalSales - costOfGoodsSold - totalExpenses;
+      // Realized profit: item-level cost basis from get_realized_profit RPC,
+      // the same formula useDashboardStats/useProfitReportData use — no longer
+      // the inventory-delta approximation (totalSales − (totalInvested −
+      // currentInventoryValue) − totalExpenses), which drifted whenever
+      // purchases and sales weren't time-aligned.
+      const realizedProfit = realizedProfitData ?? 0;
 
       const cashEntryList = cashEntries || [];
       const cashAvailable = cashEntryList.reduce(
