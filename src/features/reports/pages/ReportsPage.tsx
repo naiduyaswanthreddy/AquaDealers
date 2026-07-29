@@ -278,7 +278,7 @@ function ReportGroup({ title, icon: Icon, children }: { title: string; icon: Rea
 // ─── Business Snapshot Section ──────────────────────────────────────────────
 // Standalone so it has its own loading state and doesn't block the main page.
 function BusinessSnapshotSection() {
-  const { data: snap, isLoading } = useBusinessSnapshot();
+  const { data: snap, isLoading, isError, refetch } = useBusinessSnapshot();
 
   type CardDef = {
     emoji: string;
@@ -395,6 +395,21 @@ function BusinessSnapshotSection() {
             <div key={i} className="h-28 rounded-2xl bg-slate-100 animate-pulse" />
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-2xl bg-red-50 p-8 text-center text-red-600">
+        <p>Couldn&apos;t load business snapshot right now.</p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="mt-2 text-xs font-bold underline"
+        >
+          Retry
+        </button>
       </div>
     );
   }
