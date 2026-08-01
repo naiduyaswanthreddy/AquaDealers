@@ -10,7 +10,7 @@ import Button from '@/components/ui/Button';
 import { Modal } from '@/components/ui';
 import SignatureRenderer from '../components/SignatureRenderer';
 import { SignatureStroke } from '@/types/database';
-import { downloadBillPdf, shareBillPdfViaWhatsApp } from '@/lib/billPdfGenerator';
+import { downloadBillPdf, shareInvoiceImageViaWhatsApp } from '@/lib/billPdfGenerator';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { useBranchStore } from '@/stores/branchStore';
@@ -26,6 +26,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { billingKeys } from '../hooks/useBilling';
 import { toast } from 'sonner';
 import { billingService } from '../services/billingService';
+import { openWhatsAppText } from '@/lib/whatsAppService';
+import { deliveryPinMessage } from '@/lib/whatsAppMessages';
 
 const BillDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +47,7 @@ const BillDetailsPage: React.FC = () => {
   const Template = InvoiceTemplates[templateSettings.invoiceTemplate] || InvoiceTemplates.template1;
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -105,14 +108,22 @@ const BillDetailsPage: React.FC = () => {
 
   const handleShareWhatsApp = async () => {
     if (!bill) return;
+    const phone = bill.farmer_phone_snapshot || (bill as any).farmers?.phone;
+    if (!phone) {
+      toast.error(
+        `${bill.farmer_name_snapshot || 'This farmer'} doesn't have a phone number. Add one in their profile first.`,
+        { duration: 5000 }
+      );
+      return;
+    }
     try {
-      setIsGenerating(true);
-      await shareBillPdfViaWhatsApp(bill, dealer, bill.farmer?.phone);
+      setIsSharing(true);
+      await shareInvoiceImageViaWhatsApp(bill, dealer, 'print-content', phone);
     } catch (err) {
-      console.error('Failed to share PDF', err);
-      toast.error('Failed to share bill. Please try again.');
+      console.error('Failed to share invoice', err);
+      toast.error('Failed to generate invoice image. Please try again.');
     } finally {
-      setIsGenerating(false);
+      setIsSharing(false);
     }
   };
 
@@ -270,10 +281,12 @@ const BillDetailsPage: React.FC = () => {
               size="sm"
               leftIcon={<MessageCircle className="w-4 h-4 text-white" />}
               onClick={handleShareWhatsApp}
+              loading={isSharing}
+              disabled={isSharing}
               className="rounded-[24px] hover:bg-white/25 transition-all text-white border-solid font-semibold text-xs px-5 sm:px-6"
               style={{ background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.22)' }}
             >
-              Share WhatsApp
+              {isSharing ? 'Generating…' : 'Share on WhatsApp'}
             </Button>
             <Button 
               variant="ghost" 
@@ -720,10 +733,8 @@ const DeliveryPinBanner: React.FC<{
     catch { toast.error('Copy failed'); }
   };
   const whatsApp = () => {
-    const msg = encodeURIComponent(
-      `Namaste ${farmerName || ''}! Delivery PIN from ${shopName || 'our shop'}: *${pin}*. Please share this PIN with the driver on delivery.`
-    );
-    window.open(farmerPhone ? `https://wa.me/91${farmerPhone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+    const msg = deliveryPinMessage(farmerName ?? null, pin, shopName || 'our shop');
+    openWhatsAppText(farmerPhone ?? null, msg);
   };
   return (
     <div className="mb-6 rounded-2xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-sky-50 p-4">
@@ -745,7 +756,7 @@ const DeliveryPinBanner: React.FC<{
               {copied ? 'Copied' : 'Copy'}
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={whatsApp} leftIcon={<MessageCircle className="w-4 h-4" />} className="border-[#25D366]/30 text-[#1DA851] hover:bg-[#25D366]/10">
-              WhatsApp
+              WhatsApp PIN
             </Button>
           </div>
         </div>
