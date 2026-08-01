@@ -7,10 +7,12 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { useBillDetails } from '../hooks/useBilling';
 import { useAuthStore } from '@/stores/authStore';
-import { shareBillPdfViaWhatsApp } from '@/lib/billPdfGenerator';
+import { shareInvoiceImageViaWhatsApp } from '@/lib/billPdfGenerator';
 import { useBranchStore } from '@/stores/branchStore';
 import { InvoiceTemplates } from '@/features/billing/components/templates';
 import { getBillSignature } from '@/lib/utils';
+import { openWhatsAppText } from '@/lib/whatsAppService';
+import { deliveryPinMessage } from '@/lib/whatsAppMessages';
 
 interface CheckoutSuccessModalProps {
   isOpen: boolean;
@@ -64,11 +66,20 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
 
   const handleShareWhatsApp = async () => {
     if (!bill) return;
+    const phone = bill.farmer_phone_snapshot || (bill as any).farmers?.phone;
+    if (!phone) {
+      toast.error(
+        `${bill.farmer_name_snapshot || 'This farmer'} doesn't have a phone number. Add one in their profile first.`,
+        { duration: 5000 }
+      );
+      return;
+    }
     try {
       setIsSharing(true);
-      await shareBillPdfViaWhatsApp(bill, dealer, bill.farmer?.phone);
-    } catch (error) {
-      console.error('Failed to share PDF:', error);
+      await shareInvoiceImageViaWhatsApp(bill, dealer, 'print-content-wrapper', phone);
+    } catch (err) {
+      console.error('Failed to share invoice:', err);
+      toast.error('Failed to generate invoice image. Please try again.');
     } finally {
       setIsSharing(false);
     }
@@ -187,9 +198,10 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
                 className="border-[#25D366]/30 bg-[#25D366]/5 text-[#1DA851] hover:bg-[#25D366]/10"
                 onClick={handleShareWhatsApp}
                 loading={isSharing}
+                disabled={isSharing}
                 fullWidth
               >
-                WhatsApp
+                {isSharing ? 'Generating…' : 'Share on WhatsApp'}
               </Button>
             </div>
           </>
@@ -236,10 +248,8 @@ const DeliveryPinCard: React.FC<{ pin: string; farmerPhone?: string | null; farm
     catch { toast.error('Copy failed'); }
   };
   const whatsApp = () => {
-    const msg = encodeURIComponent(
-      `Namaste ${farmerName || ''}! Delivery PIN from ${shopName || 'our shop'}: *${pin}*. Please share this PIN with the driver on delivery.`
-    );
-    window.open(farmerPhone ? `https://wa.me/91${farmerPhone}?text=${msg}` : `https://wa.me/?text=${msg}`, '_blank');
+    const msg = deliveryPinMessage(farmerName, pin, shopName || 'our shop');
+    openWhatsAppText(farmerPhone, msg);
   };
   return (
     <div className="mt-3 w-full rounded-2xl border-2 border-blue-300 bg-gradient-to-br from-blue-50 to-sky-50 p-4 text-left">
