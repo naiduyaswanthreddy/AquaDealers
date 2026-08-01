@@ -117,11 +117,17 @@ export const shareInvoiceImageViaWhatsApp = async (
   const imageBlob = await res.blob();
   const imageFile = new File([imageBlob], `Invoice_${bill.bill_number}.png`, { type: 'image/png' });
 
-  // Web Share API with files works on mobile AND on desktop Chrome/Edge (Windows).
-  // When available, the native share sheet opens — image + message go to WhatsApp
-  // in one click with no clipboard paste needed.
+  // Web Share API with files works on mobile AND on desktop Chrome/Edge (Windows 10+).
+  // Intentionally no isMobile guard — Chrome/Edge desktop supports canShare and opens
+  // the Windows native share sheet, which can hand off to WhatsApp Desktop in one click.
+  // AbortError (user dismissed) is caught below and treated as a no-op.
   if (navigator.canShare?.({ files: [imageFile] })) {
-    await navigator.share({ files: [imageFile], text: message });
+    try {
+      await navigator.share({ files: [imageFile], text: message });
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return; // user dismissed the share sheet — not an error
+      throw err;
+    }
     return;
   }
 
