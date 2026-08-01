@@ -130,9 +130,12 @@ Add after the existing `shareBillPdfViaWhatsApp` function:
 /**
  * Captures the invoice template as a PNG and shares it via WhatsApp.
  *
- * Mobile: Web Share API attaches the image directly to WhatsApp.
- * Desktop: image is copied to the clipboard and the farmer's chat is opened;
- *          the user pastes (Ctrl+V) to send.
+ * If the browser supports Web Share API with files (mobile AND desktop Chrome/Edge
+ * on Windows), the native share sheet opens — image + message go directly to
+ * WhatsApp in one click, no Ctrl+V needed.
+ *
+ * Fallback (Firefox, older browsers): image is copied to clipboard and the
+ * farmer's WhatsApp chat is opened; the user pastes (Ctrl+V) to send.
  *
  * Throws on error so the caller can show a toast.
  */
@@ -176,14 +179,15 @@ export const shareInvoiceImageViaWhatsApp = async (
   const imageBlob = await res.blob();
   const imageFile = new File([imageBlob], `Invoice_${bill.bill_number}.png`, { type: 'image/png' });
 
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-  if (isMobile && navigator.canShare?.({ files: [imageFile] })) {
+  // Web Share API with files works on mobile AND on desktop Chrome/Edge (Windows).
+  // When available, the native share sheet opens — image + message go to WhatsApp
+  // in one click with no clipboard paste needed.
+  if (navigator.canShare?.({ files: [imageFile] })) {
     await navigator.share({ files: [imageFile], text: message });
     return;
   }
 
-  // Desktop: copy image to clipboard, open the farmer's WhatsApp chat
+  // Fallback for Firefox / older browsers: copy image to clipboard, open chat.
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
 
   const normalized = normalizeIndianPhone(phone);
