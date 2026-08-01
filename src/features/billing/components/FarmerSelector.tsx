@@ -11,7 +11,7 @@ import { QuickAddWalkInModal } from './QuickAddWalkInModal';
 
 export const FarmerSelector: React.FC<{ onSelect?: () => void; openWalkIn?: boolean }> = ({ onSelect, openWalkIn = false }) => {
   const { t } = useTranslation();
-  const { data: farmers = [], isLoading } = useFarmers();
+  const { data: farmers = [], isLoading } = useFarmers({ sortBy: 'name', sortDir: 'asc' });
   const { farmerId, setFarmer, items } = useCartStore();
   const cartTotal = useMemo(
     () => items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0),
