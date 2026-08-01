@@ -115,24 +115,23 @@ export const shareInvoiceImageViaWhatsApp = async (
 
   const res = await fetch(dataUrl);
   const imageBlob = await res.blob();
-  const imageFile = new File([imageBlob], `Invoice_${bill.bill_number}.png`, { type: 'image/png' });
 
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  // Mobile: Web Share API attaches the image directly — no extra steps for the user.
-  if (isMobile && navigator.canShare?.({ files: [imageFile] })) {
-    try {
-      await navigator.share({ files: [imageFile], text: message });
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return; // user dismissed — not an error
-      throw err;
-    }
-    return;
+  // Mobile: download image to device so user can attach it from gallery/downloads.
+  // Desktop: copy image to clipboard so user can paste with Ctrl+V.
+  // Both then open the farmer's specific WhatsApp chat directly via wa.me,
+  // skipping the OS share sheet and WhatsApp contact picker.
+  if (isMobile) {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `Invoice_${bill.bill_number}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } else {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
   }
-
-  // Desktop: copy image to clipboard and open the farmer's specific WhatsApp chat.
-  // The farmer's chat opens directly via wa.me — user presses Ctrl+V to paste and send.
-  await navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
 
   const normalized = normalizeIndianPhone(phone);
   const waUrl = buildWaUrl(normalized, message);
@@ -141,9 +140,13 @@ export const shareInvoiceImageViaWhatsApp = async (
   window.open(waUrl, '_blank', 'noopener,noreferrer');
 
   toast.success(
-    normalized
-      ? "Invoice image copied! The farmer's chat just opened — press Ctrl+V to paste and send."
-      : 'Invoice image copied! Open WhatsApp, find your contact, and press Ctrl+V to send.',
+    isMobile
+      ? normalized
+        ? "Invoice saved! The farmer's chat just opened — attach it from your downloads."
+        : 'Invoice saved to your downloads! Open WhatsApp to send it.'
+      : normalized
+        ? "Invoice image copied! The farmer's chat just opened — press Ctrl+V to paste and send."
+        : 'Invoice image copied! Open WhatsApp, find your contact, and press Ctrl+V to send.',
     { duration: 10000 }
   );
 };
