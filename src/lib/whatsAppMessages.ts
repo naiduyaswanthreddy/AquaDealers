@@ -17,15 +17,15 @@ export const invoiceMessage = (
       : `✅ *Fully Paid*`;
 
   return (
-    `Hello ${customer}! 🙏\n\n` +
+    `Hello ${customer}!\n\n` +
     `Your invoice has been generated from *${shopName}*.\n\n` +
-    `📄 *Invoice No:* ${billNumber}\n` +
-    `📅 *Date:* ${formatDate(billDate)}\n` +
-    `💰 *Total:* ${formatCurrency(total)}\n` +
-    `💳 *Amount Paid:* ${formatCurrency(amountPaid)}\n` +
+    `*Invoice No:* ${billNumber}\n` +
+    `*Date:* ${formatDate(billDate)}\n` +
+    `*Total:* ${formatCurrency(total)}\n` +
+    `*Amount Paid:* ${formatCurrency(amountPaid)}\n` +
     `${statusLine}\n\n` +
-    `Please find the attached invoice PDF.\n\n` +
-    `Thank you for your purchase! 🙏\n` +
+    `Please find the attached invoice.\n\n` +
+    `Thank you for your purchase!\n` +
     `— *${shopName}*`
   );
 };
