@@ -1,70 +1,51 @@
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { toPng } from 'html-to-image';
 import { formatDate, formatCurrency } from './utils';
 import type { Dealer } from '@/types/database';
-import { sharePdfViaWhatsApp, normalizeIndianPhone, buildWaUrl } from './whatsAppService';
+import { sharePdfViaWhatsApp } from './shareUtils';
+import { normalizeIndianPhone, buildWaUrl } from './whatsAppService';
 import { invoiceMessage } from './whatsAppMessages';
 
-/**
- * Captures the invoice template rendered in the DOM and returns a PDF blob.
- *
- * @param bill     - The bill object
- * @param dealer   - The dealer / shop
- * @param elementId - The DOM element ID to capture. Defaults to 'print-content'.
- *                   Pass 'print-content-wrapper' when calling from CheckoutSuccessModal.
- */
-export const generateBillPdfBlob = async (
-  bill: any,
-  dealer: Dealer | null,
-  elementId = 'print-content'
-): Promise<Blob> => {
-  const element = document.getElementById(elementId);
+export const generateBillPdfBlob = async (bill: any, dealer: Dealer | null): Promise<Blob> => {
+  const element = document.getElementById('print-content');
 
   if (!element) {
-    throw new Error(
-      `PDF template element '#${elementId}' not found in the DOM. ` +
-      `Ensure the invoice template is rendered before sharing.`
-    );
+    throw new Error('Template element not found in the DOM.');
   }
 
+  // Temporarily store original styles to restore them later
   const originalStyle = element.style.cssText;
 
-  // Force A4-equivalent width so the template renders at the correct scale
+  // Apply a fixed width for A4 size matching our templates (210mm at 96 DPI is ~794px)
   element.style.width = '794px';
   element.style.maxWidth = 'none';
 
   try {
-    const dataUrl = await toPng(element, {
-      pixelRatio: 2,
-      skipFonts: false,
+    const canvas = await html2canvas(element, {
+      scale: 2, // Better resolution
+      useCORS: true,
+      logging: false,
     });
 
-    const imgProps = new Image();
-    imgProps.src = dataUrl;
-    
-    // Wait for image to load to get dimensions if needed, though jsPDF handles dataURLs directly
-    await new Promise((resolve) => {
-      imgProps.onload = resolve;
-    });
+    const imgData = canvas.toDataURL('image/png');
 
+    // A4 size in mm
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
     return pdf.output('blob');
   } finally {
+    // Restore original styles
     element.style.cssText = originalStyle;
   }
 };
 
-export const downloadBillPdf = async (
-  bill: any,
-  dealer: Dealer | null,
-  elementId = 'print-content'
-): Promise<void> => {
-  const blob = await generateBillPdfBlob(bill, dealer, elementId);
+export const downloadBillPdf = async (bill: any, dealer: Dealer | null): Promise<void> => {
+  const blob = await generateBillPdfBlob(bill, dealer);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -75,33 +56,13 @@ export const downloadBillPdf = async (
   URL.revokeObjectURL(url);
 };
 
-export const shareBillPdfViaWhatsApp = async (
-  bill: any,
-  dealer: Dealer | null,
-  farmerPhone?: string,
-  elementId = 'print-content'
-): Promise<void> => {
-  const blob = await generateBillPdfBlob(bill, dealer, elementId);
+export const shareBillPdfViaWhatsApp = async (bill: any, dealer: Dealer | null, farmerPhone?: string): Promise<void> => {
+  const blob = await generateBillPdfBlob(bill, dealer);
 
-  const shopName = dealer?.shop_name || 'AquaDealers';
-  const farmerName = bill.farmer_name_snapshot || null;
+  const customerLabel = bill.farmer_name_snapshot || 'Walk-in Customer';
+  const fallbackText = `*AquaDealers Invoice*\n-------------------\n*Bill No:* ${bill.bill_number}\n*Date:* ${formatDate(bill.bill_date)}\n*Billed To:* ${customerLabel}\n\n*Total Amount:* ${formatCurrency(bill.total)}\n*Amount Paid:* ${formatCurrency(bill.amount_paid)}\n*Balance Due:* ${formatCurrency(bill.balance_due)}\n-------------------\nThank you for purchasing with us!`;
 
-  const message = invoiceMessage(
-    farmerName,
-    bill.bill_number,
-    bill.bill_date,
-    bill.total,
-    bill.amount_paid,
-    bill.balance_due,
-    shopName
-  );
-
-  await sharePdfViaWhatsApp(
-    blob,
-    `Invoice_${bill.bill_number}.pdf`,
-    message,
-    farmerPhone
-  );
+  await sharePdfViaWhatsApp(blob, `Invoice_${bill.bill_number}.pdf`, fallbackText, farmerPhone);
 };
 
 /**
@@ -168,9 +129,7 @@ export const shareInvoiceImageViaWhatsApp = async (
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
 
   const normalized = normalizeIndianPhone(phone);
-  const waUrl = normalized
-    ? `https://wa.me/91${normalized}?text=${encodeURIComponent(message)}`
-    : `https://wa.me/?text=${encodeURIComponent(message)}`;
+  const waUrl = buildWaUrl(normalized, message);
 
   await new Promise(r => setTimeout(r, 300));
   window.open(waUrl, '_blank', 'noopener,noreferrer');
