@@ -117,21 +117,21 @@ export const shareInvoiceImageViaWhatsApp = async (
   const imageBlob = await res.blob();
   const imageFile = new File([imageBlob], `Invoice_${bill.bill_number}.png`, { type: 'image/png' });
 
-  // Web Share API with files works on mobile AND on desktop Chrome/Edge (Windows 10+).
-  // Intentionally no isMobile guard — Chrome/Edge desktop supports canShare and opens
-  // the Windows native share sheet, which can hand off to WhatsApp Desktop in one click.
-  // AbortError (user dismissed) is caught below and treated as a no-op.
-  if (navigator.canShare?.({ files: [imageFile] })) {
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+  // Mobile: Web Share API attaches the image directly — no extra steps for the user.
+  if (isMobile && navigator.canShare?.({ files: [imageFile] })) {
     try {
       await navigator.share({ files: [imageFile], text: message });
     } catch (err: any) {
-      if (err?.name === 'AbortError') return; // user dismissed the share sheet — not an error
+      if (err?.name === 'AbortError') return; // user dismissed — not an error
       throw err;
     }
     return;
   }
 
-  // Fallback for Firefox / older browsers: copy image to clipboard, open chat.
+  // Desktop: copy image to clipboard and open the farmer's specific WhatsApp chat.
+  // The farmer's chat opens directly via wa.me — user presses Ctrl+V to paste and send.
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': imageBlob })]);
 
   const normalized = normalizeIndianPhone(phone);
@@ -142,7 +142,7 @@ export const shareInvoiceImageViaWhatsApp = async (
 
   toast.success(
     normalized
-      ? 'Invoice image copied! Press Ctrl+V in the WhatsApp chat to paste and send it.'
+      ? "Invoice image copied! The farmer's chat just opened — press Ctrl+V to paste and send."
       : 'Invoice image copied! Open WhatsApp, find your contact, and press Ctrl+V to send.',
     { duration: 10000 }
   );
