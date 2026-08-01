@@ -141,6 +141,20 @@ export const stockReportMessage = (
   `📅 *Period:* ${formatDate(startDate)} to ${formatDate(endDate)}\n\n` +
   `Please find the detailed stock report PDF attached.`;
 
+/** Farmer purchased items report */
+export const farmerItemsMessage = (
+  farmerName: string,
+  startDate: string,
+  endDate: string,
+  shopName: string
+): string =>
+  `Hello ${farmerName}!\n\n` +
+  `Here is your purchased items report from *${shopName}*.\n\n` +
+  `*Period:* ${formatDate(startDate)} to ${formatDate(endDate)}\n\n` +
+  `Please find the detailed PDF attached.\n\n` +
+  `Thank you!\n` +
+  `— *${shopName}*`;
+
 /** Expiry report message */
 export const expiryReportMessage = (
   itemCount: number,

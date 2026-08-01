@@ -4,13 +4,15 @@ import type { FarmerItemSummary, FarmerItemsSummary } from '../types/farmerItems
 
 const safeCurrency = (value: number) => formatCurrency(value).replace(/₹/g, 'Rs ');
 
-export function generateFarmerItemsPdf(params: {
+type FarmerItemsPdfParams = {
   farmerName: string;
   startDate: string;
   endDate: string;
   summary: FarmerItemsSummary;
   items: FarmerItemSummary[];
-}) {
+};
+
+function buildDoc(params: FarmerItemsPdfParams): jsPDF {
   const doc = new jsPDF('p', 'mm', 'a4');
   const margin = 14;
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -81,5 +83,14 @@ export function generateFarmerItemsPdf(params: {
     y += 10;
   });
 
+  return doc;
+}
+
+export function generateFarmerItemsPdf(params: FarmerItemsPdfParams): void {
+  const doc = buildDoc(params);
   doc.save(`${params.farmerName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-items.pdf`);
+}
+
+export function generateFarmerItemsPdfBlob(params: FarmerItemsPdfParams): Blob {
+  return buildDoc(params).output('blob') as Blob;
 }

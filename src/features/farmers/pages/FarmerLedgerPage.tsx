@@ -550,6 +550,7 @@ export const FarmerLedgerPage: React.FC = () => {
               <FarmerItemsTab
                 farmerId={farmer.id}
                 farmerName={farmer.name}
+                farmerPhone={farmer.phone}
                 stockingDate={farmer.stocking_date}
                 firstActivityDate={transactions.length ? transactions[transactions.length - 1]?.date : farmer.created_at}
                 onCollect={(bill) => {

@@ -10,6 +10,7 @@ import {
   PackageOpen,
   ReceiptIndianRupee,
   RefreshCw,
+  Share2,
   Table2,
 } from 'lucide-react';
 import { Button, DateRangeFilter, Skeleton } from '@/components/ui';
@@ -20,11 +21,14 @@ import { getFarmerItems } from '../services/farmerItemsService';
 import { PlanGate } from '@/components/auth/PlanGate';
 import type { FarmerItemBill, FarmerItemSummary, FarmerItemsPeriod } from '../types/farmerItems';
 import { FARMER_ITEMS_PERIODS, getFarmerItemsPeriodRange } from '../utils/farmerItemsPeriod';
-import { generateFarmerItemsPdf } from '../utils/farmerItemsPdf';
+import { generateFarmerItemsPdf, generateFarmerItemsPdfBlob } from '../utils/farmerItemsPdf';
+import { sharePdfViaWhatsApp } from '@/lib/whatsAppService';
+import { farmerItemsMessage } from '@/lib/whatsAppMessages';
 
 interface FarmerItemsTabProps {
   farmerId: string;
   farmerName: string;
+  farmerPhone?: string | null;
   stockingDate?: string | null;
   firstActivityDate?: string | null;
   onCollect: (bill: FarmerItemBill) => void;
@@ -171,16 +175,18 @@ const ItemCard: React.FC<{
   );
 };
 
-export const FarmerItemsTab: React.FC<FarmerItemsTabProps> = ({ farmerId, farmerName, firstActivityDate, onCollect }) => {
+export const FarmerItemsTab: React.FC<FarmerItemsTabProps> = ({ farmerId, farmerName, farmerPhone, firstActivityDate, onCollect }) => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const dealerId = useAuthStore((state) => state.user?.id || '');
+  const shopName = useAuthStore((state) => state.user?.shop_name || 'AquaDealers');
   const computedRange = getFarmerItemsPeriodRange('all-history', firstActivityDate);
   const startDate = searchParams.get('items_start') || computedRange.startDate;
   const endDate = searchParams.get('items_end') || computedRange.endDate;
   const productType = searchParams.get('items_type') || '';
   const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const query = useFarmerItems({ farmerId, startDate, endDate, productType: productType || undefined });
   const firstPage = query.data?.pages[0];
@@ -205,6 +211,21 @@ export const FarmerItemsTab: React.FC<FarmerItemsTabProps> = ({ farmerId, farmer
       generateFarmerItemsPdf({ farmerName, startDate, endDate, summary: result.summary, items: result.items });
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const shareWhatsApp = async () => {
+    if (!firstPage) return;
+    setIsSharing(true);
+    try {
+      const result = await getFarmerItems({ dealerId, farmerId, startDate, endDate, productType: productType || undefined, limit: 500 });
+      const blob = generateFarmerItemsPdfBlob({ farmerName, startDate, endDate, summary: result.summary, items: result.items });
+      const message = farmerItemsMessage(farmerName, startDate, endDate, shopName);
+      await sharePdfViaWhatsApp(blob, `${farmerName}-items.pdf`, message, farmerPhone);
+    } catch {
+      // sharePdfViaWhatsApp shows its own toasts; nothing to do here
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -313,9 +334,12 @@ export const FarmerItemsTab: React.FC<FarmerItemsTabProps> = ({ farmerId, farmer
       ) : null}
 
       {items.length > 0 && (
-        <div className="pt-2">
+        <div className="flex gap-2 pt-2">
           <Button variant="outline" fullWidth onClick={exportPdf} disabled={!items.length} loading={isExporting} className="h-11 flex flex-row items-center justify-center gap-2 border-slate-300 font-bold" aria-label="Export purchased items PDF">
             <Download className="h-4 w-4 shrink-0" /> <span className="whitespace-nowrap">{t('farmers.itemsTab.export', 'Export')}</span>
+          </Button>
+          <Button variant="outline" fullWidth onClick={shareWhatsApp} disabled={!items.length} loading={isSharing} className="h-11 flex flex-row items-center justify-center gap-2 border-slate-300 font-bold" aria-label="Share purchased items via WhatsApp">
+            <Share2 className="h-4 w-4 shrink-0" /> <span className="whitespace-nowrap">Share</span>
           </Button>
         </div>
       )}
