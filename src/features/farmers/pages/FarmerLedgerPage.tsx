@@ -31,6 +31,7 @@ interface FarmerTransactionItem {
   amount: number;
   runningBalance: number;
   branchName?: string | null;
+  isEstimate?: boolean;
 }
 
 const toLocalDateString = (date: Date) =>
@@ -148,6 +149,7 @@ export const FarmerLedgerPage: React.FC = () => {
         amount: Number(tx.amount),
         runningBalance: running,
         branchName: (tx as any).branch_name || null,
+        isEstimate: (tx as any).is_estimate ?? false,
       };
     });
   }, [ledgerQuery.data, farmer?.total_due]);

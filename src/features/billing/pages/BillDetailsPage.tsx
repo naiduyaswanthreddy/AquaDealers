@@ -362,6 +362,20 @@ const BillDetailsPage: React.FC = () => {
         </div>
       )}
 
+      {bill?.is_estimate && (
+        <div className="mx-4 mt-4 flex items-center gap-3 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100">
+            <span className="text-lg">📋</span>
+          </div>
+          <div>
+            <div className="text-sm font-black text-amber-800">This is an Estimate</div>
+            <div className="text-xs font-medium text-amber-700">
+              No stock was deducted · No dues were added to this farmer
+            </div>
+          </div>
+        </div>
+      )}
+
       {hasProPlus ? (
         <div className="flex justify-start md:justify-center overflow-x-auto bg-slate-100 rounded-xl mb-12 w-full print:overflow-visible print:bg-white print:m-0 print:rounded-none">
           <MobileZoomableContainer>
@@ -388,7 +402,7 @@ const BillDetailsPage: React.FC = () => {
             </div>
             <div className="text-left sm:text-right">
               <p className="text-sm text-gray-500 mb-1">{t('billing.date')}</p>
-              <p className="font-bold text-gray-900">{formatDateTime(bill.created_at)}</p>
+              <p className="font-bold text-gray-900">{formatDate(bill.bill_date)}</p>
             </div>
           </div>
         </div>
@@ -412,7 +426,9 @@ const BillDetailsPage: React.FC = () => {
                 <th className="py-3 px-4 font-bold text-gray-900 text-sm uppercase">{t('billing.item')}</th>
                 <th className="py-3 px-4 font-bold text-gray-900 text-sm uppercase text-right">HSN</th>
                 <th className="py-3 px-4 font-bold text-gray-900 text-sm uppercase text-right">{t('billing.qty')}</th>
+                <th className="py-3 px-4 font-bold text-gray-900 text-sm uppercase text-left">Unit</th>
                 <th className="py-3 px-4 font-bold text-gray-900 text-sm uppercase text-right">MRP</th>
+                <th className="py-3 px-4 font-bold text-gray-900 text-sm uppercase text-right">Disc.</th>
                 <th className="py-3 px-4 font-bold text-gray-900 text-sm uppercase text-right">{t('billing.rate')}</th>
                 <th className="py-3 px-4 font-bold text-gray-900 text-sm uppercase text-right">GST %</th>
                 <th className="py-3 px-4 font-bold text-gray-900 text-sm uppercase text-right">{t('billing.amount')}</th>
@@ -424,7 +440,15 @@ const BillDetailsPage: React.FC = () => {
                   <td className="py-3 px-4 text-sm font-medium text-gray-900">{item.product_name_snapshot}</td>
                   <td className="py-3 px-4 text-sm text-gray-500 text-right">{item.hsn_code_snapshot || '-'}</td>
                   <td className="py-3 px-4 text-sm text-gray-900 text-right">{item.quantity}</td>
+                  <td className="py-3 px-4 text-sm text-gray-500 text-left">{item.unit || item.products?.unit || '-'}</td>
                   <td className="py-3 px-4 text-sm text-gray-500 text-right">{item.mrp ? formatCurrency(item.mrp) : '-'}</td>
+                  <td className="py-3 px-4 text-sm text-gray-500 text-right">
+                    {item.discount_percentage != null 
+                      ? `${item.discount_percentage}%` 
+                      : (item.mrp > 0 && item.mrp > item.unit_price) 
+                        ? `${Number((((item.mrp - item.unit_price) / item.mrp) * 100).toFixed(2))}%` 
+                        : '-'}
+                  </td>
                   <td className="py-3 px-4 text-sm text-gray-900 text-right">{formatCurrency(item.unit_price)}</td>
                   <td className="py-3 px-4 text-sm text-gray-500 text-right">{item.gst_rate}%</td>
                   <td className="py-3 px-4 text-sm font-medium text-gray-900 text-right">

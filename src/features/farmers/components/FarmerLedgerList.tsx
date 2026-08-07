@@ -14,6 +14,7 @@ interface Transaction {
   runningBalance?: number;
   paymentMethod?: string;
   branchName?: string | null;
+  isEstimate?: boolean;
 }
 
 interface FarmerLedgerListProps {
@@ -93,6 +94,7 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
               const isPayment = tx.type === 'payment';
               const isAdjustment = tx.type === 'adjustment';
               const isReturn = tx.type === 'return';
+              const isEstimate = tx.isEstimate ?? false;
               const subLabel = isPayment ? (tx.paymentMethod || tx.refNumber || 'Payment') : tx.refNumber;
               const isLast = index === txs.length - 1 && groupIndex === groupEntries.length - 1;
 
@@ -113,7 +115,7 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
 
                       <div className="min-w-0">
                         <div className="truncate text-[1rem] font-bold tracking-tight text-slate-900">
-                          {isPayment ? 'Payment Received' : isReturn ? 'Farmer Return' : isAdjustment ? 'Rate Adjustment' : 'Bill'}
+                          {isPayment ? 'Payment Received' : isReturn ? 'Farmer Return' : isAdjustment ? 'Rate Adjustment' : isEstimate ? 'Estimate' : 'Bill'}
                         </div>
                         <div className="mt-0.5 truncate text-[0.82rem] font-medium text-slate-500">
                           {subLabel}
@@ -128,7 +130,12 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
 
                     <div className="flex items-center gap-2">
                       <div className="flex flex-col items-end">
-                        <div className={`text-[1rem] font-bold tabular-nums ${isPayment || isReturn ? 'text-emerald-600' : isAdjustment ? 'text-amber-600' : 'text-orange-500'}`}>
+                        <div className={`text-[1rem] font-bold tabular-nums ${
+                          isPayment || isReturn ? 'text-emerald-600'
+                          : isAdjustment ? 'text-amber-600'
+                          : isEstimate ? 'text-indigo-500'
+                          : 'text-orange-500'
+                        }`}>
                           {isPayment ? '+' : isReturn ? '−' : '-'}{formatCurrency(tx.amount)}
                         </div>
                         {typeof tx.runningBalance === 'number' ? (
@@ -137,7 +144,7 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
                           </div>
                         ) : (
                           <div className="mt-0 text-[0.72rem] font-semibold text-slate-400">
-                            {isPayment || isReturn ? 'Credit' : 'Debit'}
+                            {isPayment || isReturn ? 'Credit' : isEstimate ? 'Quote' : 'Debit'}
                           </div>
                         )}
                       </div>

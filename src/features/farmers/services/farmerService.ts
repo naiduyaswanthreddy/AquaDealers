@@ -237,6 +237,7 @@ export async function getFarmerLedgerPage(params: {
     amount: number;
     balance_due: number | null;
     created_at: string;
+    is_estimate?: boolean;
   }>;
   total: number;
   page: number;
@@ -285,7 +286,7 @@ export async function getFarmerTransactions(
   // Bounded 500-record fetch — safe ceiling. For farmers with more, use getFarmerLedgerPage.
   const { data: bills, error: billsErr } = await supabase
     .from('bills')
-    .select('id, bill_number, bill_date, total, settlement_discount_amount, created_at, type, is_edited')
+    .select('id, bill_number, bill_date, total, settlement_discount_amount, created_at, type, is_edited, is_estimate')
     .eq('dealer_id', dealerId)
     .eq('farmer_id', farmerId)
     .neq('status', 'cancelled')
@@ -313,6 +314,7 @@ export async function getFarmerTransactions(
       amount: Number(bill.total) - Number(bill.settlement_discount_amount || 0),
       createdAt: bill.created_at,
       is_edited: bill.is_edited,
+      isEstimate: (bill as any).is_estimate ?? false,
     })),
     ...(payments ?? []).map((payment) => ({
       id: payment.id,
