@@ -30,7 +30,7 @@ export const TemplateTwo: React.FC<BillTemplateProps> = ({ bill, dealer, setting
         </div>
         <div className="flex items-center justify-center gap-3 mt-4">
           <h1 className="text-2xl font-bold uppercase tracking-widest border border-slate-400 inline-block px-6 py-1">
-            {isStatement ? 'STATEMENT OF ACCOUNT' : bill?.is_estimate ? 'ESTIMATE' : 'INVOICE'}
+            {isStatement ? 'STATEMENT OF ACCOUNT' : bill?.is_estimate ? 'ESTIMATE' : 'TAX INVOICE'}
           </h1>
           {bill?.is_estimate && (
             <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-800 ring-1 ring-amber-200">
@@ -143,10 +143,12 @@ export const TemplateTwo: React.FC<BillTemplateProps> = ({ bill, dealer, setting
                 <td className="py-2 px-3 font-bold text-lg">Grand Total</td>
                 <td className="py-2 px-3 text-right font-bold text-lg font-sans tabular-nums">{formatCurrency((bill?.total || bill?.total_amount || 0) - (bill?.settlement_discount_amount || 0))}</td>
               </tr>
+              {!bill?.is_estimate && (
               <tr className="border-b border-slate-300">
                 <td className="py-2 px-3 text-slate-600 font-bold text-sm">Payment Mode</td>
                 <td className="py-2 px-3 text-right font-bold text-slate-800 text-sm uppercase">{bill?.payment_type || (bill?.amount_paid === 0 ? 'Credit' : 'Cash')}</td>
               </tr>
+              )}
               <tr className="border-b border-slate-300">
                 <td className="py-2 px-3 text-slate-600 font-bold text-sm">Amount Paid</td>
                 <td className="py-2 px-3 text-right font-medium text-green-600 text-sm font-sans tabular-nums">{formatCurrency(bill?.amount_paid)}</td>

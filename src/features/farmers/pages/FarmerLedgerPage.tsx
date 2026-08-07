@@ -139,7 +139,9 @@ export const FarmerLedgerPage: React.FC = () => {
     return flat.map((tx, i) => {
       if (i > 0) {
         const prev = flat[i - 1];
-        running -= prev.type === 'bill' ? Number(prev.amount) : -Number(prev.amount);
+        running -= (!prev.is_estimate && prev.type === 'bill') ? Number(prev.amount)
+                 : prev.type !== 'bill' ? -Number(prev.amount)
+                 : 0;
       }
       return {
         id: tx.id,

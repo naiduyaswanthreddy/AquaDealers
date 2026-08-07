@@ -501,10 +501,12 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
             <span>{settlementDiscountAmount > 0 ? 'Effective Total' : 'Total'}</span>
             <strong>{formatCurrency(effectiveTotal)}</strong>
           </div>
+          {!isEstimate && (
           <div className="billing-review-total-line">
             <span>Payment Mode</span>
             <strong className="uppercase text-slate-800">{paymentType || (amountPaid === 0 ? 'Credit' : 'Cash')}</strong>
           </div>
+          )}
           <div className="billing-review-total-line">
             <span>Amount Paid</span>
             <strong className="text-emerald-600">{formatCurrency(amountPaid)}</strong>

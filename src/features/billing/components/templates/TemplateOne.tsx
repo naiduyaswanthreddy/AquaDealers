@@ -165,10 +165,12 @@ export const TemplateOne: React.FC<BillTemplateProps> = ({ bill, dealer, setting
                 {formatCurrency((bill?.total || bill?.total_amount || 0) - (bill?.settlement_discount_amount || 0))}
               </p>
             </div>
+            {!bill?.is_estimate && (
             <div className="flex justify-between text-slate-600 pt-3 mt-3 border-t border-slate-200 text-sm">
               <p>Payment Mode</p>
               <p className="font-bold text-slate-800 uppercase">{bill?.payment_type || (bill?.amount_paid === 0 ? 'Credit' : 'Cash')}</p>
             </div>
+            )}
             <div className="flex justify-between text-slate-600 mt-2 text-sm">
               <p>Amount Paid</p>
               <p className="font-medium text-green-600">{formatCurrency(bill?.amount_paid)}</p>

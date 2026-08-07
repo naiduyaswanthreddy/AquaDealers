@@ -119,10 +119,12 @@ export const TemplateThree: React.FC<BillTemplateProps> = ({ bill, dealer, setti
                 <p className="font-medium">-{formatCurrency(bill.settlement_discount_amount)}</p>
               </div>
             )}
+            {!bill?.is_estimate && (
             <div className="flex justify-between py-2 text-slate-600">
               <p>Payment Mode:</p>
               <p className="font-bold uppercase">{bill?.payment_type || (bill?.amount_paid === 0 ? 'Credit' : 'Cash')}</p>
             </div>
+            )}
             <div className="flex justify-between py-2 text-slate-600">
               <p>Paid:</p>
               <p className="font-medium">{formatCurrency(bill?.amount_paid)}</p>

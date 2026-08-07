@@ -121,10 +121,12 @@ export const TemplateFour: React.FC<BillTemplateProps> = ({ bill, dealer, settin
                     <span className="font-medium">-{formatCurrency(bill.settlement_discount_amount)}</span>
                   </div>
                 )}
+                {!bill?.is_estimate && (
                 <div className="flex justify-between text-slate-600 mb-2">
                   <span>Payment Mode</span>
                   <span className="font-bold text-slate-800 uppercase">{bill?.payment_type || (bill?.amount_paid === 0 ? 'Credit' : 'Cash')}</span>
                 </div>
+                )}
                 <div className="flex justify-between text-slate-600">
                   <span>Amount Paid</span>
                   <span className="font-medium">{formatCurrency(bill?.amount_paid)}</span>
