@@ -55,6 +55,8 @@ export interface BillingPayload {
   is_verified?: boolean;
   verification_method?: string | null;
   delivery_pin?: string | null;
+  /** When true: no stock deducted, no dues added, no payment recorded — price quote only. */
+  is_estimate?: boolean;
   items: Omit<CartItem, 'max_quantity' | 'unit' | 'product_type'>[];
 }
 

@@ -299,6 +299,7 @@ export interface Bill {
   is_edited?: boolean;
   is_verified?: boolean;
   delivery_pin?: string | null;
+  is_estimate?: boolean;
   created_at: string;
 }
 

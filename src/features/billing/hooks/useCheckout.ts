@@ -63,6 +63,7 @@ export const useCheckout = () => {
     chequeNumber,
     notes,
     billDate,
+    isEstimate,
   } = useCartStore();
 
   // Send a plain local calendar date (YYYY-MM-DD). The RPC casts bill_date to
@@ -112,6 +113,8 @@ export const useCheckout = () => {
       upi_ref: paymentType === 'upi' ? upiRef : null,
       cheque_number: paymentType === 'other' ? chequeNumber : null,
       notes: notes || null,
+      is_estimate: isEstimate || undefined,
+      reduce_stock: isEstimate ? false : undefined,
       items: items.map(
         ({ inventory_id, product_id, product_name, hsn_code, quantity, base_unit_price, discount_percentage, gst_rate, mrp, discount_source, discount_label, default_discount_percentage, farmer_discount_percentage }) => ({
           inventory_id,
@@ -131,7 +134,7 @@ export const useCheckout = () => {
         })
       ),
     };
-  }, [activeBranch?.id, amountPaid, chequeNumber, discountAmount, settlementDiscountAmount, farmerCreditLimit, farmerId, farmerName, farmerTotalDue, gstEnabled, items, notes, paymentType, effectiveBillDate, upiRef, user?.id]);
+  }, [activeBranch?.id, amountPaid, chequeNumber, discountAmount, settlementDiscountAmount, farmerCreditLimit, farmerId, farmerName, farmerTotalDue, gstEnabled, isEstimate, items, notes, paymentType, effectiveBillDate, upiRef, user?.id]);
 
   const handleCheckout = async (options: CheckoutOptions) => {
     const { totals, signatureStrokes = [], sigCanvasDims, ignoreCreditLimitWarning = false, ignoreDuplicateWarning = false, mode = 'sign', onSuccess } = options;

@@ -20,6 +20,7 @@ type DraftFields = {
   chequeNumber: string;
   notes: string;
   billDate: string;
+  isEstimate: boolean;
 };
 
 export interface BillingDraft extends DraftFields {
@@ -57,6 +58,7 @@ interface CartState extends DraftFields {
   setNotes: (notes: string) => void;
   setBillDate: (date: string) => void;
   initializeBillDate: (date: string) => void;
+  setIsEstimate: (v: boolean) => void;
   clearItems: () => void;
   clearCart: () => void;
 }
@@ -79,6 +81,7 @@ const emptyDraftFields = (): DraftFields => ({
   chequeNumber: '',
   notes: '',
   billDate: getLocalDateString(),
+  isEstimate: false,
 });
 
 const createDraft = (number: number): BillingDraft => ({
@@ -104,6 +107,7 @@ const toActiveFields = (draft: BillingDraft): DraftFields => ({
   chequeNumber: draft.chequeNumber,
   notes: draft.notes,
   billDate: draft.billDate,
+  isEstimate: draft.isEstimate,
 });
 
 const initialDraft = createDraft(1);
@@ -235,6 +239,12 @@ export const useCartStore = create<CartState>()(
         setChequeNumber: (chequeNumber) => updateActiveDraft((draft) => ({ ...draft, chequeNumber })),
         setNotes: (notes) => updateActiveDraft((draft) => ({ ...draft, notes })),
         setBillDate: (billDate) => updateActiveDraft((draft) => ({ ...draft, billDate })),
+        setIsEstimate: (v) => set((s) => {
+          const updatedDrafts = s.drafts.map((d) =>
+            d.id === s.activeDraftId ? { ...d, isEstimate: v, isDirty: true } : d
+          );
+          return { ...s, drafts: updatedDrafts, isEstimate: v };
+        }),
         initializeBillDate: (billDate) => updateActiveDraft((draft) => ({ ...draft, billDate }), 'preserve'),
         clearItems: () => updateActiveDraft((draft) => ({ ...draft, items: [], farmerId: null, farmerName: null, farmerTotalDue: 0, farmerCreditLimit: 0, discountAmount: 0, settlementDiscountAmount: 0, amountPaid: 0, paymentType: 'cash', upiRef: '', chequeNumber: '', notes: '' })),
         clearCart: () => updateActiveDraft((draft) => ({ ...draft, ...emptyDraftFields(), step: 'items' }), 'reset'),
