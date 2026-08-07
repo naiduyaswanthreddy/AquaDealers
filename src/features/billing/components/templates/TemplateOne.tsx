@@ -7,14 +7,29 @@ import SignatureRenderer from '../SignatureRenderer';
 export const TemplateOne: React.FC<BillTemplateProps> = ({ bill, dealer, settings, type = 'bill', billSignature }) => {
   const isStatement = type === 'statement';
 
+  const totalItemDiscount = bill?.bill_items?.reduce((acc: number, item: any) => {
+    if (!item.mrp || item.mrp <= 0) return acc;
+    const saved = (item.mrp - item.unit_price) * item.quantity;
+    return acc + (saved > 0 ? saved : 0);
+  }, 0) || 0;
+  
+  const totalDiscountToDisplay = totalItemDiscount + (Number(bill?.discount_amount) || 0);
+
   return (
     <div className="w-full min-h-[1123px] bg-white p-8 sm:p-12 text-slate-800 font-sans text-sm relative flex flex-col" id="print-content">
       {/* Header section */}
       <div className="flex justify-between items-start border-b-2 border-slate-200 pb-6 mb-8 shrink-0">
         <div className="flex-1">
-          <h1 className="text-4xl font-bold text-slate-900 mb-2 uppercase tracking-tight">
-            {isStatement ? 'Statement' : 'Invoice'}
-          </h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-4xl font-bold text-slate-900 uppercase tracking-tight">
+              {isStatement ? 'Statement' : bill?.is_estimate ? 'Estimate' : 'Invoice'}
+            </h1>
+            {bill?.is_estimate && (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-800 ring-1 ring-amber-200">
+                Price Quote
+              </span>
+            )}
+          </div>
           {settings.showLogo && dealer?.avatar_url && (
             <img src={dealer.avatar_url} alt="Logo" className="h-16 w-auto mt-4 object-contain" />
           )}
@@ -100,9 +115,15 @@ export const TemplateOne: React.FC<BillTemplateProps> = ({ bill, dealer, setting
                     {item.batch_number && <p className="text-xs text-slate-500">Batch: {item.batch_number}</p>}
                   </td>
                   <td className="py-3 px-4 text-right">{item.quantity}</td>
-                  <td className="py-3 px-4 text-left text-slate-500">{item.unit || '-'}</td>
+                  <td className="py-3 px-4 text-left text-slate-500">{item.unit || item.products?.unit || '-'}</td>
                   <td className="py-3 px-4 text-right text-slate-500">{item.mrp ? formatCurrency(item.mrp) : '-'}</td>
-                  <td className="py-3 px-4 text-right text-slate-500">{item.discount_percentage ? `${item.discount_percentage}%` : '-'}</td>
+                  <td className="py-3 px-4 text-right text-slate-500">
+                    {item.discount_percentage != null 
+                      ? `${item.discount_percentage}%` 
+                      : (item.mrp > 0 && item.mrp > item.unit_price) 
+                        ? `${Number((((item.mrp - item.unit_price) / item.mrp) * 100).toFixed(2))}%` 
+                        : '-'}
+                  </td>
                   <td className="py-3 px-4 text-right">{formatCurrency(item.unit_price)}</td>
                   <td className="py-3 px-4 text-right text-slate-500">
                     {item.tax_amount ? `${formatCurrency(item.tax_amount)} (${item.gst_rate}%)` : '-'}
@@ -125,7 +146,7 @@ export const TemplateOne: React.FC<BillTemplateProps> = ({ bill, dealer, setting
             </div>
             <div className="flex justify-between mb-3 text-slate-600">
               <p>Discount</p>
-              <p className="font-medium">{bill?.discount_amount > 0 ? `-${formatCurrency(bill.discount_amount)}` : formatCurrency(0)}</p>
+              <p className="font-medium">{totalDiscountToDisplay > 0 ? `-${formatCurrency(totalDiscountToDisplay)}` : formatCurrency(0)}</p>
             </div>
             {bill?.settlement_discount_amount > 0 && (
               <div className="flex justify-between mb-3 text-emerald-600">
@@ -145,6 +166,10 @@ export const TemplateOne: React.FC<BillTemplateProps> = ({ bill, dealer, setting
               </p>
             </div>
             <div className="flex justify-between text-slate-600 pt-3 mt-3 border-t border-slate-200 text-sm">
+              <p>Payment Mode</p>
+              <p className="font-bold text-slate-800 uppercase">{bill?.payment_type || (bill?.amount_paid === 0 ? 'Credit' : 'Cash')}</p>
+            </div>
+            <div className="flex justify-between text-slate-600 mt-2 text-sm">
               <p>Amount Paid</p>
               <p className="font-medium text-green-600">{formatCurrency(bill?.amount_paid)}</p>
             </div>

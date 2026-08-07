@@ -24,7 +24,14 @@ export const TemplateFour: React.FC<BillTemplateProps> = ({ bill, dealer, settin
             </div>
           </div>
           <div className="text-right">
-            <h1 className="text-3xl font-light tracking-widest">{isStatement ? 'STATEMENT' : 'INVOICE'}</h1>
+            <div className="flex items-center justify-end gap-3">
+              <h1 className="text-3xl font-light tracking-widest">{isStatement ? 'STATEMENT' : bill?.is_estimate ? 'ESTIMATE' : 'INVOICE'}</h1>
+              {bill?.is_estimate && (
+                <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-800 ring-1 ring-amber-200">
+                  Price Quote
+                </span>
+              )}
+            </div>
             <p className="text-slate-400 mt-1">{isStatement ? formatDate(new Date().toISOString()) : `#${bill?.bill_number}`}</p>
           </div>
         </div>
@@ -53,20 +60,39 @@ export const TemplateFour: React.FC<BillTemplateProps> = ({ bill, dealer, settin
               <table className="w-full text-left">
                 <thead className="bg-slate-100">
                   <tr>
-                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase">Description</th>
-                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase text-center w-24">Qty</th>
-                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase text-right w-28">Rate</th>
-                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase text-right w-32">Total</th>
+                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase w-12 text-center">#</th>
+                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase">Item</th>
+                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase text-right">Qty</th>
+                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase text-left">Unit</th>
+                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase text-right">MRP</th>
+                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase text-right">Disc.</th>
+                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase text-right">Rate</th>
+                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase text-right">Tax</th>
+                    <th className="py-3 px-4 font-bold text-slate-700 text-xs uppercase text-right w-32">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {bill?.bill_items?.map((item: any, index: number) => (
                     <tr key={item.id || index}>
+                      <td className="py-3 px-4 text-center text-slate-500">{index + 1}</td>
                       <td className="py-3 px-4">
                         <p className="font-medium text-slate-800">{item.product_name_snapshot}</p>
+                        {item.batch_number && <p className="text-xs text-slate-500">Batch: {item.batch_number}</p>}
                       </td>
-                      <td className="py-3 px-4 text-center text-slate-600">{item.quantity}</td>
+                      <td className="py-3 px-4 text-right text-slate-600">{item.quantity}</td>
+                      <td className="py-3 px-4 text-left text-slate-500">{item.unit || item.products?.unit || '-'}</td>
+                      <td className="py-3 px-4 text-right text-slate-500">{item.mrp ? formatCurrency(item.mrp) : '-'}</td>
+                      <td className="py-3 px-4 text-right text-slate-500">
+                        {item.discount_percentage != null 
+                          ? `${item.discount_percentage}%` 
+                          : (item.mrp > 0 && item.mrp > item.unit_price) 
+                            ? `${Number((((item.mrp - item.unit_price) / item.mrp) * 100).toFixed(2))}%` 
+                            : '-'}
+                      </td>
                       <td className="py-3 px-4 text-right text-slate-600">{formatCurrency(item.unit_price)}</td>
+                      <td className="py-3 px-4 text-right text-slate-500">
+                        {item.tax_amount ? `${formatCurrency(item.tax_amount)} (${item.gst_rate}%)` : '-'}
+                      </td>
                       <td className="py-3 px-4 text-right font-medium text-slate-800">{formatCurrency(item.total_price)}</td>
                     </tr>
                   ))}
@@ -95,6 +121,10 @@ export const TemplateFour: React.FC<BillTemplateProps> = ({ bill, dealer, settin
                     <span className="font-medium">-{formatCurrency(bill.settlement_discount_amount)}</span>
                   </div>
                 )}
+                <div className="flex justify-between text-slate-600 mb-2">
+                  <span>Payment Mode</span>
+                  <span className="font-bold text-slate-800 uppercase">{bill?.payment_type || (bill?.amount_paid === 0 ? 'Credit' : 'Cash')}</span>
+                </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Amount Paid</span>
                   <span className="font-medium">{formatCurrency(bill?.amount_paid)}</span>

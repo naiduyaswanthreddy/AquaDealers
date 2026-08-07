@@ -12,7 +12,14 @@ export const TemplateThree: React.FC<BillTemplateProps> = ({ bill, dealer, setti
       {/* Header section with accent color background */}
       <div className="bg-blue-600 text-white p-8 -mx-12 -mt-12 mb-8 flex justify-between items-center rounded-b-3xl">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-wider">{isStatement ? 'STATEMENT' : 'INVOICE'}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-4xl font-extrabold tracking-wider">{isStatement ? 'STATEMENT' : bill?.is_estimate ? 'ESTIMATE' : 'INVOICE'}</h1>
+            {bill?.is_estimate && (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-800 ring-1 ring-amber-200">
+                Price Quote
+              </span>
+            )}
+          </div>
           <p className="mt-2 text-blue-100">{isStatement ? formatDate(new Date().toISOString()) : `No: ${bill?.bill_number}`}</p>
         </div>
         <div className="text-right">
@@ -48,22 +55,39 @@ export const TemplateThree: React.FC<BillTemplateProps> = ({ bill, dealer, setti
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b-2 border-blue-600 text-blue-600">
-                <th className="py-2 font-bold w-12">#</th>
-                <th className="py-2 font-bold">Description</th>
-                <th className="py-2 font-bold text-center w-20">Qty</th>
-                <th className="py-2 font-bold text-right w-24">Price</th>
-                <th className="py-2 font-bold text-right w-32">Total</th>
+                <th className="py-2 font-bold w-12 text-center">#</th>
+                <th className="py-2 font-bold">Item</th>
+                <th className="py-2 font-bold text-right">Qty</th>
+                <th className="py-2 font-bold text-left px-2">Unit</th>
+                <th className="py-2 font-bold text-right">MRP</th>
+                <th className="py-2 font-bold text-right">Disc.</th>
+                <th className="py-2 font-bold text-right">Rate</th>
+                <th className="py-2 font-bold text-right px-2">Tax</th>
+                <th className="py-2 font-bold text-right w-32">Amount</th>
               </tr>
             </thead>
             <tbody>
               {bill?.bill_items?.map((item: any, index: number) => (
                 <tr key={item.id || index} className="border-b border-slate-200">
-                  <td className="py-4 text-slate-500">{index + 1}</td>
+                  <td className="py-4 text-slate-500 text-center">{index + 1}</td>
                   <td className="py-4 font-medium">
                     {item.product_name_snapshot}
+                    {item.batch_number && <p className="text-xs text-slate-500 font-normal">Batch: {item.batch_number}</p>}
                   </td>
-                  <td className="py-4 text-center">{item.quantity}</td>
+                  <td className="py-4 text-right">{item.quantity}</td>
+                  <td className="py-4 text-left px-2 text-slate-500">{item.unit || item.products?.unit || '-'}</td>
+                  <td className="py-4 text-right text-slate-500">{item.mrp ? formatCurrency(item.mrp) : '-'}</td>
+                  <td className="py-4 text-right text-slate-500">
+                    {item.discount_percentage != null 
+                      ? `${item.discount_percentage}%` 
+                      : (item.mrp > 0 && item.mrp > item.unit_price) 
+                        ? `${Number((((item.mrp - item.unit_price) / item.mrp) * 100).toFixed(2))}%` 
+                        : '-'}
+                  </td>
                   <td className="py-4 text-right">{formatCurrency(item.unit_price)}</td>
+                  <td className="py-4 text-right px-2 text-slate-500">
+                    {item.tax_amount ? `${formatCurrency(item.tax_amount)} (${item.gst_rate}%)` : '-'}
+                  </td>
                   <td className="py-4 text-right font-bold text-slate-800">{formatCurrency(item.total_price)}</td>
                 </tr>
               ))}
@@ -95,6 +119,10 @@ export const TemplateThree: React.FC<BillTemplateProps> = ({ bill, dealer, setti
                 <p className="font-medium">-{formatCurrency(bill.settlement_discount_amount)}</p>
               </div>
             )}
+            <div className="flex justify-between py-2 text-slate-600">
+              <p>Payment Mode:</p>
+              <p className="font-bold uppercase">{bill?.payment_type || (bill?.amount_paid === 0 ? 'Credit' : 'Cash')}</p>
+            </div>
             <div className="flex justify-between py-2 text-slate-600">
               <p>Paid:</p>
               <p className="font-medium">{formatCurrency(bill?.amount_paid)}</p>

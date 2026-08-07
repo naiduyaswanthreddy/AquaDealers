@@ -7,6 +7,14 @@ import { Phone, Mail, MapPin } from 'lucide-react';
 export const TemplateTwo: React.FC<BillTemplateProps> = ({ bill, dealer, settings, type = 'bill', billSignature }) => {
   const isStatement = type === 'statement';
 
+  const totalItemDiscount = bill?.bill_items?.reduce((acc: number, item: any) => {
+    if (!item.mrp || item.mrp <= 0) return acc;
+    const saved = (item.mrp - item.unit_price) * item.quantity;
+    return acc + (saved > 0 ? saved : 0);
+  }, 0) || 0;
+  
+  const totalDiscountToDisplay = totalItemDiscount + (Number(bill?.discount_amount) || 0);
+
   return (
     <div className="w-full min-h-[1123px] bg-white p-8 sm:p-12 text-slate-800 font-serif text-sm relative border-8 border-double border-slate-100 flex flex-col" id="print-content">
       {/* Header section */}
@@ -20,9 +28,16 @@ export const TemplateTwo: React.FC<BillTemplateProps> = ({ bill, dealer, setting
           <p>Ph: {dealer?.phone} {dealer?.email && `| Email: ${dealer.email}`}</p>
           {settings.showTax && dealer?.gstin && <p className="font-semibold">GSTIN: {dealer.gstin}</p>}
         </div>
-        <h1 className="text-2xl font-bold mt-4 uppercase tracking-widest border border-slate-400 inline-block px-6 py-1">
-          {isStatement ? 'STATEMENT OF ACCOUNT' : 'TAX INVOICE'}
-        </h1>
+        <div className="flex items-center justify-center gap-3 mt-4">
+          <h1 className="text-2xl font-bold uppercase tracking-widest border border-slate-400 inline-block px-6 py-1">
+            {isStatement ? 'STATEMENT OF ACCOUNT' : bill?.is_estimate ? 'ESTIMATE' : 'INVOICE'}
+          </h1>
+          {bill?.is_estimate && (
+            <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-800 ring-1 ring-amber-200">
+              Price Quote
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Bill/Statement Details */}
@@ -72,20 +87,26 @@ export const TemplateTwo: React.FC<BillTemplateProps> = ({ bill, dealer, setting
             <tbody>
               {bill?.bill_items?.map((item: any, index: number) => (
                 <tr key={item.id || index} className="border-b border-slate-300 last:border-b-0">
-                  <td className="py-2 px-3 border-r border-slate-400 text-center">{index + 1}</td>
+                  <td className="py-2 px-3 border-r border-slate-400 text-center font-sans tabular-nums">{index + 1}</td>
                   <td className="py-2 px-3 border-r border-slate-400">
                     <p className="font-medium">{item.product_name_snapshot}</p>
-                    {item.batch_number && <p className="text-xs text-slate-500">Batch: {item.batch_number}</p>}
+                    {item.batch_number && <p className="text-xs text-slate-500">Batch: <span className="font-sans">{item.batch_number}</span></p>}
                   </td>
-                  <td className="py-2 px-3 text-right border-r border-slate-400">{item.quantity}</td>
-                  <td className="py-2 px-3 text-left border-r border-slate-400">{item.unit || '-'}</td>
-                  <td className="py-2 px-3 text-right border-r border-slate-400">{item.mrp ? formatCurrency(item.mrp) : '-'}</td>
-                  <td className="py-2 px-3 text-right border-r border-slate-400">{item.discount_percentage ? `${item.discount_percentage}%` : '-'}</td>
-                  <td className="py-2 px-3 text-right border-r border-slate-400">{formatCurrency(item.unit_price)}</td>
-                  <td className="py-2 px-3 text-right border-r border-slate-400">
+                  <td className="py-2 px-3 text-right border-r border-slate-400 font-sans tabular-nums">{item.quantity}</td>
+                  <td className="py-2 px-3 text-left border-r border-slate-400">{item.unit || item.products?.unit || '-'}</td>
+                  <td className="py-2 px-3 text-right border-r border-slate-400 font-sans tabular-nums">{item.mrp ? formatCurrency(item.mrp) : '-'}</td>
+                  <td className="py-2 px-3 text-right border-r border-slate-400 font-sans tabular-nums">
+                    {item.discount_percentage != null 
+                      ? `${item.discount_percentage}%` 
+                      : (item.mrp > 0 && item.mrp > item.unit_price) 
+                        ? `${Number((((item.mrp - item.unit_price) / item.mrp) * 100).toFixed(2))}%` 
+                        : '-'}
+                  </td>
+                  <td className="py-2 px-3 text-right border-r border-slate-400 font-sans tabular-nums">{formatCurrency(item.unit_price)}</td>
+                  <td className="py-2 px-3 text-right border-r border-slate-400 font-sans tabular-nums">
                     {item.tax_amount ? `${formatCurrency(item.tax_amount)} (${item.gst_rate}%)` : '-'}
                   </td>
-                  <td className="py-2 px-3 text-right font-medium">{formatCurrency(item.total_price)}</td>
+                  <td className="py-2 px-3 text-right font-medium font-sans tabular-nums">{formatCurrency(item.total_price)}</td>
                 </tr>
               ))}
               {/* Empty rows to fill space could go here */}
@@ -101,35 +122,39 @@ export const TemplateTwo: React.FC<BillTemplateProps> = ({ bill, dealer, setting
             <tbody>
               <tr className="border-b border-slate-300">
                 <td className="py-2 px-3 text-slate-600 font-bold">Subtotal</td>
-                <td className="py-2 px-3 text-right font-medium">{formatCurrency(bill?.subtotal || bill?.total_amount)}</td>
+                <td className="py-2 px-3 text-right font-medium font-sans tabular-nums">{formatCurrency(bill?.subtotal || bill?.total_amount)}</td>
               </tr>
               <tr className="border-b border-slate-300">
                 <td className="py-2 px-3 text-slate-600 font-bold">Discount</td>
-                <td className="py-2 px-3 text-right font-medium">{bill?.discount_amount > 0 ? `-${formatCurrency(bill.discount_amount)}` : formatCurrency(0)}</td>
+                <td className="py-2 px-3 text-right font-medium font-sans tabular-nums">{totalDiscountToDisplay > 0 ? `-${formatCurrency(totalDiscountToDisplay)}` : formatCurrency(0)}</td>
               </tr>
               {bill?.settlement_discount_amount > 0 && (
                 <tr className="border-b border-slate-300">
                   <td className="py-2 px-3 text-emerald-600 font-bold">Settlement Discount</td>
-                  <td className="py-2 px-3 text-right font-medium text-emerald-600">-{formatCurrency(bill.settlement_discount_amount)}</td>
+                  <td className="py-2 px-3 text-right font-medium text-emerald-600 font-sans tabular-nums">-{formatCurrency(bill.settlement_discount_amount)}</td>
                 </tr>
               )}
               <tr className="border-b border-slate-300">
                 <td className="py-2 px-3 text-slate-600 font-bold">Tax (CGST/SGST)</td>
-                <td className="py-2 px-3 text-right font-medium">{formatCurrency((bill?.cgst_amount || 0) + (bill?.sgst_amount || 0))}</td>
+                <td className="py-2 px-3 text-right font-medium font-sans tabular-nums">{formatCurrency((bill?.cgst_amount || 0) + (bill?.sgst_amount || 0))}</td>
               </tr>
 
               <tr className="bg-slate-100 border-b border-slate-400">
                 <td className="py-2 px-3 font-bold text-lg">Grand Total</td>
-                <td className="py-2 px-3 text-right font-bold text-lg">{formatCurrency((bill?.total || bill?.total_amount || 0) - (bill?.settlement_discount_amount || 0))}</td>
+                <td className="py-2 px-3 text-right font-bold text-lg font-sans tabular-nums">{formatCurrency((bill?.total || bill?.total_amount || 0) - (bill?.settlement_discount_amount || 0))}</td>
+              </tr>
+              <tr className="border-b border-slate-300">
+                <td className="py-2 px-3 text-slate-600 font-bold text-sm">Payment Mode</td>
+                <td className="py-2 px-3 text-right font-bold text-slate-800 text-sm uppercase">{bill?.payment_type || (bill?.amount_paid === 0 ? 'Credit' : 'Cash')}</td>
               </tr>
               <tr className="border-b border-slate-300">
                 <td className="py-2 px-3 text-slate-600 font-bold text-sm">Amount Paid</td>
-                <td className="py-2 px-3 text-right font-medium text-green-600 text-sm">{formatCurrency(bill?.amount_paid)}</td>
+                <td className="py-2 px-3 text-right font-medium text-green-600 text-sm font-sans tabular-nums">{formatCurrency(bill?.amount_paid)}</td>
               </tr>
               {bill?.balance_due > 0 && (
                 <tr>
                   <td className="py-2 px-3 text-red-600 font-bold text-sm">Balance Due</td>
-                  <td className="py-2 px-3 text-right font-bold text-red-600 text-sm">{formatCurrency(bill?.balance_due)}</td>
+                  <td className="py-2 px-3 text-right font-bold text-red-600 text-sm font-sans tabular-nums">{formatCurrency(bill?.balance_due)}</td>
                 </tr>
               )}
             </tbody>

@@ -31,7 +31,14 @@ export const TemplateFive: React.FC<BillTemplateProps> = ({ bill, dealer, settin
         </div>
         
         <div className="text-right">
-          <p className="font-bold border-b border-black inline-block mb-2">{isStatement ? 'STATEMENT' : 'INVOICE'}</p>
+          <div className="flex items-center gap-2 mb-2">
+            <p className="font-bold border-b border-black inline-block">{isStatement ? 'STATEMENT' : bill?.is_estimate ? 'ESTIMATE' : 'INVOICE'}</p>
+            {bill?.is_estimate && (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-sm font-bold text-amber-800 ring-1 ring-amber-200">
+                Price Quote
+              </span>
+            )}
+          </div>
           <p><span className="mr-4">NO:</span>{isStatement ? formatDate(new Date().toISOString()) : bill?.bill_number}</p>
           {!isStatement && (
             <p><span className="mr-4">DT:</span>{formatDate(bill?.bill_date)}</p>
@@ -45,18 +52,39 @@ export const TemplateFive: React.FC<BillTemplateProps> = ({ bill, dealer, settin
           <table className="w-full text-left uppercase tracking-wide text-xs">
             <thead>
               <tr className="border-b border-black">
-                <th className="py-2">DESC</th>
-                <th className="py-2 text-center w-24">QTY</th>
-                <th className="py-2 text-right w-24">RATE</th>
-                <th className="py-2 text-right w-32">AMT</th>
+                <th className="py-2 text-center w-8">#</th>
+                <th className="py-2">ITEM</th>
+                <th className="py-2 text-right">QTY</th>
+                <th className="py-2 text-left pl-2">UNIT</th>
+                <th className="py-2 text-right">MRP</th>
+                <th className="py-2 text-right">DISC.</th>
+                <th className="py-2 text-right">RATE</th>
+                <th className="py-2 text-right pr-2">TAX</th>
+                <th className="py-2 text-right w-24">AMT</th>
               </tr>
             </thead>
             <tbody>
               {bill?.bill_items?.map((item: any, index: number) => (
                 <tr key={item.id || index} className="border-b border-dashed border-black last:border-b-0">
-                  <td className="py-3 font-bold">{item.product_name_snapshot}</td>
-                  <td className="py-3 text-center">{item.quantity}</td>
+                  <td className="py-3 text-center">{index + 1}</td>
+                  <td className="py-3 font-bold">
+                    {item.product_name_snapshot}
+                    {item.batch_number && <div className="text-[10px] font-normal">BATCH: {item.batch_number}</div>}
+                  </td>
+                  <td className="py-3 text-right">{item.quantity}</td>
+                  <td className="py-3 text-left pl-2">{item.unit || item.products?.unit || '-'}</td>
+                  <td className="py-3 text-right">{item.mrp ? formatCurrency(item.mrp) : '-'}</td>
+                  <td className="py-3 text-right">
+                    {item.discount_percentage != null 
+                      ? `${item.discount_percentage}%` 
+                      : (item.mrp > 0 && item.mrp > item.unit_price) 
+                        ? `${Number((((item.mrp - item.unit_price) / item.mrp) * 100).toFixed(2))}%` 
+                        : '-'}
+                  </td>
                   <td className="py-3 text-right">{formatCurrency(item.unit_price)}</td>
+                  <td className="py-3 text-right pr-2">
+                    {item.tax_amount ? `${formatCurrency(item.tax_amount)} (${item.gst_rate}%)` : '-'}
+                  </td>
                   <td className="py-3 text-right font-bold">{formatCurrency(item.total_price)}</td>
                 </tr>
               ))}
@@ -85,6 +113,10 @@ export const TemplateFive: React.FC<BillTemplateProps> = ({ bill, dealer, settin
                 <span>-{formatCurrency(bill.settlement_discount_amount)}</span>
               </div>
             )}
+            <div className="flex justify-between py-1 border-b border-dashed border-black">
+              <span>PAYMENT:</span>
+              <span className="uppercase">{bill?.payment_type || (bill?.amount_paid === 0 ? 'Credit' : 'Cash')}</span>
+            </div>
             <div className="flex justify-between py-1 border-b border-dashed border-black">
               <span>PAID:</span>
               <span>{formatCurrency(bill?.amount_paid)}</span>
