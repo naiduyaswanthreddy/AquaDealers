@@ -81,7 +81,8 @@ export const BookPage: React.FC<BookPageProps> = ({
     if (!shareText) return;
     const encoded = encodeURIComponent(shareText);
     if (navigator.share) {
-      navigator.share({ text: shareText }).catch(() => {
+      navigator.share({ text: shareText }).catch((err) => {
+        if (err?.name === 'AbortError') return; // user dismissed — don't also open browser
         window.open(`https://wa.me/?text=${encoded}`, '_blank');
       });
     } else {
