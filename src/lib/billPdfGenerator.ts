@@ -4,8 +4,7 @@ import { toPng } from 'html-to-image';
 import { formatDate, formatCurrency } from './utils';
 import type { Dealer } from '@/types/database';
 import { sharePdfViaWhatsApp } from './shareUtils';
-import { normalizeIndianPhone, buildWaUrl } from './whatsAppService';
-import { invoiceMessage } from './whatsAppMessages';
+import { normalizeIndianPhone } from './whatsAppService';
 
 export const generateBillPdfBlob = async (bill: any, dealer: Dealer | null): Promise<Blob> => {
   const element = document.getElementById('print-content');
@@ -66,15 +65,10 @@ export const shareBillPdfViaWhatsApp = async (bill: any, dealer: Dealer | null, 
 };
 
 /**
- * Captures the invoice template as a PNG and shares it via WhatsApp.
- *
- * If the browser supports Web Share API with files (mobile AND desktop Chrome/Edge
- * on Windows), the native share sheet opens — image + message go directly to
- * WhatsApp in one click, no Ctrl+V needed.
- *
- * Fallback (Firefox, older browsers): image is copied to clipboard and the
- * farmer's WhatsApp chat is opened; the user pastes (Ctrl+V) to send.
- *
+ * Captures the invoice template as a PNG and opens the farmer's WhatsApp chat.
+ * Mobile: downloads the image to the device (attach from downloads).
+ * Desktop: copies the image to clipboard (paste with Ctrl+V).
+ * No pre-filled text — avoids template-pattern spam detection.
  * Throws on error so the caller can show a toast.
  */
 export const shareInvoiceImageViaWhatsApp = async (
@@ -87,20 +81,6 @@ export const shareInvoiceImageViaWhatsApp = async (
 
   const element = document.getElementById(elementId);
   if (!element) throw new Error(`Invoice element '#${elementId}' not found in DOM`);
-
-  const shopName = dealer?.shop_name || 'AquaDealers';
-  const farmerName = bill.farmer_name_snapshot || (bill as any).farmers?.name || null;
-  const billDate = bill.bill_date ?? '';
-
-  const message = invoiceMessage(
-    farmerName,
-    bill.bill_number,
-    billDate,
-    bill.total ?? 0,
-    bill.amount_paid ?? 0,
-    bill.balance_due ?? 0,
-    shopName
-  );
 
   const originalStyle = element.style.cssText;
   element.style.width = '794px';
@@ -134,7 +114,7 @@ export const shareInvoiceImageViaWhatsApp = async (
   }
 
   const normalized = normalizeIndianPhone(phone);
-  const waUrl = buildWaUrl(normalized, message);
+  const waUrl = normalized ? `https://wa.me/91${normalized}` : 'https://wa.me/';
 
   await new Promise(r => setTimeout(r, 300));
   window.open(waUrl, '_blank', 'noopener,noreferrer');

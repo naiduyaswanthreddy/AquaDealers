@@ -68,9 +68,8 @@ export const openWhatsAppText = (
  * Shares a PDF via WhatsApp.
  *
  * Strategy:
- *   - Always opens the farmer's WhatsApp chat directly via wa.me (no share dialog).
- *   - PDF is downloaded silently in the background so the user can attach it from the chat.
- *   - On mobile the file is also shared via the Web Share API when available.
+ *   - Downloads the PDF silently so the user can attach it in the chat.
+ *   - Opens the farmer's WhatsApp chat via wa.me (no pre-filled text).
  *
  * Throws on error so callers can show a toast.
  */
@@ -92,9 +91,9 @@ export const sharePdfViaWhatsApp = async (
   document.body.removeChild(anchor);
   URL.revokeObjectURL(objectUrl);
 
-  // Step 2: Open WhatsApp directly to the farmer's chat with message pre-filled.
-  // wa.me/91XXXXXXXXXX?text=... opens the specific contact's chat immediately.
-  const waUrl = buildWaUrl(normalizedPhone, message);
+  // Step 2: Open WhatsApp directly to the farmer's chat (no pre-filled text).
+  // Skipping ?text= avoids template-pattern spam detection by WhatsApp.
+  const waUrl = normalizedPhone ? `https://wa.me/91${normalizedPhone}` : 'https://wa.me/';
 
   // Small delay so the browser processes the download first.
   await new Promise(r => setTimeout(r, 400));
