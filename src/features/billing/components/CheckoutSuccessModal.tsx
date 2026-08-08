@@ -25,6 +25,7 @@ interface CheckoutSuccessModalProps {
   farmerName: string | null;
   billDate: string;
   isOffline?: boolean;
+  isEstimate?: boolean;
   onStartNewBill: () => void;
 }
 
@@ -39,6 +40,7 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
   farmerName,
   billDate,
   isOffline = false,
+  isEstimate = false,
   onStartNewBill,
 }) => {
   const { t } = useTranslation();
@@ -108,9 +110,9 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
         </div>
 
         <h2 className="text-[22px] font-black text-slate-900 tracking-tight">
-          {isOffline ? t('billing.billSavedOffline', 'Saved Offline!') : t('billing.billSaved', 'Invoice Saved!')}
+          {isOffline ? t('billing.billSavedOffline', 'Saved Offline!') : isEstimate ? 'Estimate Saved!' : t('billing.billSaved', 'Invoice Saved!')}
         </h2>
-        <p className="mt-1.5 text-[13px] font-medium text-slate-500">{t('billing.billNumberIs', 'Invoice Number')} <span className="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded ml-1">{billNumber}</span></p>
+        <p className="mt-1.5 text-[13px] font-medium text-slate-500">{isEstimate ? 'Estimate Number' : t('billing.billNumberIs', 'Invoice Number')} <span className="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded ml-1">{billNumber}</span></p>
 
         {isOffline && (
           <div className="mt-3 w-full rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] font-semibold text-amber-800 text-left">

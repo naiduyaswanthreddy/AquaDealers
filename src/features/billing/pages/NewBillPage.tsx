@@ -43,6 +43,7 @@ const NewBillPage: React.FC = () => {
     setBillDate,
     initializeBillDate,
     initializeGstEnabled,
+    isEstimate,
     drafts,
     activeDraftId,
     setActiveDraft,
@@ -103,6 +104,7 @@ const NewBillPage: React.FC = () => {
     farmerName: string | null;
     billDate: string;
     isOffline?: boolean;
+    isEstimate?: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -156,7 +158,8 @@ const NewBillPage: React.FC = () => {
   };
 
   const handleCheckoutSuccess = (data: typeof successData) => {
-    setSuccessData(data);
+    if (!data) return;
+    setSuccessData({ ...data, isEstimate });
     setShowSuccessModal(true);
     completeActiveDraft();
   };
@@ -441,6 +444,7 @@ const NewBillPage: React.FC = () => {
           farmerName={successData.farmerName}
           billDate={successData.billDate}
           isOffline={successData.isOffline}
+          isEstimate={successData.isEstimate}
           onStartNewBill={handleStartNewBill}
         />
       )}
