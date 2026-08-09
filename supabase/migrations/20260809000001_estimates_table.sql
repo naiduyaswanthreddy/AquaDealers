@@ -18,6 +18,7 @@ CREATE TABLE public.estimates (
   notes                 TEXT,
   status                TEXT        NOT NULL DEFAULT 'active'
                           CHECK (status IN ('active', 'cancelled')),
+  CONSTRAINT uq_estimates_dealer_number UNIQUE (dealer_id, estimate_number),
   created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at            TIMESTAMPTZ
@@ -75,6 +76,10 @@ BEGIN
 
   IF v_farmer_id IS NULL THEN
     RAISE EXCEPTION 'farmer_id is required for estimates';
+  END IF;
+
+  IF jsonb_array_length(COALESCE(p_payload->'items', '[]'::jsonb)) = 0 THEN
+    RAISE EXCEPTION 'estimate must have at least one item';
   END IF;
 
   -- Per-dealer sequential estimate number (EST-0001, EST-0002, ...)
