@@ -10,6 +10,7 @@ interface UseEstimatesParams {
   endDate?: string;
   limit?: number;
   offset?: number;
+  search?: string;
 }
 
 export function useEstimates(params: UseEstimatesParams) {

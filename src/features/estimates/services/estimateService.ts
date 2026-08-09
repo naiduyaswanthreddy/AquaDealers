@@ -20,6 +20,7 @@ export const estimateService = {
     endDate?: string;
     limit?: number;
     offset?: number;
+    search?: string;
   }): Promise<{ estimates: EstimateListItem[]; total_count: number }> {
     const { data, error } = await supabase.rpc('get_estimates', {
       p_dealer_id:  params.dealerId,
@@ -28,6 +29,7 @@ export const estimateService = {
       p_end_date:   params.endDate   ?? null,
       p_limit:      params.limit     ?? 20,
       p_offset:     params.offset    ?? 0,
+      p_search:     params.search    ?? null,
     });
     if (error) throw error;
     return data as { estimates: EstimateListItem[]; total_count: number };

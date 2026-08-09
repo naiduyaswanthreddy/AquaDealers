@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Plus, ChevronRight, ChevronLeft } from 'lucide-react';
+import { FileText, Plus, ChevronRight, ChevronLeft, Search, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -13,11 +13,23 @@ const EstimatesListPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [offset, setOffset] = useState(0);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+
+  // Debounce search → reset to page 1 on new query
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput);
+      setOffset(0);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const { data, isLoading } = useEstimates({
     dealerId: user?.id || '',
     limit: PAGE_SIZE,
     offset,
+    search: search || undefined,
   });
 
   const estimates = data?.estimates ?? [];
@@ -41,6 +53,31 @@ const EstimatesListPage: React.FC = () => {
           </button>
         }
       />
+
+      {/* ── Search bar ───────────────────────────────────────────── */}
+      <div className="px-4 py-3 border-b border-[#d9e5ee] bg-white">
+        <div className="relative">
+          <div className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center">
+            <Search className="h-4 w-4 text-[#8ba0af]" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search by farmer or estimate number…"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            className="w-full rounded-2xl border border-[#d9e5ee] bg-[#f8fbff] pl-10 pr-9 py-2.5 text-sm text-[#173042] placeholder:text-[#8ba0af] focus:outline-none focus:border-[#0052cc] focus:ring-2 focus:ring-[#0052cc]/15 transition-all"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput('')}
+              className="absolute inset-y-0 right-3 flex items-center text-[#8ba0af] hover:text-[#173042]"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
 
@@ -67,21 +104,27 @@ const EstimatesListPage: React.FC = () => {
               className="flex h-20 w-20 items-center justify-center rounded-3xl"
               style={{ background: 'linear-gradient(135deg,#e7f5ff,#d8eefc)' }}
             >
-              <FileText className="h-9 w-9 text-[#0052cc]" />
+              {search ? <Search className="h-9 w-9 text-[#0052cc]" /> : <FileText className="h-9 w-9 text-[#0052cc]" />}
             </div>
             <div>
-              <p className="font-bold text-[#173042] text-base">No estimates yet</p>
-              <p className="text-sm text-[#8ba0af] mt-1">Create a price quote for a farmer</p>
+              <p className="font-bold text-[#173042] text-base">
+                {search ? 'No results found' : 'No estimates yet'}
+              </p>
+              <p className="text-sm text-[#8ba0af] mt-1">
+                {search ? `No estimates match "${search}"` : 'Create a price quote for a farmer'}
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={() => navigate('/estimates/new')}
-              className="flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-bold text-white"
-              style={{ background: 'linear-gradient(135deg,#0052cc,#3385ff)', boxShadow: '0 4px 12px rgba(0,82,204,0.25)' }}
-            >
-              <Plus className="h-4 w-4" />
-              Create first estimate
-            </button>
+            {!search && (
+              <button
+                type="button"
+                onClick={() => navigate('/estimates/new')}
+                className="flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-bold text-white"
+                style={{ background: 'linear-gradient(135deg,#0052cc,#3385ff)', boxShadow: '0 4px 12px rgba(0,82,204,0.25)' }}
+              >
+                <Plus className="h-4 w-4" />
+                Create first estimate
+              </button>
+            )}
           </div>
         )}
 
