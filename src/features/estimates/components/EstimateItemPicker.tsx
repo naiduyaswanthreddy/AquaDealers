@@ -115,7 +115,6 @@ export const EstimateItemPicker: React.FC = () => {
       `)
       .eq('dealer_id', user.id)
       .or(`name.ilike.%${q}%`, { referencedTable: 'products' })
-      .gt('quantity_in_stock', 0)
       .limit(20);
 
     if (activeBranch?.id) query = query.eq('branch_id', activeBranch.id);

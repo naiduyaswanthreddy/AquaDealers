@@ -1,7 +1,13 @@
 -- supabase/migrations/20260809000002_estimates_unique_fix.sql
 -- Fix 1: unique constraint on (dealer_id, estimate_number) to prevent race-condition duplicates
-ALTER TABLE public.estimates
-  ADD CONSTRAINT uq_estimates_dealer_number UNIQUE (dealer_id, estimate_number);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'uq_estimates_dealer_number'
+  ) THEN
+    ALTER TABLE public.estimates
+      ADD CONSTRAINT uq_estimates_dealer_number UNIQUE (dealer_id, estimate_number);
+  END IF;
+END $$;
 
 -- Fix 2: guard against empty items in create_estimate_v1
 CREATE OR REPLACE FUNCTION public.create_estimate_v1(p_payload JSONB)

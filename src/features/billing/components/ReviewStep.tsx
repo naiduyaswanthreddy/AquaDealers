@@ -95,7 +95,6 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
     billDate,
     settlementDiscountAmount,
     isEstimate,
-    setIsEstimate,
   } = useCartStore();
 
   const [showColumnSettings, setShowColumnSettings] = React.useState(false);

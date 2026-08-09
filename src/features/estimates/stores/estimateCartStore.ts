@@ -28,18 +28,6 @@ interface EstimateCartState {
   clearCart: () => void;
 }
 
-const defaultState = (): Omit<EstimateCartState, keyof {
-  [K in keyof EstimateCartState as EstimateCartState[K] extends Function ? K : never]: never
-}> => ({
-  farmerId: null,
-  farmerName: null,
-  items: [],
-  gstEnabled: true,
-  discountAmount: 0,
-  notes: '',
-  estimateDate: getLocalDateString(),
-});
-
 export const useEstimateCartStore = create<EstimateCartState>()(
   persist(
     (set, get) => ({
