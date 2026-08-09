@@ -1,9 +1,11 @@
 // src/features/estimates/components/EstimateItemPicker.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { Search, X, Plus, Minus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
+import { useFarmerProductDiscounts } from '@/features/farmers/hooks/useFarmers';
 import { useEstimateCartStore } from '../stores/estimateCartStore';
 import type { EstimateCartItem } from '../types';
 import { formatCurrency } from '@/lib/utils';
@@ -41,6 +43,9 @@ export const EstimateItemPicker: React.FC = () => {
     setGstEnabled,
   } = useEstimateCartStore();
 
+  const farmerInputRef  = useRef<HTMLInputElement>(null);
+  const productInputRef = useRef<HTMLInputElement>(null);
+
   const [farmerQuery, setFarmerQuery]     = useState('');
   const [farmerResults, setFarmerResults] = useState<FarmerSearchResult[]>([]);
   const [farmerLoading, setFarmerLoading] = useState(false);
@@ -50,8 +55,8 @@ export const EstimateItemPicker: React.FC = () => {
   const [productResults, setProductResults] = useState<ProductSearchResult[]>([]);
   const [productLoading, setProductLoading] = useState(false);
 
-  // farmer-product discounts keyed by product_id
-  const [farmerDiscounts, setFarmerDiscounts] = useState<Record<string, number>>({});
+  // farmer-product discounts via React Query (same as billing ProductSelector)
+  const { data: farmerDiscounts = [] } = useFarmerProductDiscounts(farmerId || '');
 
   // ── Farmer search ──────────────────────────────────────────────────────────
 
@@ -74,23 +79,8 @@ export const EstimateItemPicker: React.FC = () => {
     return () => clearTimeout(t);
   }, [farmerQuery, searchFarmers]);
 
-  const loadFarmerDiscounts = useCallback(async (fid: string) => {
-    if (!user?.id) return;
-    const { data } = await supabase
-      .from('farmer_product_discounts')
-      .select('product_id, discount_percentage')
-      .eq('dealer_id', user.id)
-      .eq('farmer_id', fid);
-    if (data) {
-      setFarmerDiscounts(
-        Object.fromEntries((data as { product_id: string; discount_percentage: number }[]).map(r => [r.product_id, r.discount_percentage]))
-      );
-    }
-  }, [user?.id]);
-
   const handleSelectFarmer = (f: FarmerSearchResult) => {
     setFarmer(f.id, f.name);
-    loadFarmerDiscounts(f.id);
     setFarmerQuery('');
     setFarmerResults([]);
     setShowFarmerList(false);
@@ -147,8 +137,9 @@ export const EstimateItemPicker: React.FC = () => {
   }, [productQuery, searchProducts]);
 
   const handleAddProduct = (p: ProductSearchResult) => {
-    // farmer-specific > product default
-    const farmerPct = farmerDiscounts[p.product_id];
+    // farmer-specific > product default (same precedence as billing ProductSelector)
+    const farmerEntry = farmerDiscounts.find(d => d.product_id === p.product_id);
+    const farmerPct = farmerEntry ? Number(farmerEntry.discount_percentage) : undefined;
     const discountPct = farmerPct ?? p.default_discount_percentage;
     const discountSource: EstimateCartItem['discount_source'] =
       farmerPct !== undefined
@@ -195,7 +186,7 @@ export const EstimateItemPicker: React.FC = () => {
             <span className="flex-1 font-medium text-gray-900">{farmerName}</span>
             <button
               type="button"
-              onClick={() => { clearFarmer(); setFarmerDiscounts({}); }}
+              onClick={() => clearFarmer()}
               className="text-gray-400 hover:text-gray-600"
             >
               <X className="h-4 w-4" />
@@ -205,39 +196,50 @@ export const EstimateItemPicker: React.FC = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
+              ref={farmerInputRef}
               type="text"
               placeholder="Search farmer..."
               value={farmerQuery}
               onChange={e => { setFarmerQuery(e.target.value); setShowFarmerList(true); }}
               onFocus={() => setShowFarmerList(true)}
+              onBlur={() => setTimeout(() => setShowFarmerList(false), 150)}
               className="w-full rounded-lg border border-gray-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
-            {showFarmerList && farmerResults.length > 0 && (
-              <div className="absolute z-20 mt-1 w-full rounded-lg border bg-white shadow-lg max-h-56 overflow-y-auto">
-                {farmerResults.map(f => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onMouseDown={() => handleSelectFarmer(f)}
-                    className="flex w-full flex-col px-3 py-2 text-left hover:bg-gray-50"
-                  >
-                    <span className="font-medium text-sm text-gray-900">{f.name}</span>
-                    {f.village && <span className="text-xs text-gray-500">{f.village}</span>}
-                  </button>
-                ))}
-              </div>
-            )}
+            {showFarmerList && farmerResults.length > 0 && (() => {
+              const rect = farmerInputRef.current?.getBoundingClientRect();
+              if (!rect) return null;
+              return ReactDOM.createPortal(
+                <div
+                  style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 9999 }}
+                  className="rounded-lg border bg-white shadow-lg max-h-56 overflow-y-auto"
+                >
+                  {farmerResults.map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onMouseDown={() => handleSelectFarmer(f)}
+                      className="flex w-full flex-col px-3 py-2 text-left hover:bg-gray-50"
+                    >
+                      <span className="font-medium text-sm text-gray-900">{f.name}</span>
+                      {f.village && <span className="text-xs text-gray-500">{f.village}</span>}
+                    </button>
+                  ))}
+                </div>,
+                document.body
+              );
+            })()}
           </div>
         )}
       </div>
 
       {/* Product search (only show once farmer selected) */}
       {farmerId && (
-        <div className="relative">
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Add Items</label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
+              ref={productInputRef}
               type="text"
               placeholder="Search product..."
               value={productQuery}
@@ -245,26 +247,34 @@ export const EstimateItemPicker: React.FC = () => {
               className="w-full rounded-lg border border-gray-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
-          {productResults.length > 0 && (
-            <div className="absolute z-20 mt-1 w-full rounded-lg border bg-white shadow-lg max-h-64 overflow-y-auto">
-              {productResults.map(p => (
-                <button
-                  key={p.product_id}
-                  type="button"
-                  onMouseDown={() => handleAddProduct(p)}
-                  className="flex w-full items-center justify-between px-3 py-2 hover:bg-gray-50 text-left"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{p.product_name}</p>
-                    <p className="text-xs text-gray-500">{p.unit} · Stock: {p.available_quantity}</p>
-                  </div>
-                  <span className="text-sm font-semibold text-gray-900">
-                    {formatCurrency(p.selling_price)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+          {productResults.length > 0 && (() => {
+            const rect = productInputRef.current?.getBoundingClientRect();
+            if (!rect) return null;
+            return ReactDOM.createPortal(
+              <div
+                style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 9999 }}
+                className="rounded-lg border bg-white shadow-lg max-h-64 overflow-y-auto"
+              >
+                {productResults.map(p => (
+                  <button
+                    key={p.product_id}
+                    type="button"
+                    onMouseDown={() => handleAddProduct(p)}
+                    className="flex w-full items-center justify-between px-3 py-2 hover:bg-gray-50 text-left"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{p.product_name}</p>
+                      <p className="text-xs text-gray-500">{p.unit} · Stock: {p.available_quantity}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {formatCurrency(p.selling_price)}
+                    </span>
+                  </button>
+                ))}
+              </div>,
+              document.body
+            );
+          })()}
         </div>
       )}
 
