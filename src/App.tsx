@@ -63,6 +63,11 @@ const BillHistoryPage          = React.lazy(() => import('@/features/billing/pag
 const BillDetailsPage          = React.lazy(() => import('@/features/billing/pages/BillDetailsPage'));
 const BulkHistoricalBillPage   = React.lazy(() => import('@/features/billing/pages/BulkHistoricalBillPage'));
 
+// Estimates
+const EstimatesListPage  = React.lazy(() => import('@/features/estimates/pages/EstimatesListPage'));
+const NewEstimatePage    = React.lazy(() => import('@/features/estimates/pages/NewEstimatePage'));
+const EstimateDetailPage = React.lazy(() => import('@/features/estimates/pages/EstimateDetailPage'));
+
 // Suppliers & Purchases
 const SupplierListPage    = React.lazy(() => import('@/features/suppliers/pages/SupplierListPage'));
 const SupplierLedgerPage  = React.lazy(() => import('@/features/suppliers/pages/SupplierLedgerPage'));
@@ -300,6 +305,11 @@ const App: React.FC = () => {
             <Route path="/bills/new"        element={<FeatureGate allowed={['newBill']}               title="Add Bill"            description="You do not have access to create bills."><NewBillPage /></FeatureGate>} />
             <Route path="/bills/historical" element={<FeatureGate allowed={['newBill']}               title="Bulk Historical Entry" description="You do not have access to create bills."><BulkHistoricalBillPage /></FeatureGate>} />
             <Route path="/bills/:id"        element={<FeatureGate allowed={['billHistory', 'newBill']} title="Bill Details"        description="You do not have access to bill details."><BillDetailsPage /></FeatureGate>} />
+
+            {/* Estimates Module */}
+            <Route path="/estimates"      element={<FeatureGate allowed={['billHistory']} title="Estimates"       description="You do not have access to estimates."><EstimatesListPage /></FeatureGate>} />
+            <Route path="/estimates/new"  element={<FeatureGate allowed={['newBill']}    title="New Estimate"    description="You do not have access to create estimates."><NewEstimatePage /></FeatureGate>} />
+            <Route path="/estimates/:id"  element={<FeatureGate allowed={['billHistory']} title="Estimate Detail" description="You do not have access to estimate details."><EstimateDetailPage /></FeatureGate>} />
 
             {/* Suppliers & Purchases */}
             <Route path="/suppliers"              element={<FeatureGate allowed={['suppliers']} title="Suppliers"      description="You do not have access to suppliers."><SupplierListPage /></FeatureGate>} />

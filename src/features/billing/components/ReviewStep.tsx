@@ -327,43 +327,6 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({
         )}
       </section>
 
-      {/* Estimate toggle */}
-      <div
-        className={`rounded-2xl border p-4 transition-colors ${
-          isEstimate
-            ? 'border-amber-300 bg-amber-50'
-            : 'border-slate-200 bg-white'
-        }`}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className={`text-sm font-black ${isEstimate ? 'text-amber-800' : 'text-slate-900'}`}>
-              Save as Estimate
-            </div>
-            <div className={`mt-0.5 text-xs font-medium ${isEstimate ? 'text-amber-700' : 'text-slate-500'}`}>
-              {isEstimate
-                ? 'Price quote only — no stock deducted, no dues added'
-                : 'Toggle on to send a price quote instead of a real bill'}
-            </div>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isEstimate}
-            onClick={() => setIsEstimate(!isEstimate)}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
-              isEstimate ? 'bg-amber-500' : 'bg-slate-200'
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                isEstimate ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
-      </div>
-
       <section className="billing-invoice-card">
         <div className="billing-invoice-card__header">
           <div>

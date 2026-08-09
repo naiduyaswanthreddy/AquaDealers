@@ -18,6 +18,7 @@ import {
   ArrowLeftRight,
   Undo2,
   History,
+  FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -74,6 +75,7 @@ export const MorePage: React.FC = () => {
     {
       title: 'Records & Bills',
       items: [
+        { path: '/estimates', label: 'Estimates', description: 'Create and view price estimates', icon: FileText, color: 'bg-amber-100 text-amber-700', cardBg: 'bg-amber-50 border-amber-200/60', chevronBg: 'bg-amber-100 text-amber-600', featureKey: 'billHistory' as StaffFeatureKey },
         { path: '/bills', label: t('nav.allBills', 'All Bills'), description: 'View and manage all your bills', icon: ReceiptText, color: 'bg-indigo-100 text-indigo-600', cardBg: 'bg-indigo-50 border-indigo-200/60', chevronBg: 'bg-indigo-100 text-indigo-600', featureKey: 'billHistory' },
         { path: '/returns', label: 'Returns', description: 'Handle product returns', icon: Undo2, color: 'bg-orange-100 text-orange-700', cardBg: 'bg-orange-50 border-orange-200/60', chevronBg: 'bg-orange-100 text-orange-600', featureKey: 'billHistory' },
         { path: '/transactions', label: 'Transactions', description: 'Track all transactions', icon: History, color: 'bg-amber-100 text-amber-700', cardBg: 'bg-amber-50 border-amber-200/60', chevronBg: 'bg-amber-100 text-amber-600', featureKey: 'transactions' },

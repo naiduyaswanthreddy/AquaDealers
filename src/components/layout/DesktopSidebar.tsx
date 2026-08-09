@@ -13,7 +13,8 @@ import {
   Truck,
   LayoutGrid,
   Store,
-  ChevronsUpDown
+  ChevronsUpDown,
+  FileText,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useBranchStore } from '@/stores/branchStore';
@@ -32,6 +33,7 @@ interface SidebarItem {
 const SIDEBAR_ITEMS: SidebarItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, featureKey: 'dashboard' },
   { path: '/bills', label: 'Billing', icon: Receipt, featureKey: 'billHistory' },
+  { path: '/estimates', label: 'Estimates', icon: FileText, featureKey: 'billHistory' },
   { path: '/inventory', label: 'Stock & Purchase', icon: Package, featureKey: 'inventory' },
   { path: '/farmers', label: 'Farmers', icon: Users, featureKey: 'farmerList' },
   { path: '/dues', label: 'Dues', icon: WalletCards, featureKey: 'farmerList' },
