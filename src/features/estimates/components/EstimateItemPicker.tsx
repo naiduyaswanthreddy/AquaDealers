@@ -1,7 +1,6 @@
-// src/features/estimates/components/EstimateItemPicker.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ReactDOM from 'react-dom';
-import { Search, X, Plus, Minus } from 'lucide-react';
+import { Search, X, Plus, Minus, User, Package } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
@@ -9,8 +8,6 @@ import { useFarmerProductDiscounts } from '@/features/farmers/hooks/useFarmers';
 import { useEstimateCartStore } from '../stores/estimateCartStore';
 import type { EstimateCartItem } from '../types';
 import { formatCurrency } from '@/lib/utils';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ProductSearchResult {
   inventory_id: string;
@@ -21,7 +18,7 @@ interface ProductSearchResult {
   hsn_code: string | null;
   mrp: number;
   selling_price: number;
-  default_discount_percentage: number; // sourced from inventory.medicine_discount_percentage
+  default_discount_percentage: number;
   gst_rate: number;
   available_quantity: number;
 }
@@ -31,8 +28,6 @@ interface FarmerSearchResult {
   name: string;
   village: string | null;
 }
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 export const EstimateItemPicker: React.FC = () => {
   const { user } = useAuthStore();
@@ -55,7 +50,6 @@ export const EstimateItemPicker: React.FC = () => {
   const [productResults, setProductResults] = useState<ProductSearchResult[]>([]);
   const [productLoading, setProductLoading] = useState(false);
 
-  // farmer-product discounts via React Query (same as billing ProductSelector)
   const { data: farmerDiscounts = [] } = useFarmerProductDiscounts(farmerId || '');
 
   // ── Farmer search ──────────────────────────────────────────────────────────
@@ -137,7 +131,6 @@ export const EstimateItemPicker: React.FC = () => {
   }, [productQuery, searchProducts]);
 
   const handleAddProduct = (p: ProductSearchResult) => {
-    // farmer-specific > product default (same precedence as billing ProductSelector)
     const farmerEntry = farmerDiscounts.find(d => d.product_id === p.product_id);
     const farmerPct = farmerEntry ? Number(farmerEntry.discount_percentage) : undefined;
     const discountPct = farmerPct ?? p.default_discount_percentage;
@@ -150,7 +143,7 @@ export const EstimateItemPicker: React.FC = () => {
       (p.selling_price * (1 - discountPct / 100)).toFixed(2)
     );
 
-    const item: EstimateCartItem = {
+    addItem({
       product_id: p.product_id,
       product_name: p.product_name,
       product_type: p.product_type,
@@ -165,63 +158,86 @@ export const EstimateItemPicker: React.FC = () => {
       default_discount_percentage: p.default_discount_percentage,
       farmer_discount_percentage: farmerPct ?? null,
       discount_source: discountSource,
-    };
-
-    addItem(item);
+    });
     setProductQuery('');
     setProductResults([]);
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const farmerInitial = farmerName?.[0]?.toUpperCase() ?? '?';
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Farmer picker */}
-      <div className="relative">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Farmer <span className="text-red-500">*</span>
+    <div className="flex flex-col gap-5">
+
+      {/* ── Farmer picker ─────────────────────────────────────────── */}
+      <div>
+        <label className="block text-xs font-bold uppercase tracking-widest text-[#5d7486] mb-2">
+          Farmer <span className="text-red-500 normal-case tracking-normal">*</span>
         </label>
+
         {farmerId ? (
-          <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-            <span className="flex-1 font-medium text-gray-900">{farmerName}</span>
+          <div
+            className="flex items-center gap-3 rounded-2xl border border-[#0052cc]/20 bg-[#e7f5ff] px-4 py-3"
+            style={{ boxShadow: 'inset 0 0 0 1px rgba(0,82,204,0.08)' }}
+          >
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg,#0052cc,#3385ff)' }}
+            >
+              {farmerInitial}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-[#173042] text-sm leading-tight">{farmerName}</p>
+              <p className="text-[0.7rem] text-[#5d7486] mt-0.5">Selected farmer</p>
+            </div>
             <button
               type="button"
               onClick={() => clearFarmer()}
-              className="text-gray-400 hover:text-gray-600"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-[#5d7486] hover:bg-[#0052cc]/10 hover:text-[#0052cc] transition-colors"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         ) : (
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <div className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center">
+              <User className="h-4 w-4 text-[#8ba0af]" />
+            </div>
             <input
               ref={farmerInputRef}
               type="text"
-              placeholder="Search farmer..."
+              placeholder="Search by farmer name…"
               value={farmerQuery}
               onChange={e => { setFarmerQuery(e.target.value); setShowFarmerList(true); }}
               onFocus={() => setShowFarmerList(true)}
               onBlur={() => setTimeout(() => setShowFarmerList(false), 150)}
-              className="w-full rounded-lg border border-gray-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-2xl border border-[#d9e5ee] bg-white pl-10 pr-4 py-3 text-sm text-[#173042] placeholder:text-[#8ba0af] focus:outline-none focus:border-[#0052cc] focus:ring-2 focus:ring-[#0052cc]/15 transition-all"
             />
+            {farmerLoading && (
+              <div className="absolute inset-y-0 right-3.5 flex items-center">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#0052cc] border-t-transparent" />
+              </div>
+            )}
             {showFarmerList && farmerResults.length > 0 && (() => {
               const rect = farmerInputRef.current?.getBoundingClientRect();
               if (!rect) return null;
               return ReactDOM.createPortal(
                 <div
-                  style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 9999 }}
-                  className="rounded-lg border bg-white shadow-lg max-h-56 overflow-y-auto"
+                  style={{ position: 'fixed', top: rect.bottom + 6, left: rect.left, width: rect.width, zIndex: 9999, boxShadow: '0 12px 28px rgba(20,54,84,0.12)', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #d9e5ee', background: '#fff' }}
                 >
-                  {farmerResults.map(f => (
+                  {farmerResults.map((f, i) => (
                     <button
                       key={f.id}
                       type="button"
                       onMouseDown={() => handleSelectFarmer(f)}
-                      className="flex w-full flex-col px-3 py-2 text-left hover:bg-gray-50"
+                      className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#e7f5ff] transition-colors ${i > 0 ? 'border-t border-[#f0f7ff]' : ''}`}
                     >
-                      <span className="font-medium text-sm text-gray-900">{f.name}</span>
-                      {f.village && <span className="text-xs text-gray-500">{f.village}</span>}
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#e7f5ff] text-xs font-bold text-[#0052cc] flex-shrink-0">
+                        {f.name[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-[#173042]">{f.name}</p>
+                        {f.village && <p className="text-xs text-[#8ba0af]">{f.village}</p>}
+                      </div>
                     </button>
                   ))}
                 </div>,
@@ -232,45 +248,66 @@ export const EstimateItemPicker: React.FC = () => {
         )}
       </div>
 
-      {/* Product search (only show once farmer selected) */}
+      {/* ── Product search ─────────────────────────────────────────── */}
       {farmerId && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Add Items</label>
+          <label className="block text-xs font-bold uppercase tracking-widest text-[#5d7486] mb-2">
+            Add Items
+          </label>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <div className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center">
+              <Search className="h-4 w-4 text-[#8ba0af]" />
+            </div>
             <input
               ref={productInputRef}
               type="text"
-              placeholder="Search product..."
+              placeholder="Search product…"
               value={productQuery}
               onChange={e => setProductQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-2xl border border-[#d9e5ee] bg-white pl-10 pr-4 py-3 text-sm text-[#173042] placeholder:text-[#8ba0af] focus:outline-none focus:border-[#0052cc] focus:ring-2 focus:ring-[#0052cc]/15 transition-all"
             />
+            {productLoading && (
+              <div className="absolute inset-y-0 right-3.5 flex items-center">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#0052cc] border-t-transparent" />
+              </div>
+            )}
           </div>
+
           {productResults.length > 0 && (() => {
             const rect = productInputRef.current?.getBoundingClientRect();
             if (!rect) return null;
             return ReactDOM.createPortal(
               <div
-                style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 9999 }}
-                className="rounded-lg border bg-white shadow-lg max-h-64 overflow-y-auto"
+                style={{ position: 'fixed', top: rect.bottom + 6, left: rect.left, width: rect.width, zIndex: 9999, boxShadow: '0 12px 28px rgba(20,54,84,0.12)', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #d9e5ee', background: '#fff', maxHeight: '17rem', overflowY: 'auto' }}
               >
-                {productResults.map(p => (
-                  <button
-                    key={p.product_id}
-                    type="button"
-                    onMouseDown={() => handleAddProduct(p)}
-                    className="flex w-full items-center justify-between px-3 py-2 hover:bg-gray-50 text-left"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{p.product_name}</p>
-                      <p className="text-xs text-gray-500">{p.unit} · Stock: {p.available_quantity}</p>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {formatCurrency(p.selling_price)}
-                    </span>
-                  </button>
-                ))}
+                {productResults.map((p, i) => {
+                  const farmerEntry = farmerDiscounts.find(d => d.product_id === p.product_id);
+                  const effectiveDiscount = farmerEntry ? Number(farmerEntry.discount_percentage) : p.default_discount_percentage;
+                  return (
+                    <button
+                      key={p.product_id}
+                      type="button"
+                      onMouseDown={() => handleAddProduct(p)}
+                      className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#e7f5ff] transition-colors ${i > 0 ? 'border-t border-[#f0f7ff]' : ''}`}
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#f0f7ff] flex-shrink-0">
+                        <Package className="h-4 w-4 text-[#0052cc]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-[#173042] truncate">{p.product_name}</p>
+                        <p className="text-xs text-[#8ba0af]">{p.unit} · Stock: {p.available_quantity}</p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-sm font-bold text-[#173042]">{formatCurrency(p.selling_price)}</p>
+                        {effectiveDiscount > 0 && (
+                          <span className="inline-block text-[0.65rem] font-semibold text-emerald-700 bg-emerald-50 rounded-full px-1.5 py-0.5 mt-0.5">
+                            {effectiveDiscount}% off
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>,
               document.body
             );
@@ -278,28 +315,39 @@ export const EstimateItemPicker: React.FC = () => {
         </div>
       )}
 
-      {/* Cart item list */}
+      {/* ── Cart items ─────────────────────────────────────────────── */}
       {items.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2.5">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#5d7486]">
+            {items.length} item{items.length > 1 ? 's' : ''} added
+          </p>
           {items.map(item => (
             <div
               key={item.product_id}
-              className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
+              className="flex items-center gap-3 rounded-2xl bg-white border border-[#d9e5ee] px-4 py-3 overflow-hidden relative"
+              style={{ boxShadow: '0 2px 8px rgba(20,54,84,0.05)' }}
             >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{item.product_name}</p>
-                <p className="text-xs text-gray-500">
-                  {formatCurrency(item.unit_price)}/{item.unit}
+              {/* left accent stripe */}
+              <div className="absolute left-0 inset-y-0 w-1 rounded-l-2xl bg-[#0052cc]" />
+
+              <div className="flex-1 min-w-0 pl-1">
+                <p className="text-sm font-semibold text-[#173042] truncate">{item.product_name}</p>
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <span className="text-xs text-[#5d7486]">{formatCurrency(item.unit_price)}/{item.unit}</span>
                   {item.discount_percentage > 0 && (
-                    <span className="ml-1 text-emerald-600">({item.discount_percentage}% off)</span>
+                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[0.65rem] font-semibold text-emerald-700 border border-emerald-100">
+                      {item.discount_percentage}% off
+                    </span>
                   )}
-                </p>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
+
+              {/* qty controls */}
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => updateQuantity(item.product_id, Math.max(1, item.quantity - 1))}
-                  className="rounded-md p-1 hover:bg-gray-200"
+                  className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#e7f5ff] text-[#0052cc] hover:bg-[#0052cc] hover:text-white transition-colors"
                 >
                   <Minus className="h-3 w-3" />
                 </button>
@@ -308,41 +356,50 @@ export const EstimateItemPicker: React.FC = () => {
                   min={1}
                   value={item.quantity}
                   onChange={e => updateQuantity(item.product_id, Math.max(1, Number(e.target.value)))}
-                  className="w-12 text-center text-sm border border-gray-200 rounded px-1 py-0.5"
+                  className="w-10 text-center text-sm font-semibold text-[#173042] border border-[#d9e5ee] rounded-xl px-1 py-1 focus:outline-none focus:border-[#0052cc]"
                 />
                 <button
                   type="button"
                   onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
-                  className="rounded-md p-1 hover:bg-gray-200"
+                  className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#e7f5ff] text-[#0052cc] hover:bg-[#0052cc] hover:text-white transition-colors"
                 >
                   <Plus className="h-3 w-3" />
                 </button>
               </div>
-              <span className="text-sm font-semibold w-20 text-right text-gray-900">
+
+              <span className="text-sm font-bold text-[#173042] w-16 text-right flex-shrink-0">
                 {formatCurrency(item.unit_price * item.quantity)}
               </span>
+
               <button
                 type="button"
                 onClick={() => removeItem(item.product_id)}
-                className="text-gray-400 hover:text-red-500"
+                className="flex h-7 w-7 items-center justify-center rounded-xl text-[#8ba0af] hover:bg-red-50 hover:text-red-500 transition-colors flex-shrink-0"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* GST toggle */}
+      {/* ── GST toggle ─────────────────────────────────────────────── */}
       {items.length > 0 && (
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={gstEnabled}
-            onChange={e => setGstEnabled(e.target.checked)}
-            className="h-4 w-4 rounded accent-primary"
-          />
-          <span className="text-sm text-gray-700">Include GST</span>
+        <label className="flex items-center gap-3 cursor-pointer select-none rounded-2xl border border-[#d9e5ee] bg-white px-4 py-3" style={{ boxShadow: '0 2px 8px rgba(20,54,84,0.04)' }}>
+          <div className="relative flex-shrink-0">
+            <input
+              type="checkbox"
+              checked={gstEnabled}
+              onChange={e => setGstEnabled(e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-10 h-5 rounded-full border-2 border-[#d9e5ee] bg-[#f0f7ff] peer-checked:bg-[#0052cc] peer-checked:border-[#0052cc] transition-colors" />
+            <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[#173042]">Include GST</p>
+            <p className="text-xs text-[#8ba0af]">Adds applicable tax to item prices</p>
+          </div>
         </label>
       )}
     </div>
