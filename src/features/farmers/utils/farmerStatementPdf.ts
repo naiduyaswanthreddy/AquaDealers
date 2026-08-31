@@ -323,12 +323,26 @@ export const shareFarmerStatementViaWhatsApp = async (
   startDate: string, 
   endDate: string
 ): Promise<void> => {
-  const { sharePdfViaWhatsApp } = await import('@/lib/shareUtils');
+  const { sharePdfViaWhatsApp, normalizeIndianPhone } = await import('@/lib/whatsAppService');
+  const { statementMessage } = await import('@/lib/whatsAppMessages');
   const blob = await generateFarmerStatementPdfBlob(statement, dealer, startDate, endDate);
   
-  const fallbackText = `*${dealer?.shop_name || 'AquaDealers'}*\n-------------------\n*Balance Statement*\n*Farmer:* ${statement.farmer.name}\n*Period:* ${formatDate(startDate)} to ${formatDate(endDate)}\n\n*Closing Balance:* ${formatCurrency(statement.closingBalance)}\n-------------------\nPlease find the detailed PDF attached.`;
+  const shopName = dealer?.shop_name || 'AquaDealers';
+  const message = statementMessage(
+    statement.farmer.name,
+    startDate,
+    endDate,
+    statement.closingBalance,
+    shopName
+  );
+  const normalizedPhone = normalizeIndianPhone(statement.farmer.phone);
   
-  await sharePdfViaWhatsApp(blob, `Statement_${statement.farmer.name.replace(/\s+/g, '_')}.pdf`, fallbackText, statement.farmer.phone || undefined);
+  await sharePdfViaWhatsApp(
+    blob,
+    `Statement_${statement.farmer.name.replace(/\s+/g, '_')}.pdf`,
+    message,
+    normalizedPhone
+  );
 };
 
 export const downloadFarmerStatementPdf = async (

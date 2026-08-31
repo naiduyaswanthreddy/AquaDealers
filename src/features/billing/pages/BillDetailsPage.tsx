@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Download, Printer, MessageCircle, CheckCircle2, Undo2, KeyRound, Copy, Check, Tag } from 'lucide-react';
+import { ArrowLeft, Download, Printer, MessageCircle, CheckCircle2, Undo2, KeyRound, Copy, Check, Tag, XCircle, RotateCw } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { useBillDetails } from '../hooks/useBilling';
 import { formatCurrency, formatDate, formatDateTime, getBillSignature } from '@/lib/utils';
 import { PageShell } from '@/components/layout/PageShell';
@@ -48,6 +49,27 @@ const BillDetailsPage: React.FC = () => {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isRetryingWhatsapp, setIsRetryingWhatsapp] = useState(false);
+
+  // Only show the automated sent/failed status once the addon is actually on
+  // AND this specific bill has a recorded attempt — otherwise (addon off,
+  // estimate, walk-in, or a bill from before this feature existed) fall back
+  // to the manual share button.
+  const whatsappAddonOn = !!dealer?.whatsapp_enabled && !!dealer?.whatsapp_addon_plan_id;
+  const showWhatsappStatus = whatsappAddonOn && !!bill?.whatsapp_status;
+
+  // The send from checkout is fire-and-forget, so landing here right after
+  // creating a bill can beat it to the punch — status is still null. One
+  // delayed refetch catches the common "just created it" case without
+  // turning this page into a poller.
+  React.useEffect(() => {
+    if (!whatsappAddonOn || !bill || bill.whatsapp_status || bill.is_estimate || !bill.farmer_id) return;
+    const timer = setTimeout(() => {
+      queryClient.refetchQueries({ queryKey: billingKeys.detail(bill.id) });
+    }, 3000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [whatsappAddonOn, bill?.id, bill?.whatsapp_status]);
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
@@ -124,6 +146,20 @@ const BillDetailsPage: React.FC = () => {
       toast.error('Failed to generate invoice image. Please try again.');
     } finally {
       setIsSharing(false);
+    }
+  };
+
+  const handleRetryWhatsApp = async () => {
+    if (!bill) return;
+    setIsRetryingWhatsapp(true);
+    try {
+      await supabase.functions.invoke('send-bill-whatsapp', { body: { billId: bill.id } });
+      await queryClient.invalidateQueries({ queryKey: billingKeys.detail(bill.id) });
+    } catch (err) {
+      console.error('Failed to retry WhatsApp send:', err);
+      toast.error('Failed to retry. Please try again.');
+    } finally {
+      setIsRetryingWhatsapp(false);
     }
   };
 
@@ -276,18 +312,63 @@ const BillDetailsPage: React.FC = () => {
             >
               {t('billing.printInvoice', 'Print Invoice')}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              leftIcon={<MessageCircle className="w-4 h-4 text-white" />}
-              onClick={handleShareWhatsApp}
-              loading={isSharing}
-              disabled={isSharing}
-              className="rounded-[24px] hover:bg-white/25 transition-all text-white border-solid font-semibold text-xs px-5 sm:px-6"
-              style={{ background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.22)' }}
-            >
-              {isSharing ? 'Generating…' : 'Share on WhatsApp'}
-            </Button>
+            {showWhatsappStatus ? (
+              bill?.whatsapp_status === 'sent' ? (
+                <div
+                  className="flex items-center gap-2 rounded-[24px] font-semibold text-xs px-5 sm:px-6 py-2 text-white"
+                  style={{ background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.22)' }}
+                >
+                  <MessageCircle className="w-4 h-4 text-white" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                  Sent
+                </div>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leftIcon={<XCircle className="w-4 h-4 text-red-300" />}
+                    rightIcon={<RotateCw className="w-3.5 h-3.5 text-white" />}
+                    onClick={handleRetryWhatsApp}
+                    loading={isRetryingWhatsapp}
+                    disabled={isRetryingWhatsapp}
+                    className="rounded-[24px] hover:bg-white/25 transition-all text-white border-solid font-semibold text-xs px-5 sm:px-6"
+                    style={{ background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.22)' }}
+                  >
+                    {isRetryingWhatsapp ? 'Retrying…' : 'Failed — Retry'}
+                  </Button>
+                  {/* Automated retry can never succeed for a permanently bad number
+                      (wrong digits, not on WhatsApp) — keep the manual share button
+                      reachable as a fallback so the dealer isn't stuck. */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title="Share manually instead"
+                    leftIcon={<MessageCircle className="w-4 h-4 text-white" />}
+                    onClick={handleShareWhatsApp}
+                    loading={isSharing}
+                    disabled={isSharing}
+                    className="rounded-[24px] hover:bg-white/25 transition-all text-white border-solid font-semibold text-xs px-3"
+                    style={{ background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.22)' }}
+                  >
+                    Share
+                  </Button>
+                </>
+              )
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<MessageCircle className="w-4 h-4 text-white" />}
+                onClick={handleShareWhatsApp}
+                loading={isSharing}
+                disabled={isSharing}
+                className="rounded-[24px] hover:bg-white/25 transition-all text-white border-solid font-semibold text-xs px-5 sm:px-6"
+                style={{ background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.22)' }}
+              >
+                {isSharing ? 'Generating…' : 'Share on WhatsApp'}
+              </Button>
+            )}
             <Button 
               variant="ghost" 
               size="sm"
@@ -439,7 +520,21 @@ const BillDetailsPage: React.FC = () => {
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="py-3 px-4 text-sm font-medium text-gray-900">{item.product_name_snapshot}</td>
                   <td className="py-3 px-4 text-sm text-gray-500 text-right">{item.hsn_code_snapshot || '-'}</td>
-                  <td className="py-3 px-4 text-sm text-gray-900 text-right">{item.quantity}</td>
+                  <td className="py-3 px-4 text-sm text-gray-900 text-right">
+                    {(() => {
+                      const returned = (item.bill_return_allocations ?? []).reduce((s: number, a: any) => s + Number(a.quantity), 0);
+                      const net = item.quantity - returned;
+                      if (returned <= 0) return item.quantity;
+                      return (
+                        <span>
+                          {net}
+                          <span className="block text-[10px] text-orange-600 font-medium leading-tight">
+                            {item.quantity} sold − {returned} returned
+                          </span>
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td className="py-3 px-4 text-sm text-gray-500 text-left">{item.unit || item.products?.unit || '-'}</td>
                   <td className="py-3 px-4 text-sm text-gray-500 text-right">{item.mrp ? formatCurrency(item.mrp) : '-'}</td>
                   <td className="py-3 px-4 text-sm text-gray-500 text-right">

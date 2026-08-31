@@ -165,6 +165,10 @@ export const useOfflineBillStore = create<OfflineBillState>((set, get) => ({
             }
           }
 
+          if (!result.already_synced) {
+            supabase.functions.invoke('send-bill-whatsapp', { body: { billId: result.bill_id } }).catch(() => {});
+          }
+
           return { ok: true, clientRef: bill.clientRef, billNumber: result.bill_number, pendingSig };
         })
       );

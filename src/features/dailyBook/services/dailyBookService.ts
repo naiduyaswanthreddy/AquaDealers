@@ -165,6 +165,7 @@ export const dailyBookService = {
           .eq('dealer_id', dealerId)
           .eq('bill_date', date)
           .neq('status', 'cancelled')
+          .eq('is_estimate', false)
           .order('created_at', { ascending: true }) as any
       ),
       branchFilter(
@@ -220,16 +221,16 @@ export const dailyBookService = {
           .select('total')
           .eq('dealer_id', dealerId)
           .eq('bill_date', yesterday)
-          .neq('status', 'cancelled') as any
+          .neq('status', 'cancelled')
+          .eq('is_estimate', false) as any
       ),
-      branchFilter(
-        supabase
-          .from('cash_book')
-          .select('amount, entry_type')
-          .eq('dealer_id', dealerId)
-          .lt('entry_date', date) as any
-      ),
+      supabase.rpc('get_cash_clarity_opening_v1', {
+        p_dealer_id: dealerId,
+        p_branch_id: branchId ?? null,
+        p_date: date,
+      }),
     ]);
+
 
     for (const res of [billsRes, paymentsRes, returnsRes, expensesRes, purchasesRes, cashRes, supplierPaymentsRes, yesterdayRes, openingRes]) {
       if ((res as any).error) throw (res as any).error;
@@ -269,11 +270,7 @@ export const dailyBookService = {
     );
     const cashLines = buildCashLines(cashEntries, paymentMethods, supplierPaymentMethods, paymentFarmerNames);
 
-    const openingRows = ((openingRes as any).data || []) as { amount: number; entry_type: string }[];
-    const openingCash = openingRows.reduce(
-      (sum, row) => sum + (row.entry_type === 'income' ? Number(row.amount || 0) : -Number(row.amount || 0)),
-      0
-    );
+    const openingCash = Number((openingRes as any).data ?? 0);
     const dayCashMove = cashLines
       .filter((line) => line.method === 'cash')
       .reduce((sum, line) => sum + (line.direction === 'in' ? line.amount : -line.amount), 0);
@@ -301,6 +298,7 @@ export const dailyBookService = {
       cashLines,
       openingCash,
       closingCash: openingCash + dayCashMove,
+      dayCashMove,
       products: summarizeProducts(bills),
       farmers: summarizeFarmers(bills, farmerDues),
       totals: {
@@ -450,6 +448,7 @@ export const dailyBookService = {
             .eq('dealer_id', dealerId)
             .gte('bill_date', date)
             .neq('status', 'cancelled')
+            .eq('is_estimate', false)
             .order('created_at', { ascending: true })
             .range(from, to);
           if (branchId) q = q.eq('branch_id', branchId);

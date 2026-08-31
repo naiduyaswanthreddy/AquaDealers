@@ -122,12 +122,13 @@ export const shareStockReportViaWhatsApp = async (
   startDate: string,
   endDate: string
 ): Promise<void> => {
-  const { sharePdfViaWhatsApp } = await import('@/lib/shareUtils');
+  const { sharePdfViaWhatsApp } = await import('@/lib/whatsAppService');
+  const { stockReportMessage } = await import('@/lib/whatsAppMessages');
   const blob = await generateStockReportPdfBlob(items, dealer, startDate, endDate);
   
-  const fallbackText = `*${dealer?.shop_name || 'AquaDealers'}*\n-------------------\n*Stock Movement Report*\n*Period:* ${formatDate(startDate)} to ${formatDate(endDate)}\n*Items Sold:* ${items.length}\n-------------------\nPlease find the detailed report PDF attached.`;
+  const message = stockReportMessage(startDate, endDate, dealer?.shop_name || 'AquaDealers');
   
-  await sharePdfViaWhatsApp(blob, `Stock_Report_${startDate}_to_${endDate}.pdf`, fallbackText);
+  await sharePdfViaWhatsApp(blob, `Stock_Report_${startDate}_to_${endDate}.pdf`, message);
 };
 
 export const downloadStockReportPdf = async (

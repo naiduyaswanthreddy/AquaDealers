@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Plus, ChevronRight, ChevronLeft, Search, X } from 'lucide-react';
+import { FileText, Plus, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { SectionCard } from '@/components/layout/SectionCard';
+import { Button } from '@/components/ui/Button';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useEstimates } from '../hooks/useEstimate';
 
@@ -13,17 +18,12 @@ const EstimatesListPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [offset, setOffset] = useState(0);
-  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
 
-  // Debounce search → reset to page 1 on new query
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setSearch(searchInput);
-      setOffset(0);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [searchInput]);
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    setOffset(0);
+  }, []);
 
   const { data, isLoading } = useEstimates({
     dealerId: user?.id || '',
@@ -41,240 +41,232 @@ const EstimatesListPage: React.FC = () => {
     <PageShell>
       <PageHeader
         title="Estimates"
+        description="Price quotes for your farmers"
         action={
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Plus className="h-4 w-4" />}
             onClick={() => navigate('/estimates/new')}
-            className="flex items-center gap-1.5 rounded-2xl px-4 py-2 text-sm font-bold text-white transition-all"
-            style={{ background: 'linear-gradient(135deg,#0052cc,#3385ff)', boxShadow: '0 4px 12px rgba(0,82,204,0.3)' }}
           >
-            <Plus className="h-4 w-4" />
             New Estimate
-          </button>
+          </Button>
         }
       />
 
-      {/* ── Search bar ───────────────────────────────────────────── */}
-      <div className="px-4 py-3 border-b border-[#d9e5ee] bg-white">
-        <div className="relative">
-          <div className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center">
-            <Search className="h-4 w-4 text-[#8ba0af]" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search by farmer or estimate number…"
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            className="w-full rounded-2xl border border-[#d9e5ee] bg-[#f8fbff] pl-10 pr-9 py-2.5 text-sm text-[#173042] placeholder:text-[#8ba0af] focus:outline-none focus:border-[#0052cc] focus:ring-2 focus:ring-[#0052cc]/15 transition-all"
-          />
-          {searchInput && (
-            <button
-              type="button"
-              onClick={() => setSearchInput('')}
-              className="absolute inset-y-0 right-3 flex items-center text-[#8ba0af] hover:text-[#173042]"
+      {/* ── Search bar ─────────────────────────────────────────────── */}
+      <SearchBar
+        value={search}
+        onChange={handleSearchChange}
+        placeholder="Search by farmer or estimate number…"
+      />
+
+      {/* ── Loading skeleton ────────────────────────────────────────── */}
+      {isLoading && (
+        <SectionCard>
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 py-3.5"
+              style={{ borderTop: i > 0 ? '1px solid rgba(217,229,238,0.7)' : undefined }}
             >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-
-        {/* ── Loading skeleton ─────────────────────────────────── */}
-        {isLoading && (
-          <div className="rounded-2xl bg-white border border-[#d9e5ee] overflow-hidden" style={{ boxShadow: '0 4px 16px rgba(20,54,84,0.06)' }}>
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className={`flex items-center gap-4 px-5 py-4 ${i > 0 ? 'border-t border-[#f0f7ff]' : ''}`}>
-                <div className="h-9 w-9 rounded-full bg-[#e7f5ff] animate-pulse flex-shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3.5 w-24 rounded-full bg-[#e7f5ff] animate-pulse" />
-                  <div className="h-3 w-36 rounded-full bg-[#f0f7ff] animate-pulse" />
-                </div>
-                <div className="h-4 w-16 rounded-full bg-[#e7f5ff] animate-pulse" />
+              <Skeleton variant="circle" width={40} height={40} className="flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton variant="text" width="40%" height={14} />
+                <Skeleton variant="text" width="60%" height={12} />
               </div>
-            ))}
-          </div>
-        )}
+              <Skeleton variant="text" width={72} height={14} />
+              <Skeleton variant="rect" width={16} height={16} className="rounded-full flex-shrink-0" />
+            </div>
+          ))}
+        </SectionCard>
+      )}
 
-        {/* ── Empty state ──────────────────────────────────────── */}
-        {!isLoading && estimates.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 gap-5 text-center">
-            <div
-              className="flex h-20 w-20 items-center justify-center rounded-3xl"
-              style={{ background: 'linear-gradient(135deg,#e7f5ff,#d8eefc)' }}
-            >
-              {search ? <Search className="h-9 w-9 text-[#0052cc]" /> : <FileText className="h-9 w-9 text-[#0052cc]" />}
-            </div>
-            <div>
-              <p className="font-bold text-[#173042] text-base">
-                {search ? 'No results found' : 'No estimates yet'}
-              </p>
-              <p className="text-sm text-[#8ba0af] mt-1">
-                {search ? `No estimates match "${search}"` : 'Create a price quote for a farmer'}
-              </p>
-            </div>
-            {!search && (
-              <button
-                type="button"
+      {/* ── Empty state ─────────────────────────────────────────────── */}
+      {!isLoading && estimates.length === 0 && (
+        <EmptyState
+          icon={search ? FileText : FileText}
+          title={search ? 'No results found' : 'No estimates yet'}
+          description={
+            search
+              ? `No estimates match "${search}". Try a different search term.`
+              : 'Create your first price quote for a farmer. Estimates don\'t affect stock or dues.'
+          }
+          action={
+            !search ? (
+              <Button
+                variant="primary"
+                size="md"
+                leftIcon={<Plus className="h-4 w-4" />}
                 onClick={() => navigate('/estimates/new')}
-                className="flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-bold text-white"
-                style={{ background: 'linear-gradient(135deg,#0052cc,#3385ff)', boxShadow: '0 4px 12px rgba(0,82,204,0.25)' }}
               >
-                <Plus className="h-4 w-4" />
                 Create first estimate
-              </button>
-            )}
-          </div>
-        )}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
 
-        {/* ── List ─────────────────────────────────────────────── */}
-        {!isLoading && estimates.length > 0 && (
-          <>
-            {/* Desktop table */}
-            <div
-              className="hidden lg:block rounded-2xl bg-white border border-[#d9e5ee] overflow-hidden"
-              style={{ boxShadow: '0 4px 16px rgba(20,54,84,0.06)' }}
-            >
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#f0f7ff]" style={{ background: '#f8fbff' }}>
-                    <th className="px-5 py-3.5 text-left text-[0.68rem] font-bold uppercase tracking-widest text-[#8ba0af]">Estimate #</th>
-                    <th className="px-5 py-3.5 text-left text-[0.68rem] font-bold uppercase tracking-widest text-[#8ba0af]">Farmer</th>
-                    <th className="px-5 py-3.5 text-left text-[0.68rem] font-bold uppercase tracking-widest text-[#8ba0af]">Date</th>
-                    <th className="px-5 py-3.5 text-right text-[0.68rem] font-bold uppercase tracking-widest text-[#8ba0af]">Total</th>
-                    <th className="px-5 py-3.5 text-left text-[0.68rem] font-bold uppercase tracking-widest text-[#8ba0af]">Status</th>
-                    <th className="w-8" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {estimates.map((e, i) => (
-                    <tr
-                      key={e.id}
-                      className="group cursor-pointer transition-colors hover:bg-[#f0f7ff]"
-                      style={{ borderTop: i > 0 ? '1px solid #f0f7ff' : undefined }}
-                      onClick={() => navigate(`/estimates/${e.id}`)}
-                    >
-                      <td className="px-5 py-4">
-                        <span
-                          className="font-mono text-xs font-bold px-2 py-1 rounded-lg"
-                          style={{ background: '#e7f5ff', color: '#0052cc' }}
-                        >
-                          {e.estimate_number}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg,#0052cc,#3385ff)' }}
-                          >
-                            {e.farmer_name?.[0]?.toUpperCase()}
-                          </div>
-                          <span className="font-semibold text-[#173042]">{e.farmer_name}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-[#5d7486]">{formatDate(e.estimate_date)}</td>
-                      <td className="px-5 py-4 text-right font-bold text-[#173042] tabular-nums">
-                        {formatCurrency(e.total)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className="inline-flex items-center rounded-full px-2.5 py-1 text-[0.68rem] font-bold"
-                          style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }}
-                        >
-                          Price Quote
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <ChevronRight className="h-4 w-4 text-[#d9e5ee] group-hover:text-[#0052cc] transition-colors" />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+      {/* ── List ────────────────────────────────────────────────────── */}
+      {!isLoading && estimates.length > 0 && (
+        <>
+          {/* Result summary */}
+          <p className="text-xs font-semibold text-text-muted px-0.5">
+            {search
+              ? `${totalCount} result${totalCount !== 1 ? 's' : ''} for "${search}"`
+              : `${totalCount} estimate${totalCount !== 1 ? 's' : ''} total`}
+          </p>
 
-            {/* Mobile cards */}
-            <div
-              className="lg:hidden rounded-2xl bg-white border border-[#d9e5ee] overflow-hidden"
-              style={{ boxShadow: '0 4px 16px rgba(20,54,84,0.06)' }}
-            >
-              {estimates.map((e, i) => (
-                <Link
-                  key={e.id}
-                  to={`/estimates/${e.id}`}
-                  className="flex items-center gap-3 px-4 py-4 hover:bg-[#f0f7ff] transition-colors"
-                  style={{ borderTop: i > 0 ? '1px solid #f0f7ff' : undefined }}
+          {/* Desktop table */}
+          <SectionCard className="hidden lg:block p-0 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr
+                  className="border-b border-border"
+                  style={{ background: 'rgba(231,245,255,0.6)' }}
                 >
-                  {/* avatar */}
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white flex-shrink-0"
-                    style={{ background: 'linear-gradient(135deg,#0052cc,#3385ff)' }}
+                  <th className="px-5 py-3.5 text-left text-[0.68rem] font-bold uppercase tracking-widest text-text-muted">
+                    Estimate #
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-[0.68rem] font-bold uppercase tracking-widest text-text-muted">
+                    Farmer
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-[0.68rem] font-bold uppercase tracking-widest text-text-muted">
+                    Date
+                  </th>
+                  <th className="px-5 py-3.5 text-right text-[0.68rem] font-bold uppercase tracking-widest text-text-muted">
+                    Total
+                  </th>
+                  <th className="px-5 py-3.5 text-left text-[0.68rem] font-bold uppercase tracking-widest text-text-muted">
+                    Status
+                  </th>
+                  <th className="w-8" />
+                </tr>
+              </thead>
+              <tbody>
+                {estimates.map((e, i) => (
+                  <tr
+                    key={e.id}
+                    className="group cursor-pointer transition-colors hover:bg-surface"
+                    style={{ borderTop: i > 0 ? '1px solid rgba(217,229,238,0.5)' : undefined }}
+                    onClick={() => navigate(`/estimates/${e.id}`)}
                   >
-                    {e.farmer_name?.[0]?.toUpperCase()}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <td className="px-5 py-4">
                       <span
-                        className="font-mono text-[0.7rem] font-bold px-1.5 py-0.5 rounded-md"
+                        className="font-mono text-xs font-bold px-2 py-1 rounded-lg"
                         style={{ background: '#e7f5ff', color: '#0052cc' }}
                       >
                         {e.estimate_number}
                       </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white flex-shrink-0"
+                          style={{ background: 'linear-gradient(135deg,#0052cc,#3385ff)' }}
+                        >
+                          {e.farmer_name?.[0]?.toUpperCase()}
+                        </div>
+                        <span className="font-semibold text-text-primary">{e.farmer_name}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-text-secondary">{formatDate(e.estimate_date)}</td>
+                    <td className="px-5 py-4 text-right font-bold text-text-primary tabular-nums">
+                      {formatCurrency(e.total)}
+                    </td>
+                    <td className="px-5 py-4">
                       <span
-                        className="text-[0.65rem] font-bold rounded-full px-2 py-0.5"
+                        className="inline-flex items-center rounded-full px-2.5 py-1 text-[0.68rem] font-bold"
                         style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }}
                       >
                         Price Quote
                       </span>
-                    </div>
-                    <p className="text-sm font-semibold text-[#173042] mt-0.5 truncate">{e.farmer_name}</p>
-                    <p className="text-xs text-[#8ba0af]">{formatDate(e.estimate_date)}</p>
-                  </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <ChevronRight className="h-4 w-4 text-border group-hover:text-primary transition-colors" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </SectionCard>
 
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className="font-bold text-sm text-[#173042] tabular-nums">{formatCurrency(e.total)}</span>
-                    <ChevronRight className="h-4 w-4 text-[#d9e5ee]" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalCount > PAGE_SIZE && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#8ba0af]">
-                  Page {currentPage} of {totalPages} · {totalCount} estimates
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={offset === 0}
-                    onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
-                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: '#e7f5ff', color: '#0052cc' }}
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    disabled={offset + PAGE_SIZE >= totalCount}
-                    onClick={() => setOffset(offset + PAGE_SIZE)}
-                    className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: '#e7f5ff', color: '#0052cc' }}
-                  >
-                    Next
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
+          {/* Mobile cards */}
+          <SectionCard className="lg:hidden p-0 overflow-hidden">
+            {estimates.map((e, i) => (
+              <Link
+                key={e.id}
+                to={`/estimates/${e.id}`}
+                className="flex items-center gap-3 px-4 py-4 hover:bg-surface transition-colors active:bg-surface-muted"
+                style={{ borderTop: i > 0 ? '1px solid rgba(217,229,238,0.5)' : undefined }}
+              >
+                {/* avatar */}
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg,#0052cc,#3385ff)' }}
+                >
+                  {e.farmer_name?.[0]?.toUpperCase()}
                 </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className="font-mono text-[0.7rem] font-bold px-1.5 py-0.5 rounded-md"
+                      style={{ background: '#e7f5ff', color: '#0052cc' }}
+                    >
+                      {e.estimate_number}
+                    </span>
+                    <span
+                      className="text-[0.65rem] font-bold rounded-full px-2 py-0.5"
+                      style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }}
+                    >
+                      Price Quote
+                    </span>
+                  </div>
+                  <p className="text-sm font-semibold text-text-primary mt-0.5 truncate">{e.farmer_name}</p>
+                  <p className="text-xs text-text-muted">{formatDate(e.estimate_date)}</p>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className="font-bold text-sm text-text-primary tabular-nums">
+                    {formatCurrency(e.total)}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-border" />
+                </div>
+              </Link>
+            ))}
+          </SectionCard>
+
+          {/* Pagination */}
+          {totalCount > PAGE_SIZE && (
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs text-text-muted font-medium">
+                Page {currentPage} of {totalPages} · {totalCount} estimates
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  leftIcon={<ChevronLeft className="h-3.5 w-3.5" />}
+                  disabled={offset === 0}
+                  onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  rightIcon={<ChevronRight className="h-3.5 w-3.5" />}
+                  disabled={offset + PAGE_SIZE >= totalCount}
+                  onClick={() => setOffset(offset + PAGE_SIZE)}
+                >
+                  Next
+                </Button>
               </div>
-            )}
-          </>
-        )}
-      </div>
+            </div>
+          )}
+        </>
+      )}
     </PageShell>
   );
 };

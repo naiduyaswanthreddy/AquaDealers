@@ -427,13 +427,19 @@ const BillHistoryPage: React.FC = () => {
                     ) : (
                       <>
                         <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[0.7rem] font-bold tracking-wide uppercase ${
-                            bill.balance_due > 0
-                              ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-                              : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                          }`}>
-                            {bill.payment_type || (bill.balance_due > 0 ? 'Credit' : 'Cash')}
-                          </span>
+                          {bill.is_estimate ? (
+                            <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[0.7rem] font-bold tracking-wide uppercase bg-amber-50 text-amber-700 ring-1 ring-amber-200">
+                              Estimate
+                            </span>
+                          ) : (
+                            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[0.7rem] font-bold tracking-wide uppercase ${
+                              bill.balance_due > 0
+                                ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                                : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                            }`}>
+                              {bill.payment_type || (bill.balance_due > 0 ? 'Credit' : 'Cash')}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           {bill.balance_due > 0 ? (
@@ -493,6 +499,11 @@ const BillHistoryPage: React.FC = () => {
                       <div className="min-w-0">
                         <div className="truncate text-[1rem] font-bold tracking-tight text-slate-900 flex items-center gap-2">
                           {bill.farmer_name_snapshot || t('billing.walkInCustomer', 'Walk-in Customer')}
+                          {bill.is_estimate && (
+                            <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                              Estimate
+                            </span>
+                          )}
                           {bill.type === 'adjustment' && (
                             <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
                               Rate Adjustment
@@ -510,7 +521,7 @@ const BillHistoryPage: React.FC = () => {
                             )
                           ) : (
                             <div className="truncate">
-                              {bill.bill_number} • {formatDateTime(bill.created_at)}
+                              {bill.bill_number} • {formatDate(bill.bill_date)}
                               {bill.payment_type && (
                                 <span className="ml-2 inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-slate-500">
                                   {bill.payment_type}

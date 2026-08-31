@@ -60,34 +60,34 @@ export const MorePage: React.FC = () => {
       title: 'Money & Daily Operations',
       items: [
         { path: '/book', label: t('nav.dailyBook', 'Daily Book'), description: 'Record and track all daily transactions easily', icon: NotebookPen, color: 'bg-amber-100 text-amber-700', cardBg: 'bg-amber-50 border-amber-200/60', chevronBg: 'bg-amber-100 text-amber-600', featureKey: 'reports' },
-        { path: '/cashbook', label: t('nav.cashbook', 'Cash Book'), description: 'Manage cash in hand and track cash flow', icon: PiggyBank, color: 'bg-success-light text-success', cardBg: 'bg-emerald-50 border-emerald-200/60', chevronBg: 'bg-emerald-100 text-emerald-600', featureKey: 'cashbook' },
-        { path: '/expenses', label: t('nav.shopExpenses', 'Shop Expenses'), description: 'Track and manage all shop expenses', icon: Wallet, color: 'bg-danger-light text-danger', cardBg: 'bg-rose-50 border-rose-200/60', chevronBg: 'bg-rose-100 text-rose-500', featureKey: 'expenses' },
+        { path: '/cashbook', label: t('nav.cashbook', 'Cash Book'), description: 'Manage cash in hand and track cash flow', icon: PiggyBank, color: 'bg-amber-100 text-amber-700', cardBg: 'bg-amber-50 border-amber-200/60', chevronBg: 'bg-amber-100 text-amber-600', featureKey: 'cashbook' },
+        { path: '/expenses', label: t('nav.shopExpenses', 'Shop Expenses'), description: 'Track and manage all shop expenses', icon: Wallet, color: 'bg-amber-100 text-amber-700', cardBg: 'bg-amber-50 border-amber-200/60', chevronBg: 'bg-amber-100 text-amber-600', featureKey: 'expenses' },
       ],
     },
     {
       title: 'Goods & Supply Chain',
       items: [
         { path: '/suppliers', label: t('nav.suppliersRegistry', 'Suppliers Registry'), description: 'View and manage your suppliers list', icon: Users2, color: 'bg-primary/10 text-primary', cardBg: 'bg-blue-50 border-blue-200/60', chevronBg: 'bg-blue-100 text-blue-600', featureKey: 'suppliers' },
-        { path: '/transfers', label: 'Stock Transfers', description: 'Transfer stock between branches', icon: ArrowLeftRight, color: 'bg-sky-100 text-sky-700', cardBg: 'bg-sky-50 border-sky-200/60', chevronBg: 'bg-sky-100 text-sky-600', featureKey: 'inventory' },
-        { path: '/inventory/rate-adjustment', label: 'Rate Diff Tool', description: 'Adjust and compare product rates', icon: TrendingUp, color: 'bg-violet-100 text-violet-600', cardBg: 'bg-violet-50 border-violet-200/60', chevronBg: 'bg-violet-100 text-violet-600' },
+        { path: '/transfers', label: 'Stock Transfers', description: 'Transfer stock between branches', icon: ArrowLeftRight, color: 'bg-primary/10 text-primary', cardBg: 'bg-blue-50 border-blue-200/60', chevronBg: 'bg-blue-100 text-blue-600', featureKey: 'inventory' },
+        { path: '/inventory/rate-adjustment', label: 'Rate Diff Tool', description: 'Adjust and compare product rates', icon: TrendingUp, color: 'bg-primary/10 text-primary', cardBg: 'bg-blue-50 border-blue-200/60', chevronBg: 'bg-blue-100 text-blue-600' },
       ],
     },
     {
       title: 'Records & Bills',
       items: [
-        { path: '/estimates', label: 'Estimates', description: 'Create and view price estimates', icon: FileText, color: 'bg-amber-100 text-amber-700', cardBg: 'bg-amber-50 border-amber-200/60', chevronBg: 'bg-amber-100 text-amber-600', featureKey: 'billHistory' as StaffFeatureKey },
-        { path: '/bills', label: t('nav.allBills', 'All Bills'), description: 'View and manage all your bills', icon: ReceiptText, color: 'bg-indigo-100 text-indigo-600', cardBg: 'bg-indigo-50 border-indigo-200/60', chevronBg: 'bg-indigo-100 text-indigo-600', featureKey: 'billHistory' },
-        { path: '/returns', label: 'Returns', description: 'Handle product returns', icon: Undo2, color: 'bg-orange-100 text-orange-700', cardBg: 'bg-orange-50 border-orange-200/60', chevronBg: 'bg-orange-100 text-orange-600', featureKey: 'billHistory' },
-        { path: '/transactions', label: 'Transactions', description: 'Track all transactions', icon: History, color: 'bg-amber-100 text-amber-700', cardBg: 'bg-amber-50 border-amber-200/60', chevronBg: 'bg-amber-100 text-amber-600', featureKey: 'transactions' },
+        { path: '/bills', label: t('nav.allBills', 'All Bills'), description: 'View and manage all your bills', icon: ReceiptText, color: 'bg-success-light text-success', cardBg: 'bg-emerald-50 border-emerald-200/60', chevronBg: 'bg-emerald-100 text-emerald-600', featureKey: 'billHistory' },
+        { path: '/estimates', label: 'Estimates', description: 'Create and view price estimates', icon: FileText, color: 'bg-success-light text-success', cardBg: 'bg-emerald-50 border-emerald-200/60', chevronBg: 'bg-emerald-100 text-emerald-600', featureKey: 'billHistory' as StaffFeatureKey },
+        { path: '/returns', label: 'Returns', description: 'Handle product returns', icon: Undo2, color: 'bg-success-light text-success', cardBg: 'bg-emerald-50 border-emerald-200/60', chevronBg: 'bg-emerald-100 text-emerald-600', featureKey: 'billHistory' },
+        { path: '/transactions', label: 'Transactions', description: 'Track all transactions', icon: History, color: 'bg-success-light text-success', cardBg: 'bg-emerald-50 border-emerald-200/60', chevronBg: 'bg-emerald-100 text-emerald-600', featureKey: 'transactions' },
       ],
     },
     {
       title: t('more.settingsAdmin', 'Settings & Administration'),
       items: [
-        { path: '/reports', label: t('nav.reports', 'Reports'), description: 'View business reports and analytics', icon: FileBarChart, color: 'bg-info-light text-primary', cardBg: 'bg-blue-50 border-blue-200/60', chevronBg: 'bg-blue-100 text-blue-600', featureKey: 'reports' },
-        { path: '/branches', label: t('more.manageShops', 'Manage Shops'), description: 'Manage branches and shops', icon: GitBranch, color: 'bg-surface text-text-primary', cardBg: 'bg-slate-50 border-slate-200/60', chevronBg: 'bg-slate-100 text-slate-500', featureKey: 'branches' },
-        { path: '/settings', label: t('nav.appSettings', 'App Settings'), description: 'Configure app preferences', icon: Settings, color: 'bg-warning-light text-warning', cardBg: 'bg-yellow-50 border-yellow-200/60', chevronBg: 'bg-yellow-100 text-yellow-600', featureKey: 'settings' },
-        { path: '/staff', label: t('more.staff', 'Staff'), description: 'Manage staff and permissions', icon: ShieldCheck, color: 'bg-emerald-100 text-emerald-700', cardBg: 'bg-emerald-50 border-emerald-200/60', chevronBg: 'bg-emerald-100 text-emerald-600', featureKey: 'staffManagement' },
+        { path: '/reports', label: t('nav.reports', 'Reports'), description: 'View business reports and analytics', icon: FileBarChart, color: 'bg-indigo-100 text-indigo-600', cardBg: 'bg-indigo-50 border-indigo-200/60', chevronBg: 'bg-indigo-100 text-indigo-600', featureKey: 'reports' },
+        { path: '/branches', label: t('more.manageShops', 'Manage Shops'), description: 'Manage branches and shops', icon: GitBranch, color: 'bg-indigo-100 text-indigo-600', cardBg: 'bg-indigo-50 border-indigo-200/60', chevronBg: 'bg-indigo-100 text-indigo-600', featureKey: 'branches' },
+        { path: '/settings', label: t('nav.appSettings', 'App Settings'), description: 'Configure app preferences', icon: Settings, color: 'bg-indigo-100 text-indigo-600', cardBg: 'bg-indigo-50 border-indigo-200/60', chevronBg: 'bg-indigo-100 text-indigo-600', featureKey: 'settings' },
+        { path: '/staff', label: t('more.staff', 'Staff'), description: 'Manage staff and permissions', icon: ShieldCheck, color: 'bg-indigo-100 text-indigo-600', cardBg: 'bg-indigo-50 border-indigo-200/60', chevronBg: 'bg-indigo-100 text-indigo-600', featureKey: 'staffManagement' },
       ],
     },
   ];

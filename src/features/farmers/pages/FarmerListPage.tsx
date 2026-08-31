@@ -73,8 +73,8 @@ export const FarmerListPage: React.FC = () => {
       const lastOfLast = new Date(today.getFullYear(), today.getMonth(), 0).toISOString().slice(0, 10);
       const [farmersRes, thisRes, prevRes] = await Promise.all([
         supabase.from('farmers').select('opening_balance').eq('dealer_id', user!.id).gt('opening_balance', 0),
-        supabase.from('bills').select('total').eq('dealer_id', user!.id).neq('status', 'cancelled').gte('bill_date', firstOfMonth),
-        supabase.from('bills').select('total').eq('dealer_id', user!.id).neq('status', 'cancelled').gte('bill_date', firstOfLast).lte('bill_date', lastOfLast),
+        supabase.from('bills').select('total').eq('dealer_id', user!.id).neq('status', 'cancelled').eq('is_estimate', false).gte('bill_date', firstOfMonth),
+        supabase.from('bills').select('total').eq('dealer_id', user!.id).neq('status', 'cancelled').eq('is_estimate', false).gte('bill_date', firstOfLast).lte('bill_date', lastOfLast),
       ]);
       const advanceGiven = (farmersRes.data ?? []).reduce((s, f) => s + Number(f.opening_balance), 0);
       const thisMonthSales = (thisRes.data ?? []).reduce((s, b) => s + Number(b.total), 0);

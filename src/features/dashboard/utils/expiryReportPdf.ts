@@ -146,15 +146,11 @@ export const shareExpiryReportViaWhatsApp = async (
   items: any[], 
   dealer: Dealer | null
 ): Promise<void> => {
-  const { sharePdfViaWhatsApp } = await import('@/lib/shareUtils');
+  const { sharePdfViaWhatsApp } = await import('@/lib/whatsAppService');
+  const { expiryReportMessage } = await import('@/lib/whatsAppMessages');
   const blob = await generateExpiryReportPdfBlob(items, dealer);
   
-  const expiredCount = items.filter(item => {
-    const daysLeft = item.expiry_date ? differenceInDays(parseISO(item.expiry_date), new Date()) : 0;
-    return daysLeft < 0;
-  }).length;
+  const message = expiryReportMessage(items.length, dealer?.shop_name || 'AquaDealers');
   
-  const fallbackText = `*${dealer?.shop_name || 'AquaDealers'}*\n-------------------\n*Expiring Medicines Report*\n*Total Items:* ${items.length}\n*Already Expired:* ${expiredCount}\n-------------------\nPlease find the detailed report PDF attached.`;
-  
-  await sharePdfViaWhatsApp(blob, `Expiry_Report_${new Date().toISOString().split('T')[0]}.pdf`, fallbackText);
+  await sharePdfViaWhatsApp(blob, `Expiry_Report_${new Date().toISOString().split('T')[0]}.pdf`, message);
 };

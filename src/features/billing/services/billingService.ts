@@ -119,7 +119,7 @@ export const billingService = {
   async getBillDetails(billId: string) {
     const { data, error } = await supabase
       .from('bills')
-      .select('*, bill_items(*), bill_signatures(*), farmers(*)')
+      .select('*, bill_items(*, products(unit), bill_return_allocations(quantity)), bill_signatures(*), farmers(*)')
       .eq('id', billId)
       .single();
 
@@ -270,6 +270,7 @@ export const billingService = {
       .select('total, balance_due')
       .eq('dealer_id', dealerId)
       .neq('status', 'cancelled')
+      .eq('is_estimate', false)
       .gte('bill_date', startDate)
       .lte('bill_date', endDate);
     if (branchId) query = query.eq('branch_id', branchId);

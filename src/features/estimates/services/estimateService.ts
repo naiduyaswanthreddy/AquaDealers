@@ -43,4 +43,40 @@ export const estimateService = {
     if (error) throw error;
     return data as Estimate;
   },
+
+  async updateEstimate(estimateId: string, payload: EstimatePayload): Promise<void> {
+    const { error: headerErr } = await supabase
+      .from('estimates')
+      .update({
+        estimate_date:   payload.estimate_date,
+        subtotal:        payload.subtotal,
+        gst_amount:      payload.gst_amount,
+        discount_amount: payload.discount_amount,
+        total:           payload.total,
+        notes:           payload.notes ?? null,
+      })
+      .eq('id', estimateId);
+    if (headerErr) throw headerErr;
+
+    const { error: delErr } = await supabase
+      .from('estimate_items')
+      .delete()
+      .eq('estimate_id', estimateId);
+    if (delErr) throw delErr;
+
+    const { error: insErr } = await supabase.from('estimate_items').insert(
+      payload.items.map(item => ({
+        estimate_id:         estimateId,
+        product_id:          item.product_id,
+        product_name:        item.product_name,
+        hsn_code:            item.hsn_code ?? null,
+        quantity:            item.quantity,
+        unit_price:          item.unit_price,
+        discount_percentage: item.discount_percentage,
+        gst_rate:            item.gst_rate,
+        total_price:         item.total_price,
+      }))
+    );
+    if (insErr) throw insErr;
+  },
 };

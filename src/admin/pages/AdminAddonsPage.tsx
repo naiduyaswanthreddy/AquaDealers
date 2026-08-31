@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useAdminDealers, useUpdateDealerAddons } from '@/admin/hooks/useAdminDealers';
-import { Search, Package, CheckCircle, XCircle, ArrowLeft, Shield } from 'lucide-react';
+import { Search, Package, CheckCircle, XCircle, ArrowLeft, Shield, MessageCircle } from 'lucide-react';
 import { ListLoadMore } from '@/components/ui/ListLoadMore';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
+import WhatsappAddonManager from '../components/WhatsappAddonManager';
 
 const ADDON_FEATURES = [
   { 
@@ -19,6 +20,7 @@ const ADDON_FEATURES = [
 
 const AdminAddonsPage: React.FC = () => {
   const [selectedAddon, setSelectedAddon] = useState<string | null>(null);
+  const [showWhatsapp, setShowWhatsapp] = useState(false);
   const [search, setSearch] = useState('');
   
   const { data: dealers, isLoading, error: dealersError } = useAdminDealers({
@@ -64,7 +66,9 @@ const AdminAddonsPage: React.FC = () => {
         </div>
       )}
       
-      {!selectedAddon ? (
+      {showWhatsapp ? (
+        <WhatsappAddonManager onBack={() => setShowWhatsapp(false)} />
+      ) : !selectedAddon ? (
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -78,6 +82,28 @@ const AdminAddonsPage: React.FC = () => {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+            <div
+              className="admin-card"
+              style={{ cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid var(--admin-border)' }}
+              onClick={() => setShowWhatsapp(true)}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                <div style={{ padding: 10, background: 'rgba(75, 162, 255, 0.1)', borderRadius: 8, color: 'var(--admin-accent)' }}>
+                  <MessageCircle size={24} />
+                </div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>WhatsApp Notifications</h3>
+              </div>
+              <p style={{ color: 'var(--admin-text-muted)', fontSize: 14, lineHeight: 1.5 }}>
+                Monthly message-quota plans, per dealer.
+              </p>
+              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                <span style={{ color: 'var(--admin-accent)', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  Manage Plans &rarr;
+                </span>
+              </div>
+            </div>
             {ADDON_FEATURES.map(addon => (
               <div 
                 key={addon.id} 

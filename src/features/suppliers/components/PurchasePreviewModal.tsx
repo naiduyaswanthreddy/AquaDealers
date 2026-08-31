@@ -33,6 +33,7 @@ export const PurchasePreviewModal: React.FC<PurchasePreviewModalProps> = ({
   // Calculate totals
   const itemsTotal = data.items.reduce((acc: number, item: any) => acc + ((item.quantity || 0) * (item.cost_price_per_unit || 0)), 0);
   const gstTotal = data.items.reduce((acc: number, item: any) => acc + (item.gst_amount || 0), 0);
+  const totalQuantity = data.items.reduce((acc: number, item: any) => acc + (Number(item.quantity) || 0), 0);
   const grandTotal = itemsTotal + gstTotal + (Number(data.additional_charges) || 0);
 
   return (
@@ -49,7 +50,7 @@ export const PurchasePreviewModal: React.FC<PurchasePreviewModalProps> = ({
       className="max-w-4xl"
     >
       <div className="space-y-6 text-sm">
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 grid grid-cols-2 md:grid-cols-5 gap-4">
           <div>
             <p className="text-slate-500 font-medium mb-1">Supplier</p>
             <p className="font-bold text-slate-800">{supplierName || 'Unknown'}</p>
@@ -61,6 +62,10 @@ export const PurchasePreviewModal: React.FC<PurchasePreviewModalProps> = ({
           <div>
             <p className="text-slate-500 font-medium mb-1">Purchase Date</p>
             <p className="font-bold text-slate-800">{data.purchase_date ? formatDate(data.purchase_date) : 'N/A'}</p>
+          </div>
+          <div>
+            <p className="text-slate-500 font-medium mb-1">Total Quantity</p>
+            <p className="font-bold text-slate-800">{totalQuantity}</p>
           </div>
           <div>
             <p className="text-slate-500 font-medium mb-1">Grand Total</p>

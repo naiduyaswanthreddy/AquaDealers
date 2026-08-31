@@ -21,6 +21,7 @@ export function useSubscriptionLimits() {
           .from('bills')
           .select('id', { count: 'exact', head: true })
           .eq('dealer_id', user.id)
+          .eq('is_estimate', false)
       ]);
 
       const planDef = planDefinitions[user.plan];

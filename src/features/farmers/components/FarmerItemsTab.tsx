@@ -192,7 +192,7 @@ export const FarmerItemsTab: React.FC<FarmerItemsTabProps> = ({ farmerId, farmer
   const firstPage = query.data?.pages[0];
   const rawItems = useMemo(() => query.data?.pages.flatMap((page) => page.items) || [], [query.data]);
   const items = useMemo(
-    () => [...rawItems].sort((a, b) => new Date(b.last_purchased_on).getTime() - new Date(a.last_purchased_on).getTime()),
+    () => [...rawItems].sort((a, b) => a.product_name.localeCompare(b.product_name)),
     [rawItems]
   );
 

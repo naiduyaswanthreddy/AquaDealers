@@ -8,6 +8,7 @@ import { differenceInDays, parseISO } from 'date-fns';
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { shareExpiryReportViaWhatsApp } from '../utils/expiryReportPdf';
+import { toast } from 'sonner';
 
 const ExpiringMedicinesComponent: React.FC = () => {
   const navigate = useNavigate();
@@ -22,6 +23,7 @@ const ExpiringMedicinesComponent: React.FC = () => {
       await shareExpiryReportViaWhatsApp(items, dealer);
     } catch (error) {
       console.error('Failed to share expiry report', error);
+      toast.error('Failed to generate expiry report PDF. Please try again.');
     } finally {
       setIsSharing(false);
     }
@@ -54,9 +56,10 @@ const ExpiringMedicinesComponent: React.FC = () => {
           leftIcon={<Share2 className="h-3.5 w-3.5" />}
           onClick={handleShare}
           loading={isSharing}
+          disabled={isSharing}
           className="text-slate-500 hover:text-slate-800 h-7 px-2"
         >
-          Share
+          {isSharing ? 'Generating…' : 'Share'}
         </Button>
       </div>
       <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">

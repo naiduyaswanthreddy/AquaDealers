@@ -19,6 +19,7 @@ export function useSettlementSummary() {
         .select('farmer_id, settlement_discount_amount, farmers(name)')
         .eq('dealer_id', dealerId)
         .neq('status', 'cancelled')
+        .eq('is_estimate', false)
         .gt('settlement_discount_amount', 0);
       if (error) throw error;
 

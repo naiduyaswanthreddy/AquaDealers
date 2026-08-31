@@ -936,7 +936,17 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
                             >
                               <Minus className="h-4 w-4" />
                             </button>
-                            <span>{item.quantity}</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={item.max_quantity}
+                              value={item.quantity}
+                              onChange={e => {
+                                const v = Math.min(Math.max(1, Number(e.target.value) || 1), item.max_quantity);
+                                updateQuantity(item.inventory_id, item.lot_id, v);
+                              }}
+                              aria-label="Quantity"
+                            />
                             <button
                               type="button"
                               disabled={item.quantity >= item.max_quantity}

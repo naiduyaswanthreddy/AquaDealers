@@ -41,3 +41,15 @@ export function useCreateEstimate() {
     },
   });
 }
+
+export function useUpdateEstimate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ estimateId, payload }: { estimateId: string; payload: EstimatePayload }) =>
+      estimateService.updateEstimate(estimateId, payload),
+    onSuccess: (_data, { estimateId }) => {
+      queryClient.invalidateQueries({ queryKey: ['estimates'] });
+      queryClient.invalidateQueries({ queryKey: ['estimate', estimateId] });
+    },
+  });
+}

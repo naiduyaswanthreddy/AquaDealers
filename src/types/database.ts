@@ -26,6 +26,16 @@ export interface Dealer {
   avatar_url: string | null;
   authorized_signatory_data?: any[] | null;
   custom_features?: string[] | null;
+  whatsapp_enabled?: boolean;
+  whatsapp_addon_plan_id?: string | null;
+  created_at: string;
+}
+
+export interface WhatsappAddonPlan {
+  id: string;
+  name: string;
+  monthly_limit: number;
+  is_active: boolean;
   created_at: string;
 }
 
@@ -300,6 +310,8 @@ export interface Bill {
   is_verified?: boolean;
   delivery_pin?: string | null;
   is_estimate?: boolean;
+  whatsapp_status?: 'sent' | 'failed' | null;
+  whatsapp_sent_at?: string | null;
   created_at: string;
 }
 

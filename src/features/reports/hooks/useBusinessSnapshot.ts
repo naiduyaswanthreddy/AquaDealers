@@ -81,7 +81,8 @@ export function useBusinessSnapshot() {
         .from('bills')
         .select('total')
         .eq('dealer_id', dealerId)
-        .neq('status', 'cancelled');
+        .neq('status', 'cancelled')
+        .eq('is_estimate', false);
       if (branchId) billsQ = billsQ.eq('branch_id', branchId);
 
       // ── 4. All-time expenses ────────────────────────────────────────────────

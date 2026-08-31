@@ -94,6 +94,7 @@ export interface DailyBook {
   cashLines: BookCashLine[];
   openingCash: number;
   closingCash: number;
+  dayCashMove: number;
   products: BookProductSummary[];
   farmers: BookFarmerSummary[];
   totals: {

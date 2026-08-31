@@ -86,10 +86,12 @@ export const shareDailySummaryViaWhatsApp = async (
   stats: any, 
   dealer: Dealer | null
 ): Promise<void> => {
-  const { sharePdfViaWhatsApp } = await import('@/lib/shareUtils');
+  const { sharePdfViaWhatsApp } = await import('@/lib/whatsAppService');
+  const { dailySummaryMessage } = await import('@/lib/whatsAppMessages');
   const blob = await generateDailySummaryPdfBlob(stats, dealer);
+  const today = new Date().toISOString();
   
-  const fallbackText = `*${dealer?.shop_name || 'AquaDealers'}*\n-------------------\n*Daily Summary (${formatDate(new Date().toISOString())})*\n*Sales:* ${formatCurrency(stats?.todaySales || 0)}\n*Cash Recv:* ${formatCurrency(stats?.todayCashReceived || 0)}\n*Credit Given:* ${formatCurrency(stats?.todayCredit || 0)}\n-------------------\nPlease find the detailed summary PDF attached.`;
+  const message = dailySummaryMessage(stats, dealer?.shop_name || 'AquaDealers', today);
   
-  await sharePdfViaWhatsApp(blob, `Daily_Summary_${new Date().toISOString().split('T')[0]}.pdf`, fallbackText);
+  await sharePdfViaWhatsApp(blob, `Daily_Summary_${new Date().toISOString().split('T')[0]}.pdf`, message);
 };

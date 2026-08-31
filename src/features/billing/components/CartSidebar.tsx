@@ -238,7 +238,17 @@ export const CartSidebar: React.FC = () => {
                     >
                       <Minus className="h-4 w-4" />
                     </button>
-                    <span className="w-10 text-center text-sm font-bold text-text-primary">{item.quantity}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={item.max_quantity}
+                      value={item.quantity}
+                      onChange={e => {
+                        const v = Math.min(Math.max(1, Number(e.target.value) || 1), item.max_quantity);
+                        updateQuantity(item.inventory_id, item.lot_id, v);
+                      }}
+                      className="w-12 text-center text-sm font-bold text-text-primary bg-transparent focus:outline-none tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
                     <button
                       type="button"
                       onClick={() => updateQuantity(item.inventory_id, item.lot_id, item.quantity + 1)}

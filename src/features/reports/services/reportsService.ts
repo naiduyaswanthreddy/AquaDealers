@@ -62,6 +62,7 @@ export const reportsService = {
       .select('*, bill_items(*)')
       .eq('dealer_id', dealerId)
       .neq('status', 'cancelled')
+      .eq('is_estimate', false)
       .gte('bill_date', period.startDate)
       .lte('bill_date', period.endDate)
       .order('bill_date', { ascending: true })
@@ -551,7 +552,7 @@ export const reportsService = {
     const startDate = typeof monthOrStartDate === 'string' ? monthOrStartDate : undefined;
     const endDate = typeof endDateOrYear === 'string' ? endDateOrYear : undefined;
 
-    let billsQuery = supabase.from('bills').select('total, amount_paid').eq('dealer_id', dealerId).neq('status', 'cancelled');
+    let billsQuery = supabase.from('bills').select('total, amount_paid').eq('dealer_id', dealerId).neq('status', 'cancelled').eq('is_estimate', false);
     let expensesQuery = supabase.from('expenses').select('amount').eq('dealer_id', dealerId);
     let purchasesQuery = supabase.from('stock_purchases').select('total_amount').eq('dealer_id', dealerId);
     let farmersQuery = supabase.from('farmers').select('total_due').eq('dealer_id', dealerId);

@@ -1272,10 +1272,28 @@ a {
 }
 
 .billing-qty-control button,
-.billing-qty-control span {
+.billing-qty-control span,
+.billing-qty-control input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.billing-qty-control input {
+  width: 100%;
+  text-align: center;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-weight: inherit;
+  font-size: inherit;
+  color: inherit;
+  -moz-appearance: textfield;
+}
+.billing-qty-control input::-webkit-outer-spin-button,
+.billing-qty-control input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .billing-qty-control button {

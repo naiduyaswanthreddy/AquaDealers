@@ -7,7 +7,6 @@ import {
   Users,
   WalletCards,
   FileBarChart,
-  Settings,
   BookText,
   NotebookPen,
   Truck,
@@ -41,7 +40,6 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { path: '/suppliers', label: 'Suppliers', icon: Truck, featureKey: 'suppliers' },
   { path: '/cashbook', label: 'Cashbook', icon: BookText, featureKey: 'cashbook' },
   { path: '/reports', label: 'Reports', icon: FileBarChart, featureKey: 'reports' },
-  { path: '/settings', label: 'Settings', icon: Settings, featureKey: 'settings' },
   { path: '/more', label: 'More', icon: LayoutGrid, alwaysVisible: true },
 ];
 

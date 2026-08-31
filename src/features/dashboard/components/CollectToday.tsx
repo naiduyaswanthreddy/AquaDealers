@@ -6,10 +6,14 @@ import { formatCurrency, getInitials } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { MessageCircle, TrendingDown } from 'lucide-react';
 import { CROP_STATUSES } from '@/lib/constants';
+import { useAuthStore } from '@/stores/authStore';
+import { openWhatsAppText } from '@/lib/whatsAppService';
+import { collectionReminderMessage } from '@/lib/whatsAppMessages';
 
 const CollectTodayComponent: React.FC = () => {
   const navigate = useNavigate();
   const { data: farmers, isLoading, isError, error } = useCollectToday();
+  const dealer = useAuthStore(s => s.user);
 
   if (isLoading) {
     return (
@@ -116,15 +120,17 @@ const CollectTodayComponent: React.FC = () => {
                   {formatCurrency(Number(farmer.total_due))}
                 </span>
                 
-                {/* Quick WhatsApp */}
                 {farmer.phone && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      const cleanPhone = farmer.phone!.replace(/\D/g, '');
-                      const finalPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-                      const text = `Hello ${farmer.name}, this is a friendly reminder regarding your outstanding balance of ${formatCurrency(Number(farmer.total_due))} at our shop. Please visit at your convenience. Thank you!`;
-                      window.open(`https://wa.me/${finalPhone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+                      const shopName = dealer?.shop_name || 'our shop';
+                      const text = collectionReminderMessage(
+                        farmer.name,
+                        Number(farmer.total_due),
+                        shopName
+                      );
+                      openWhatsAppText(farmer.phone, text);
                     }}
                     style={{ backgroundColor: '#25D366', color: '#ffffff' }}
                     className="w-8 h-8 rounded-full flex items-center justify-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all active:scale-95"

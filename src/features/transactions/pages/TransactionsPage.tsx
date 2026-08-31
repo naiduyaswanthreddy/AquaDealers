@@ -112,7 +112,7 @@ export const TransactionsPage: React.FC = () => {
 
   return (
     <PageShell width="wide">
-      <PageHeader title="Transactions" description="All business activity in one place. Eligible transactions can be undone for 48 hours." onBack={() => navigate('/more')} />
+      <PageHeader title="Transactions" description="All business activity in one place. Eligible transactions can be undone for 7 days." onBack={() => navigate('/more')} />
 
       {currentStaff && (
         <div className="mt-4 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-semibold text-emerald-800">

@@ -177,7 +177,7 @@ export const AppLayout: React.FC = () => {
   // Daily Book pages own their full "paper" surface and hide the bottom nav
   // so the register metaphor stays unbroken.
   const isBookRoute = pathname === '/book' || pathname.startsWith('/book/');
-  const isNoPaddingRoute = pathname.startsWith('/bills/new') || isBookRoute;
+  const isNoPaddingRoute = pathname.startsWith('/bills/new') || pathname.startsWith('/estimates/new') || isBookRoute;
 
   return (
     <div className={cn(

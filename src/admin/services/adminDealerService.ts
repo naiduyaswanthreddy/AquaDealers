@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { AdminDealerListItem } from '../types';
-import { Dealer } from '@/types/database';
+import { Dealer, WhatsappAddonPlan } from '@/types/database';
 import { getAdminIdOrThrow } from './adminSession';
 
 export const adminDealerService = {
@@ -71,6 +71,55 @@ export const adminDealerService = {
       p_admin_id: getAdminIdOrThrow(),
       p_dealer_id: dealerId,
       p_features: features,
+    });
+    if (error) throw error;
+  },
+
+  async getWhatsappPlans(): Promise<WhatsappAddonPlan[]> {
+    const { data, error } = await supabase.rpc('admin_get_whatsapp_plans', {
+      p_admin_id: getAdminIdOrThrow(),
+    });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async upsertWhatsappPlan(plan: { id?: string; name: string; monthlyLimit: number }): Promise<void> {
+    const { error } = await supabase.rpc('admin_upsert_whatsapp_plan', {
+      p_admin_id: getAdminIdOrThrow(),
+      p_id: plan.id || null,
+      p_name: plan.name,
+      p_monthly_limit: plan.monthlyLimit,
+    });
+    if (error) throw error;
+  },
+
+  async setDealerWhatsappAddon(dealerId: string, planId: string | null, enabled: boolean): Promise<void> {
+    const { error } = await supabase.rpc('admin_set_dealer_whatsapp_addon', {
+      p_admin_id: getAdminIdOrThrow(),
+      p_dealer_id: dealerId,
+      p_plan_id: planId,
+      p_enabled: enabled,
+    });
+    if (error) throw error;
+  },
+
+  async getWhatsappOverview(): Promise<{
+    price_per_message: number;
+    total_sent_this_month: number;
+    total_cost_this_month: number;
+    per_dealer: { dealer_id: string; used: number }[];
+  }> {
+    const { data, error } = await supabase.rpc('admin_get_whatsapp_overview', {
+      p_admin_id: getAdminIdOrThrow(),
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async setWhatsappPrice(price: number): Promise<void> {
+    const { error } = await supabase.rpc('admin_set_whatsapp_price', {
+      p_admin_id: getAdminIdOrThrow(),
+      p_price: price,
     });
     if (error) throw error;
   },

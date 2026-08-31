@@ -191,6 +191,7 @@ export const useCheckout = () => {
           .select('total, created_at')
           .eq('farmer_id', farmerId)
           .eq('dealer_id', user.id)
+          .eq('is_estimate', false)
           .gte('created_at', billStart.toISOString())
           .lte('created_at', billEnd.toISOString());
 
@@ -294,6 +295,8 @@ export const useCheckout = () => {
           ).catch(err => console.error('Failed to save farmer discounts:', err));
         }
       }
+
+      supabase.functions.invoke('send-bill-whatsapp', { body: { billId: result.bill_id } }).catch(() => {});
 
       toast.success(t('billing.success', 'Bill created successfully.'));
       onSuccess({

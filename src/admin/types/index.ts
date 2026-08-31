@@ -283,6 +283,8 @@ export interface AdminDealerListItem {
   onboarding_pct?: number;
   subscription_days_remaining?: number;
   custom_features?: string[];
+  whatsapp_enabled?: boolean;
+  whatsapp_addon_plan_id?: string | null;
 }
 
 export interface AdminNavItem {

@@ -318,90 +318,97 @@ export const EstimateItemPicker: React.FC = () => {
       {/* ── Cart items ─────────────────────────────────────────────── */}
       {items.length > 0 && (
         <div className="flex flex-col gap-2.5">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#5d7486]">
-            {items.length} item{items.length > 1 ? 's' : ''} added
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-widest text-[#5d7486]">
+              {items.length} item{items.length > 1 ? 's' : ''} added
+            </p>
+            {/* GST toggle in the header */}
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <span className="text-xs font-bold text-[#173042]">Include GST</span>
+              <div className="relative flex-shrink-0">
+                <input
+                  type="checkbox"
+                  checked={gstEnabled}
+                  onChange={e => setGstEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 rounded-full border-2 border-[#d9e5ee] bg-[#f0f7ff] peer-checked:bg-[#0052cc] peer-checked:border-[#0052cc] transition-colors" />
+                <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-4" />
+              </div>
+            </label>
+          </div>
           {items.map(item => (
             <div
               key={item.product_id}
-              className="flex items-center gap-3 rounded-2xl bg-white border border-[#d9e5ee] px-4 py-3 overflow-hidden relative"
-              style={{ boxShadow: '0 2px 8px rgba(20,54,84,0.05)' }}
+              className="group flex items-center gap-3.5 rounded-2xl bg-white border border-[#cde0f5] shadow-[0_2px_10px_rgba(0,82,204,0.06)] p-3 transition-all hover:border-[#0052cc]/40 hover:shadow-[0_8px_24px_rgba(0,82,204,0.12)] relative overflow-hidden"
             >
-              {/* left accent stripe */}
-              <div className="absolute left-0 inset-y-0 w-1 rounded-l-2xl bg-[#0052cc]" />
+              {/* Subtle background glow on hover */}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#f8faff] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
-              <div className="flex-1 min-w-0 pl-1">
-                <p className="text-sm font-semibold text-[#173042] truncate">{item.product_name}</p>
-                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                  <span className="text-xs text-[#5d7486]">{formatCurrency(item.unit_price)}/{item.unit}</span>
+              {/* Product Icon */}
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f0f7ff] border border-[#0052cc]/10 z-10">
+                <Package className="h-4 w-4 text-[#0052cc]" />
+              </div>
+
+              <div className="flex-1 min-w-0 z-10">
+                <p className="text-sm font-bold text-[#173042] truncate leading-tight tracking-tight">{item.product_name}</p>
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <span className="text-[0.7rem] font-semibold text-[#5d7486] bg-[#f5f8fa] px-1.5 py-0.5 rounded-md border border-[#e4ecf2]">
+                    {formatCurrency(item.unit_price)} <span className="text-[#8ba0af] font-medium">/ {item.unit}</span>
+                  </span>
                   {item.discount_percentage > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[0.65rem] font-semibold text-emerald-700 border border-emerald-100">
+                    <span className="inline-flex items-center rounded-md bg-emerald-50 px-1.5 py-0.5 text-[0.65rem] font-bold text-emerald-700 border border-emerald-100">
                       {item.discount_percentage}% off
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* qty controls */}
-              <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Pill-shaped Qty Stepper */}
+              <div className="flex items-center bg-[#f5f8fa] rounded-full border border-[#e4ecf2] p-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] z-10">
                 <button
                   type="button"
                   onClick={() => updateQuantity(item.product_id, Math.max(1, item.quantity - 1))}
-                  className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#e7f5ff] text-[#0052cc] hover:bg-[#0052cc] hover:text-white transition-colors"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[#5d7486] hover:bg-white hover:text-[#0052cc] hover:shadow-sm transition-all"
                 >
-                  <Minus className="h-3 w-3" />
+                  <Minus className="h-3.5 w-3.5" strokeWidth={2.5} />
                 </button>
                 <input
                   type="number"
                   min={1}
                   value={item.quantity}
                   onChange={e => updateQuantity(item.product_id, Math.max(1, Number(e.target.value)))}
-                  className="w-10 text-center text-sm font-semibold text-[#173042] border border-[#d9e5ee] rounded-xl px-1 py-1 focus:outline-none focus:border-[#0052cc]"
+                  className="w-8 text-center text-sm font-bold text-[#173042] bg-transparent focus:outline-none focus:ring-0 select-all"
                 />
                 <button
                   type="button"
                   onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
-                  className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#e7f5ff] text-[#0052cc] hover:bg-[#0052cc] hover:text-white transition-colors"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[#5d7486] hover:bg-white hover:text-[#0052cc] hover:shadow-sm transition-all"
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
                 </button>
               </div>
 
-              <span className="text-sm font-bold text-[#173042] w-16 text-right flex-shrink-0">
-                {formatCurrency(item.unit_price * item.quantity)}
-              </span>
-
-              <button
-                type="button"
-                onClick={() => removeItem(item.product_id)}
-                className="flex h-7 w-7 items-center justify-center rounded-xl text-[#8ba0af] hover:bg-red-50 hover:text-red-500 transition-colors flex-shrink-0"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+              {/* Price & Remove */}
+              <div className="flex flex-col items-end justify-center z-10 pl-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black text-[#173042] tabular-nums tracking-tight">
+                    {formatCurrency(item.unit_price * item.quantity)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.product_id)}
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-[#a4b5c4] hover:bg-red-50 hover:text-red-500 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* ── GST toggle ─────────────────────────────────────────────── */}
-      {items.length > 0 && (
-        <label className="flex items-center gap-3 cursor-pointer select-none rounded-2xl border border-[#d9e5ee] bg-white px-4 py-3" style={{ boxShadow: '0 2px 8px rgba(20,54,84,0.04)' }}>
-          <div className="relative flex-shrink-0">
-            <input
-              type="checkbox"
-              checked={gstEnabled}
-              onChange={e => setGstEnabled(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-10 h-5 rounded-full border-2 border-[#d9e5ee] bg-[#f0f7ff] peer-checked:bg-[#0052cc] peer-checked:border-[#0052cc] transition-colors" />
-            <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-[#173042]">Include GST</p>
-            <p className="text-xs text-[#8ba0af]">Adds applicable tax to item prices</p>
-          </div>
-        </label>
-      )}
     </div>
   );
 };

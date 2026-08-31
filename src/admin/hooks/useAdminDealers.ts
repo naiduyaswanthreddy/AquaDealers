@@ -58,6 +58,49 @@ export function useUnsuspendDealer() {
   });
 }
 
+export function useWhatsappPlans() {
+  return useQuery({
+    queryKey: ['whatsapp-addon-plans'],
+    queryFn: () => adminDealerService.getWhatsappPlans(),
+  });
+}
+
+export function useUpsertWhatsappPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (plan: { id?: string; name: string; monthlyLimit: number }) =>
+      adminDealerService.upsertWhatsappPlan(plan),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['whatsapp-addon-plans'] }),
+  });
+}
+
+export function useSetDealerWhatsappAddon() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ dealerId, planId, enabled }: { dealerId: string; planId: string | null; enabled: boolean }) =>
+      adminDealerService.setDealerWhatsappAddon(dealerId, planId, enabled),
+    onSuccess: (_, { dealerId }) => {
+      queryClient.invalidateQueries({ queryKey: adminDealerKeys.profile(dealerId) });
+      queryClient.invalidateQueries({ queryKey: adminDealerKeys.list() });
+    },
+  });
+}
+
+export function useWhatsappOverview() {
+  return useQuery({
+    queryKey: ['whatsapp-overview'],
+    queryFn: () => adminDealerService.getWhatsappOverview(),
+  });
+}
+
+export function useSetWhatsappPrice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (price: number) => adminDealerService.setWhatsappPrice(price),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['whatsapp-overview'] }),
+  });
+}
+
 export function useUpdateDealerAddons() {
   const queryClient = useQueryClient();
   return useMutation({

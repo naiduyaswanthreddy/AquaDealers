@@ -30,7 +30,8 @@ export async function getTodaySales(dealerId: string, branchId?: string | null):
     .select('total, balance_due')
     .eq('dealer_id', dealerId)
     .eq('bill_date', todayStr)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .eq('is_estimate', false);
 
   if (branchId) {
     query = query.eq('branch_id', branchId);
@@ -90,7 +91,8 @@ export async function getSalesSummaryForDate(
     .select('total, balance_due')
     .eq('dealer_id', dealerId)
     .eq('bill_date', dateStr)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .eq('is_estimate', false);
 
   if (branchId) {
     query = query.eq('branch_id', branchId);
@@ -119,6 +121,7 @@ export async function getSalesSeries(
     .select('bill_date, total')
     .eq('dealer_id', dealerId)
     .eq('status', 'active')
+    .eq('is_estimate', false)
     .gte('bill_date', startDate);
 
   if (branchId) {
@@ -454,6 +457,7 @@ export async function getRecentTransactions(
     .select('id, bill_number, bill_date, total, created_at, type, farmer_id, branch_name_snapshot, farmers(name)')
     .eq('dealer_id', dealerId)
     .eq('status', 'active')
+    .eq('is_estimate', false)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -532,6 +536,7 @@ export async function getMonthlySalesTrend(
     .select('bill_date, total')
     .eq('dealer_id', dealerId)
     .eq('status', 'active')
+    .eq('is_estimate', false)
     .gte('bill_date', startStr)
     .lte('bill_date', endStr);
 

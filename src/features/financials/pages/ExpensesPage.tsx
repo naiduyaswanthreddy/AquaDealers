@@ -1,21 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, TrendingDown } from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { useExpenses } from '../hooks/useFinancials';
 import { ExpenseModal } from '../components/ExpenseModal';
 import { EXPENSE_CATEGORIES } from '@/lib/constants';
-import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { ListLoadMore } from '@/components/ui/ListLoadMore';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
-import { useAuthStore } from '@/stores/authStore';
-import { useBranchStore } from '@/stores/branchStore';
-import { financialService } from '../services/financialService';
-import { ExpenseItem } from '../types';
 
 const ExpensesPage: React.FC = () => {
   const { t } = useTranslation();
@@ -24,29 +20,15 @@ const ExpensesPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  const { user } = useAuthStore();
-  const { activeBranch, isAllBranches } = useBranchStore();
-  const branchId = isAllBranches ? null : activeBranch?.id;
-
   const filteredExpenses = useMemo(() => {
     if (!expenses) return [];
-    return expenses.filter(e => 
+    return expenses.filter(e =>
       (e.description?.toLowerCase().includes(search.toLowerCase()) || false) ||
       (e.category?.toLowerCase().includes(search.toLowerCase()) || false)
     );
   }, [expenses, search]);
 
-  const fetchExpensesPage = React.useCallback(async ({ page, limit }: { page: number; limit: number }) => {
-    if (!user?.id) throw new Error('No dealer ID');
-    return financialService.getExpenses(user.id, branchId, search || undefined, page, limit);
-  }, [user?.id, branchId, search]);
-
-  const pagedExpenses = useLoadMoreList<ExpenseItem>({
-    initialLimit: 12,
-    step: 12,
-    fetchFn: fetchExpensesPage,
-    dependencies: [fetchExpensesPage],
-  });
+  const pagedExpenses = useLoadMoreList(filteredExpenses, { initialCount: 12, step: 12, resetDeps: [search] });
 
   const totalExpenses = useMemo(() => {
     return filteredExpenses.reduce((sum, e) => sum + e.amount, 0);

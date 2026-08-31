@@ -10,6 +10,8 @@ import { Modal } from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import { useFarmer } from '../hooks/useFarmerLedger';
 import { useSetFarmerPreviousDue } from '../hooks/useFarmers';
+import { openWhatsAppText, requirePhone } from '@/lib/whatsAppService';
+import { balanceReminderMessage, collectionReminderMessage } from '@/lib/whatsAppMessages';
 
 interface LedgerActionsProps {
   farmerId: string;
@@ -59,9 +61,10 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
   const handleSaveOpeningBalance = handleSavePreviousDue;
 
   const handleWhatsApp = () => {
-    if (!farmerPhone) return;
-    const message = encodeURIComponent(`Hello ${farmerName}, this is from the shop.`);
-    window.open(`https://wa.me/91${farmerPhone}?text=${message}`, '_blank');
+    if (!requirePhone(farmerPhone, farmerName)) return;
+    const shopName = dealer?.shop_name || 'our shop';
+    const message = collectionReminderMessage(farmerName, totalDue, shopName);
+    openWhatsAppText(farmerPhone, message);
   };
 
   const handleCall = () => {
@@ -74,14 +77,12 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
       toast.error('Share link not ready yet. Try again in a moment.');
       return null;
     }
-
     return `${window.location.origin}/f/${shareToken}`;
   };
 
   const handleCopyShareLink = async () => {
     const link = getShareLink();
     if (!link) return;
-
     try {
       await navigator.clipboard.writeText(link);
       toast.success('Balance link copied');
@@ -94,17 +95,9 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
   const handleShareBalanceViaWhatsApp = () => {
     const link = getShareLink();
     if (!link) return;
-
-    const message = encodeURIComponent(
-      `Namaste ${farmerName}! Your balance with ${dealer?.shop_name || 'our shop'} is ${formatCurrency(totalDue)}. ` +
-      `View your full bill and payment statement anytime here: ${link}`
-    );
-    const normalizedPhone = farmerPhone?.replace(/\D/g, '').slice(-10);
-    if (normalizedPhone) {
-      window.open(`https://wa.me/91${normalizedPhone}?text=${message}`, '_blank');
-    } else {
-      window.open(`https://wa.me/?text=${message}`, '_blank');
-    }
+    const shopName = dealer?.shop_name || 'our shop';
+    const message = balanceReminderMessage(farmerName, totalDue, shopName, link);
+    openWhatsAppText(farmerPhone, message);
     setShareBalanceOpen(false);
   };
 
@@ -233,6 +226,7 @@ export const LedgerActions: React.FC<LedgerActionsProps> = ({
           disabled={!farmerPhone}
           style={{ backgroundColor: '#f0fcf4' }}
           className="flex h-14 items-center justify-center gap-2 rounded-[18px] border border-emerald-200/50 text-emerald-900 shadow-sm transition-all active:scale-95 disabled:opacity-50 hover:brightness-[0.97]"
+          title={!farmerPhone ? 'Add phone number to use WhatsApp' : 'Send WhatsApp message'}
         >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
             <MessageCircle className="w-4 h-4 text-emerald-500" />

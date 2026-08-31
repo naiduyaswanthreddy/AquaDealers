@@ -7,6 +7,7 @@ import { Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { shareDailySummaryViaWhatsApp } from '../utils/dailySummaryPdf';
+import { toast } from 'sonner';
 
 const TodaySnapshotComponent: React.FC = () => {
   const { t } = useTranslation();
@@ -20,6 +21,7 @@ const TodaySnapshotComponent: React.FC = () => {
       await shareDailySummaryViaWhatsApp(stats, dealer);
     } catch (error) {
       console.error('Failed to share daily summary', error);
+      toast.error('Failed to generate summary PDF. Please try again.');
     } finally {
       setIsSharing(false);
     }
@@ -69,9 +71,10 @@ const TodaySnapshotComponent: React.FC = () => {
           leftIcon={<Share2 className="h-4 w-4" />}
           onClick={handleShare}
           loading={isSharing}
+          disabled={isSharing}
           className="bg-slate-100 hover:bg-slate-200 text-slate-700 border-none rounded-full px-4"
         >
-          Share Summary
+          {isSharing ? 'Generating…' : 'Share on WhatsApp'}
         </Button>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 animate-fade-in">

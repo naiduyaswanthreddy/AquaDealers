@@ -53,7 +53,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({ onClose }) => {
       title={t('financials.recordExpense', 'Record Expense')}
       footerButtons={[
         { label: t('common.cancel'), onClick: onClose, variant: 'outline' },
-        { label: t('common.save'), onClick: () => {}, type: 'submit', form: 'expense-form', loading: isPending }
+        { label: t('common.save'), type: 'submit', form: 'expense-form', loading: isPending }
       ]}
     >
       <form id="expense-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">

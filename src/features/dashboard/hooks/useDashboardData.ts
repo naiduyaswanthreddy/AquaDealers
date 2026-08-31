@@ -94,7 +94,8 @@ export function useDashboardStats() {
           let q = supabase.from('bills').select('id, bill_items(quantity, unit_price, total_price, inventory_id_snapshot)')
             .eq('dealer_id', dealerId)
             .eq('bill_date', todayDate)
-            .eq('status', 'active');
+            .eq('status', 'active')
+            .eq('is_estimate', false);
           if (activeBranchId) q = q.eq('branch_id', activeBranchId);
           return q.then(r => r.data ?? []);
         })(),

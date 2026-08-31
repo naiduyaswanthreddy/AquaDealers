@@ -5,6 +5,8 @@ import { BookPage, bookDateLabel, bookTime, useBookDate } from '../components/Bo
 import { BookEmpty, BookLoading, BookRow, BookSection, bookActionClass, bookMoney, paidBadge, paymentModeLabel } from '../components/bookUi';
 import { useFarmerDayView } from '../hooks/useDailyBook';
 import type { BookBill } from '../types';
+import { openWhatsAppText } from '@/lib/whatsAppService';
+import { collectionReminderMessage } from '@/lib/whatsAppMessages';
 
 const itemsSummary = (bill: BookBill): string =>
   (bill.bill_items || [])
@@ -112,16 +114,23 @@ export const BookFarmerPage: React.FC = () => {
 
           <div className="book-no-print mt-6 grid grid-cols-3 gap-2 text-center">
             {farmer.phone ? (
-              <a
-                href={`https://wa.me/91${farmer.phone.replace(/\D/g, '').slice(-10)}`}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                onClick={() => {
+                  const phone = farmer.phone!.replace(/\D/g, '').slice(-10);
+                  const msg = collectionReminderMessage(
+                    farmer.name,
+                    Number(farmer.total_due || 0),
+                    'our shop'
+                  );
+                  openWhatsAppText(phone, msg);
+                }}
                 className={bookActionClass('green')}
               >
-                📲 WhatsApp
-              </a>
+                WhatsApp
+              </button>
             ) : (
-              <span className={`${bookActionClass('green')} cursor-not-allowed opacity-40`}>📲 WhatsApp</span>
+              <span className={`${bookActionClass('green')} cursor-not-allowed opacity-40`}>WhatsApp</span>
             )}
             <Link to="/bills/new" className={bookActionClass('blue')}>
               🧾 New Bill

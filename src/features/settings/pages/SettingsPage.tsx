@@ -48,6 +48,36 @@ const SettingsPage: React.FC = () => {
   const [isSavingSecurity, setIsSavingSecurity] = React.useState(false);
   const [isEditingProfile, setIsEditingProfile] = React.useState(false);
   const [authorizedSignatoryData, setAuthorizedSignatoryData] = React.useState<any[] | null>(user?.authorized_signatory_data || null);
+  const [whatsappUsage, setWhatsappUsage] = React.useState<{ enabled: boolean; plan_name: string | null; monthly_limit: number | null; used: number } | null>(null);
+  const [isTogglingWhatsapp, setIsTogglingWhatsapp] = React.useState(false);
+  const handleToggleWhatsapp = async () => {
+    if (!whatsappUsage) return;
+    const nextEnabled = !whatsappUsage.enabled;
+    setIsTogglingWhatsapp(true);
+    try {
+      const { error } = await supabase.rpc('set_my_whatsapp_enabled', { p_enabled: nextEnabled });
+      if (error) throw error;
+      setWhatsappUsage({ ...whatsappUsage, enabled: nextEnabled });
+    } catch (err) {
+      console.error('Failed to toggle WhatsApp notifications:', err);
+      toast.error('Failed to update. Please try again.');
+    } finally {
+      setIsTogglingWhatsapp(false);
+    }
+  };
+  useEffect(() => {
+    supabase.rpc('get_my_whatsapp_usage').then(({ data }) => {
+      setWhatsappUsage(data as any);
+      const usage = data as { enabled: boolean; monthly_limit: number | null; used: number } | null;
+      if (usage?.enabled && usage.monthly_limit && usage.used / usage.monthly_limit >= 0.9) {
+        toast.warning(
+          usage.used >= usage.monthly_limit
+            ? 'WhatsApp message limit reached for this month. Contact support to increase it.'
+            : `WhatsApp usage is at ${usage.used}/${usage.monthly_limit} messages this month — nearing your limit.`
+        );
+      }
+    });
+  }, []);
   const { planDefinitions } = useSubscriptionStore();
   const hasFarmerDiscountFeature = useSubscriptionStore((state) => state.hasFeature('farmer_product_discounts'));
   const currentPlan = planDefinitions[user?.plan || 'trial'] || { name: 'trial', features: [], branch_limit: 1 };
@@ -357,6 +387,42 @@ const SettingsPage: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {whatsappUsage?.plan_name && (
+            <div className="bg-white border border-slate-100 rounded-3xl p-5 mb-6 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-bold text-slate-800">WhatsApp Notifications</div>
+                  <p className="text-xs font-medium text-slate-500 mt-1">
+                    {whatsappUsage.plan_name} plan &bull; {whatsappUsage.used}/{whatsappUsage.monthly_limit} messages used this month
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                    !whatsappUsage.enabled || whatsappUsage.used >= (whatsappUsage.monthly_limit || 0)
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-emerald-100 text-emerald-700'
+                  }`}>
+                    {!whatsappUsage.enabled
+                      ? 'Disabled'
+                      : whatsappUsage.used >= (whatsappUsage.monthly_limit || 0)
+                        ? 'Limit reached — contact support'
+                        : 'Active'}
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={whatsappUsage.enabled}
+                      disabled={isTogglingWhatsapp}
+                      onChange={handleToggleWhatsapp}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden mb-6 shadow-sm">
             <div className="divide-y divide-slate-50/80">

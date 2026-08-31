@@ -328,7 +328,8 @@ export async function getFarmerTransactions(
 
   let runningBalance = openingBalance;
   const withBalance = combined.reverse().map((tx) => {
-    runningBalance += (tx.type === 'bill' || tx.type === 'adjustment') ? tx.amount : -tx.amount;
+    if (tx.type === 'payment') runningBalance -= tx.amount;
+    else if (tx.type === 'adjustment' || (tx.type === 'bill' && !(tx as any).isEstimate)) runningBalance += tx.amount;
     return { ...tx, runningBalance };
   });
 
@@ -365,7 +366,7 @@ export async function getFarmerBillsPage(params: {
 
   let query = supabase
     .from('bills')
-    .select('id, bill_number, bill_date, total, created_at, bill_items(product_name_snapshot, quantity)', { count: 'exact' })
+    .select('id, bill_number, bill_date, total, created_at, is_estimate, bill_items(product_name_snapshot, quantity)', { count: 'exact' })
     .eq('dealer_id', params.dealerId)
     .eq('farmer_id', params.farmerId)
     .neq('status', 'cancelled');
@@ -450,7 +451,8 @@ export async function getFarmerStatement(
     .select('id, bill_number, bill_date, total, created_at, is_edited, bill_items(product_name_snapshot, quantity, unit_price)')
     .eq('dealer_id', dealerId)
     .eq('farmer_id', farmerId)
-    .neq('status', 'cancelled');
+    .neq('status', 'cancelled')
+    .eq('is_estimate', false);
   if (billsErr) throw billsErr;
 
   const billIds = (bills ?? []).map(b => b.id);
@@ -594,6 +596,7 @@ export async function getFarmerAgeing(
     .eq('dealer_id', dealerId)
     .eq('farmer_id', farmerId)
     .eq('status', 'active')
+    .eq('is_estimate', false)
     .gt('balance_due', 0);
 
   if (error) throw error;
@@ -642,6 +645,7 @@ export async function getOpenBillsForFarmer(
     .eq('dealer_id', dealerId)
     .eq('farmer_id', farmerId)
     .eq('status', 'active')
+    .eq('is_estimate', false)
     .gt('balance_due', 0)
     .order('bill_date', { ascending: true });
 

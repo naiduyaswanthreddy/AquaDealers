@@ -82,7 +82,7 @@ export const DailyBookPage: React.FC = () => {
               <span className="flex min-w-0 items-center gap-2 text-base font-extrabold">
                 <span className="book-icon">💵</span> Counter Cash
               </span>
-              <BookMoney value={book.closingCash} className="text-xl font-black" />
+              <BookMoney value={book.dayCashMove} className="text-xl font-black" />
             </div>
           </BookRow>
 
