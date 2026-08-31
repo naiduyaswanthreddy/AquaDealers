@@ -13,9 +13,12 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 // Supabase doesn't inject CORS headers for you — every response (including
 // the browser's preflight OPTIONS) needs these or the browser blocks it as a
 // CORS failure, even when the actual request would have succeeded.
+// A hardcoded header allowlist is whack-a-mole (supabase-js already sent an
+// x-client-info header we hadn't listed) — wildcard is the actual fix, and
+// safe here since we never use cookie-based credentials, only a bearer token.
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-staff-token, x-admin-token',
+  'Access-Control-Allow-Headers': '*',
 };
 const respond = (body: string, status = 200) => new Response(body, { status, headers: CORS_HEADERS });
 
