@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
     // bills created at once can't both slip through under the limit.
     const { data: allowed } = await supabase.rpc('check_and_increment_whatsapp_usage', { p_bill_id: billId });
     if (!allowed) {
-      await supabase.rpc('set_bill_whatsapp_status', { p_bill_id: billId, p_status: 'failed' });
+      await supabase.rpc('set_bill_whatsapp_status', { p_bill_id: billId, p_status: 'failed', p_reason: 'quota_exceeded' });
       return respond('quota_exhausted');
     }
 
@@ -124,7 +124,11 @@ Deno.serve(async (req) => {
       '4': formatInr(bill.balance_due),
     });
 
-    await supabase.rpc('set_bill_whatsapp_status', { p_bill_id: billId, p_status: sent ? 'sent' : 'failed' });
+    await supabase.rpc('set_bill_whatsapp_status', {
+      p_bill_id: billId,
+      p_status: sent ? 'sent' : 'failed',
+      p_reason: sent ? null : 'send_failed',
+    });
 
     return respond(sent ? 'sent' : 'failed');
   } catch (err) {

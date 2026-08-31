@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import {
   Plus, Receipt, Download, ShieldCheck, ShieldX, CheckCircle2, Clock,
   ArrowRight, X, IndianRupee, TrendingUp, TrendingDown, MoreVertical, Eye, Edit2,
+  MessageCircle, XCircle,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -110,6 +111,7 @@ const BillHistoryPage: React.FC = () => {
   const { user } = useAuthStore();
   const { activeBranch, isAllBranches } = useBranchStore();
   const branchId = isAllBranches ? null : activeBranch?.id;
+  const whatsappAddonOn = !!user?.whatsapp_enabled && !!user?.whatsapp_addon_plan_id;
 
   // KPI stats — current + previous period for % change
   const { data: billStats } = useQuery({
@@ -392,6 +394,7 @@ const BillHistoryPage: React.FC = () => {
                       <th className="px-4 py-3 text-center">Type</th>
                       <th className="px-4 py-3 text-left">Payment Status</th>
                       <th className="px-4 py-3 text-center">Status</th>
+                      {whatsappAddonOn && <th className="px-4 py-3 text-center">Notification</th>}
                     </>
                   )}
                   <th className="px-4 py-3 text-right">Amount</th>
@@ -465,6 +468,24 @@ const BillHistoryPage: React.FC = () => {
                             </span>
                           )}
                         </td>
+                        {whatsappAddonOn && (
+                          <td className="px-4 py-3 text-center">
+                            {bill.whatsapp_status === 'sent' ? (
+                              <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wider text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                                <MessageCircle className="h-3 w-3" /> Sent
+                              </span>
+                            ) : bill.whatsapp_status === 'failed' ? (
+                              <span
+                                className="inline-flex items-center gap-1 rounded bg-rose-50 px-1.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wider text-rose-700 ring-1 ring-inset ring-rose-600/20"
+                                title={bill.whatsapp_status_reason === 'quota_exceeded' ? 'Monthly limit exceeded' : 'Send failed'}
+                              >
+                                <XCircle className="h-3 w-3" /> Failed
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+                        )}
                       </>
                     )}
                     <td className="px-4 py-3 text-right font-bold text-slate-900 tabular-nums whitespace-nowrap">

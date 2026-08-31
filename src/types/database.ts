@@ -311,6 +311,7 @@ export interface Bill {
   delivery_pin?: string | null;
   is_estimate?: boolean;
   whatsapp_status?: 'sent' | 'failed' | null;
+  whatsapp_status_reason?: 'quota_exceeded' | 'send_failed' | null;
   whatsapp_sent_at?: string | null;
   created_at: string;
 }

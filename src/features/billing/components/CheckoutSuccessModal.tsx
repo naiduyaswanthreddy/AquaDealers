@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, CloudOff, MessageCircle, Printer, ArrowRight, Sparkles, FileText, ChevronRight, KeyRound, Copy, Check } from 'lucide-react';
+import { CheckCircle2, CloudOff, MessageCircle, Printer, ArrowRight, Sparkles, FileText, ChevronRight, KeyRound, Copy, Check, XCircle, RotateCw } from 'lucide-react';
+import { useWhatsappBillStatus } from '../hooks/useWhatsappBillStatus';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { Modal, Button } from '@/components/ui';
@@ -50,6 +51,8 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
   const dealer = useAuthStore(s => s.user);
   // Offline bills only exist on this device — there is no server bill to fetch.
   const { data: bill } = useBillDetails(isOffline ? '' : billId);
+  const whatsappAddonOn = !!dealer?.whatsapp_enabled && !!dealer?.whatsapp_addon_plan_id;
+  const { state: whatsappState, isRetrying: isRetryingWhatsapp, retry: handleRetryWhatsApp } = useWhatsappBillStatus(bill, whatsappAddonOn);
   const branchId = useBranchStore(state => state.getActiveBranchId()) || dealer?.id || '';
   const templateSettings = useBranchStore(state => state.getTemplateSettings(branchId));
   const Template = InvoiceTemplates[templateSettings.invoiceTemplate as keyof typeof InvoiceTemplates] || InvoiceTemplates.template1;
@@ -193,18 +196,46 @@ export const CheckoutSuccessModal: React.FC<CheckoutSuccessModalProps> = ({
               >
                 {t('billing.printInvoice', 'Print')}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                leftIcon={<MessageCircle className="h-4 w-4" />}
-                className="border-[#25D366]/30 bg-[#25D366]/5 text-[#1DA851] hover:bg-[#25D366]/10"
-                onClick={handleShareWhatsApp}
-                loading={isSharing}
-                disabled={isSharing}
-                fullWidth
-              >
-                {isSharing ? 'Generating…' : 'Share on WhatsApp'}
-              </Button>
+              {whatsappState.kind === 'sent' ? (
+                <div className="flex items-center justify-center gap-1.5 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-semibold h-full min-h-10">
+                  <MessageCircle className="h-4 w-4" /> <CheckCircle2 className="h-3.5 w-3.5" /> Sent
+                </div>
+              ) : whatsappState.kind === 'sending' ? (
+                <div className="flex items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-600 text-sm font-semibold h-full min-h-10">
+                  <RotateCw className="h-4 w-4 animate-spin" /> Sending…
+                </div>
+              ) : whatsappState.kind === 'failed' ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  leftIcon={<XCircle className="h-4 w-4" />}
+                  rightIcon={<RotateCw className="h-3.5 w-3.5" />}
+                  className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                  onClick={handleRetryWhatsApp}
+                  loading={isRetryingWhatsapp}
+                  disabled={isRetryingWhatsapp}
+                  fullWidth
+                >
+                  {isRetryingWhatsapp
+                    ? 'Retrying…'
+                    : whatsappState.reason === 'quota_exceeded'
+                      ? 'Limit exceeded'
+                      : 'Failed — Retry'}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  leftIcon={<MessageCircle className="h-4 w-4" />}
+                  className="border-[#25D366]/30 bg-[#25D366]/5 text-[#1DA851] hover:bg-[#25D366]/10"
+                  onClick={handleShareWhatsApp}
+                  loading={isSharing}
+                  disabled={isSharing}
+                  fullWidth
+                >
+                  {isSharing ? 'Generating…' : 'Share on WhatsApp'}
+                </Button>
+              )}
             </div>
           </>
         )}
