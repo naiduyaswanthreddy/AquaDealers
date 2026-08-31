@@ -10,6 +10,15 @@ const AUTHKEY_BILL_WID = Deno.env.get('AUTHKEY_BILL_WID')!;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
+// Supabase doesn't inject CORS headers for you — every response (including
+// the browser's preflight OPTIONS) needs these or the browser blocks it as a
+// CORS failure, even when the actual request would have succeeded.
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-staff-token, x-admin-token',
+};
+const respond = (body: string, status = 200) => new Response(body, { status, headers: CORS_HEADERS });
+
 // Bulk-imported farmers can have 11-15 digit phones (country code or a
 // leading 0 baked in — see ImportFarmersExcelModal's loose 10-15 digit
 // check). Strip those before sending country_code=91 separately, or the
@@ -62,6 +71,8 @@ async function sendTemplate(mobile: string, wid: string, bodyValues: Record<stri
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: CORS_HEADERS });
+
   try {
     const { billId } = await req.json();
 
@@ -83,7 +94,7 @@ Deno.serve(async (req) => {
       .select('bill_number, total, balance_due, farmer_id, is_estimate')
       .eq('id', billId)
       .single();
-    if (billError || !bill?.farmer_id || bill.is_estimate) return new Response('skipped', { status: 200 });
+    if (billError || !bill?.farmer_id || bill.is_estimate) return respond('skipped');
 
     const { data: farmer, error: farmerError } = await supabase
       .from('farmers')
@@ -92,10 +103,10 @@ Deno.serve(async (req) => {
       .single();
     // No phone at all isn't a retryable failure to report — nothing to show
     // "Failed" for until the farmer profile has a number.
-    if (farmerError || !farmer?.phone) return new Response('skipped', { status: 200 });
+    if (farmerError || !farmer?.phone) return respond('skipped');
 
     const mobile = normalizeIndianMobile(farmer.phone);
-    if (!mobile) return new Response('skipped', { status: 200 });
+    if (!mobile) return respond('skipped');
 
     // Quota gate: dealer must have WhatsApp enabled + a plan with room left
     // this month. Same statement atomically increments the counter, so two
@@ -103,7 +114,7 @@ Deno.serve(async (req) => {
     const { data: allowed } = await supabase.rpc('check_and_increment_whatsapp_usage', { p_bill_id: billId });
     if (!allowed) {
       await supabase.rpc('set_bill_whatsapp_status', { p_bill_id: billId, p_status: 'failed' });
-      return new Response('quota_exhausted', { status: 200 });
+      return respond('quota_exhausted');
     }
 
     const sent = await sendTemplate(mobile, AUTHKEY_BILL_WID, {
@@ -115,9 +126,9 @@ Deno.serve(async (req) => {
 
     await supabase.rpc('set_bill_whatsapp_status', { p_bill_id: billId, p_status: sent ? 'sent' : 'failed' });
 
-    return new Response(sent ? 'sent' : 'failed', { status: 200 });
+    return respond(sent ? 'sent' : 'failed');
   } catch (err) {
     console.error('send-bill-whatsapp error:', err);
-    return new Response('error', { status: 200 });
+    return respond('error');
   }
 });

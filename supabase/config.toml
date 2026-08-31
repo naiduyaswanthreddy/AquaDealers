@@ -1,1 +1,9 @@
 project_id = "fvcafioxkgbljcjomixs"
+
+# We already scope access ourselves (forwarding the caller's auth headers into
+# a client that hits bills/farmers through RLS, see index.ts) — the platform's
+# own JWT gate is redundant and, worse, runs on the browser's CORS preflight
+# OPTIONS request too (which never carries an Authorization header by design),
+# rejecting it with 401 before our code ever returns CORS headers.
+[functions.send-bill-whatsapp]
+verify_jwt = false
