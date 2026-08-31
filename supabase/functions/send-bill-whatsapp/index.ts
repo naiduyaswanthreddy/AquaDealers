@@ -42,14 +42,23 @@ async function sendTemplate(mobile: string, wid: string, bodyValues: Record<stri
       bodyValues,
     }),
   });
-  // ponytail: HTTP status alone may not be the true delivery signal — authkey
-  // could return 200 with a failure encoded in the body. Logging the body on
-  // EVERY send (not just failures) until we've seen a real failed-but-200
-  // response and know the actual field to check — never guess an API
-  // contract's shape blind, that risks flipping real successes to failed.
+  // Confirmed against real responses (not guessed): authkey.io's `Message`
+  // field is the actual signal — HTTP status alone is wrong two ways:
+  //   1. It's "accepted into their queue", not "delivered" — a garbage
+  //      mobile number or bogus template id still returns 200 + "Submitted
+  //      Successfully". No synchronous way to know true delivery; would need
+  //      a delivery-status webhook from authkey if they offer one.
+  //   2. A bad authkey / insufficient balance returns HTTP 203 (still counts
+  //      as `res.ok`, since 203 falls in the 200-299 range) with
+  //      {"Message":"Invalid authkey or insufficient balance"} — res.ok
+  //      alone would have silently marked a real failure as "sent".
   const text = await res.text();
   console.log(`authkey.io response (wid=${wid}, status=${res.status}):`, text.slice(0, 500));
-  return res.ok;
+  try {
+    return JSON.parse(text).Message === 'Submitted Successfully';
+  } catch {
+    return false;
+  }
 }
 
 Deno.serve(async (req) => {
