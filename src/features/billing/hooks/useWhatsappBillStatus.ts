@@ -36,10 +36,22 @@ export function useWhatsappBillStatus(bill: Bill | undefined, addonOn: boolean):
 
   useEffect(() => {
     if (!applies || !bill || bill.whatsapp_status) return;
-    const timer = setTimeout(() => {
-      queryClient.refetchQueries({ queryKey: billingKeys.detail(bill.id) }).finally(() => setHasWaited(true));
-    }, 3000);
-    return () => clearTimeout(timer);
+    // The edge function chains 2 DB selects, a quota RPC, an external HTTP
+    // call to authkey.io, then the status-write RPC — all sequentially, plus
+    // a possible Deno cold start. A single fixed wait forces the common case
+    // (send lands in well under a second) to sit at "Sending…" for the full
+    // wait too, so poll every 1.5s instead and stop as soon as a status
+    // shows up (the effect reruns and exits early once bill.whatsapp_status
+    // is set, clearing this interval) — 6 attempts still covers the rare
+    // slow send/cold-start the old 8s single-shot wait was chosen for.
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts += 1;
+      queryClient.refetchQueries({ queryKey: billingKeys.detail(bill.id) }).finally(() => {
+        if (attempts >= 6) setHasWaited(true);
+      });
+    }, 1500);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applies, bill?.id, bill?.whatsapp_status]);
 

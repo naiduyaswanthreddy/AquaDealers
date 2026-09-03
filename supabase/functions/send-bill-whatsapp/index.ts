@@ -1,8 +1,22 @@
 // Fires the bill-notification WhatsApp template via authkey.io after a bill
 // is created. Best-effort: never throws back to the caller, no retry queue
 // (add one if delivery failures become a real problem).
-// ponytail: statement-link template dropped for now, add back as a second
-// sendTemplate call (AUTHKEY_STATEMENT_WID) once that template is approved.
+//
+// Template shape this expects (8 body vars + 1 button var). AUTHKEY_BILL_WID
+// MUST point at a template with exactly this shape — WhatsApp rejects the
+// send if the parameter set doesn't match the approved template:
+//   1 farmer name   2 shop name    3 bill number   4 items
+//   5 total         6 amount paid  7 pay method    8 balance due
+//   button {{1}}    farmer share_token -> https://aquadealers.in/f/<token>
+//
+// A header-variable version (template 47325: "Namaste {{1}}") was tried and
+// reverted — authkey.io's requestjson.php never delivered it (queue-accepted
+// with "Submitted Successfully" but nothing arrived on the test phone, both
+// with a separate headerValues object and with the name folded into a flat
+// bodyValues sequence). Their docs only document headerValues for a MEDIA
+// header (headerFileName/headerData), never for a text header's {{1}} — so
+// stick to a template whose header has no variable until that's resolved
+// with authkey support.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const AUTHKEY_TOKEN = Deno.env.get('AUTHKEY_TOKEN')!;
@@ -39,7 +53,46 @@ function formatInr(value: unknown): string {
   return Number(value).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 }
 
-async function sendTemplate(mobile: string, wid: string, bodyValues: Record<string, string>): Promise<boolean> {
+// WhatsApp rejects a template send outright if any variable is empty or
+// contains a newline/tab. Farmer names, shop names and product names are all
+// user-entered, so collapse whitespace and never return an empty string.
+export function safeVar(value: unknown, fallback = '-'): string {
+  const cleaned = String(value ?? '').replace(/\s+/g, ' ').trim();
+  return cleaned || fallback;
+}
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  upi: 'UPI',
+  bank: 'Bank',
+  credit: 'Credit',
+  cheque: 'Cheque',
+  other: 'Other',
+};
+
+// payment_type is nullable — a full-credit bill has nothing paid and no
+// method, so there is no method to name.
+export function paymentLabel(paymentType: unknown, amountPaid: unknown): string {
+  const key = String(paymentType ?? '').toLowerCase();
+  if (PAYMENT_LABELS[key]) return PAYMENT_LABELS[key];
+  return Number(amountPaid) > 0 ? 'Cash' : '-';
+}
+
+export function itemsSummary(items: unknown): string {
+  if (!Array.isArray(items) || items.length === 0) return '-';
+  return safeVar(
+    items
+      .map((i) => `${safeVar(i?.product_name_snapshot, 'Item')} (${Number(i?.quantity)})`)
+      .join(', '),
+  );
+}
+
+async function sendTemplate(
+  mobile: string,
+  wid: string,
+  bodyValues: Record<string, string>,
+  buttonParamValue?: string,
+): Promise<boolean> {
   const res = await fetch('https://console.authkey.io/restapi/requestjson.php', {
     method: 'POST',
     headers: {
@@ -52,6 +105,11 @@ async function sendTemplate(mobile: string, wid: string, bodyValues: Record<stri
       wid,
       type: 'text',
       bodyValues,
+      // Fills the template's dynamic CTA button URL suffix
+      // (https://aquadealers.in/f/<share_token>). Only send this when the
+      // configured template actually has a button component — the parameter
+      // set must match the approved template exactly.
+      ...(buttonParamValue ? { button_param_value: buttonParamValue } : {}),
     }),
   });
   // Confirmed against real responses (not guessed): authkey.io's `Message`
@@ -94,14 +152,14 @@ Deno.serve(async (req) => {
 
     const { data: bill, error: billError } = await supabase
       .from('bills')
-      .select('bill_number, total, balance_due, farmer_id, is_estimate')
+      .select('bill_number, total, balance_due, amount_paid, payment_type, farmer_id, is_estimate, bill_items(product_name_snapshot, quantity)')
       .eq('id', billId)
       .single();
     if (billError || !bill?.farmer_id || bill.is_estimate) return respond('skipped');
 
     const { data: farmer, error: farmerError } = await supabase
       .from('farmers')
-      .select('name, phone')
+      .select('name, phone, share_token')
       .eq('id', bill.farmer_id)
       .single();
     // No phone at all isn't a retryable failure to report — nothing to show
@@ -120,12 +178,25 @@ Deno.serve(async (req) => {
       return respond('quota_exhausted');
     }
 
-    const sent = await sendTemplate(mobile, AUTHKEY_BILL_WID, {
-      '1': farmer.name,
-      '2': bill.bill_number,
-      '3': formatInr(bill.total),
-      '4': formatInr(bill.balance_due),
-    });
+    // Staff sessions can't read `dealers` under RLS, so the shop name comes
+    // from a SECURITY DEFINER helper (see 20260901000000 migration).
+    const { data: shopName } = await supabase.rpc('get_bill_shop_name', { p_bill_id: billId });
+
+    const sent = await sendTemplate(
+      mobile,
+      AUTHKEY_BILL_WID,
+      {
+        '1': safeVar(farmer.name, 'Customer'),
+        '2': safeVar(shopName, 'Your Dealer'),
+        '3': safeVar(bill.bill_number),
+        '4': itemsSummary(bill.bill_items),
+        '5': formatInr(bill.total),
+        '6': formatInr(bill.amount_paid),
+        '7': paymentLabel(bill.payment_type, bill.amount_paid),
+        '8': formatInr(bill.balance_due),
+      },
+      farmer.share_token ?? undefined,
+    );
 
     await supabase.rpc('set_bill_whatsapp_status', {
       p_bill_id: billId,
