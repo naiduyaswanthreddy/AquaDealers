@@ -1027,11 +1027,23 @@ const FarmerStatementPage: React.FC = () => {
               <div className="px-4 py-3 border-b border-slate-100" style={{ background: P_LIGHT }}>
                 <p className="text-[11px] font-black uppercase tracking-wider" style={{ color: P }}>Account Summary</p>
               </div>
+              {(() => {
+                const billed = statement.bills.reduce((s,b)=>s+b.total,0);
+                const paid   = statement.payments.reduce((s,p)=>s+p.amount,0);
+                // A bill can also be settled without a payment row - settlement
+                // discount, write-off, return. Without this residual on screen
+                // "Billed - Paid" never equals "Balance Due" and the farmer sees
+                // three numbers that don't add up. Meaningless once the RPC's
+                // 50-row cap truncates either list, so hide it there.
+                const relief = billed - paid - statement.total_due;
+                const showRelief = !billLimitReached && Math.abs(relief) >= 1;
+                return (
               <div className="divide-y divide-slate-100">
                 {[
                   { label: 'Total Bills', value: statement.bills.length.toString(), icon: Receipt, color: 'text-slate-600' },
-                  { label: 'Total Billed', value: formatCurrency(statement.bills.reduce((s,b)=>s+b.total,0)), icon: TrendingUp, color: 'text-slate-600' },
-                  { label: 'Total Paid', value: formatCurrency(statement.payments.reduce((s,p)=>s+p.amount,0)), icon: TrendingDown, color: 'text-emerald-600' },
+                  { label: 'Total Billed', value: formatCurrency(billed), icon: TrendingUp, color: 'text-slate-600' },
+                  { label: 'Total Paid', value: formatCurrency(paid), icon: TrendingDown, color: 'text-emerald-600' },
+                  ...(showRelief ? [{ label: relief > 0 ? 'Discount / Adjustment' : 'Extra Charges', value: formatCurrency(Math.abs(relief)), icon: Tag, color: 'text-indigo-600' }] : []),
                   { label: 'Balance Due', value: formatCurrency(Math.max(0, statement.total_due)), icon: AlertCircle, color: statement.total_due > 0 ? 'text-rose-600' : 'text-emerald-600' },
                   { label: 'Fully Paid Bills', value: String(statement.bills.filter(b=>b.balance_due<=0).length), icon: CheckCircle2, color: 'text-emerald-600' },
                   { label: 'Pending Bills', value: String(statement.bills.filter(b=>b.balance_due>0).length), icon: Clock, color: 'text-amber-600' },
@@ -1046,6 +1058,8 @@ const FarmerStatementPage: React.FC = () => {
                   </div>
                 ))}
               </div>
+                );
+              })()}
             </div>
 
             {/* Products bought summary */}
