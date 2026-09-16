@@ -24,6 +24,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
 import type { Branch, StaffAccessMode, StaffMember, StaffPermissions } from '@/types/database';
 import {
+  STAFF_ACTION_FEATURES,
   STAFF_DEFAULT_PERMISSIONS,
   STAFF_FEATURES,
 } from '@/lib/staffAccess';
@@ -284,34 +285,87 @@ const StaffPage: React.FC = () => {
               if (!definition) return null;
 
               const currentMode = permissions[featureKey];
+              const children = STAFF_ACTION_FEATURES.filter((feature) => feature.parentKey === featureKey);
+
               return (
-                <div key={featureKey} className="rounded-2xl border border-border bg-white px-4 py-4">
-                  <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
-                    <div className="min-w-0">
-                      <div className="text-sm font-bold text-text-primary">{definition.label}</div>
-                      <p className="mt-1 text-sm leading-6 text-text-secondary">{definition.description}</p>
-                    </div>
-                    <div className="grid min-w-full grid-cols-3 gap-2 rounded-2xl border border-border bg-surface p-2 sm:min-w-[20rem]">
-                      {(['hidden', 'disabled', 'visible'] as StaffAccessMode[]).map((mode) => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setFeatureMode(featureKey, mode)}
-                          className={cn(
-                            'flex min-h-11 items-center justify-center rounded-xl border px-2 py-2 text-center text-[0.68rem] font-black uppercase tracking-[0.14em] transition-all',
-                            currentMode === mode
-                              ? 'border-transparent'
-                              : 'border-primary/15 bg-primary/8 text-primary/75 hover:border-primary/20 hover:text-primary'
-                          )}
-                          style={getModeButtonStyle(mode, currentMode)}
-                          aria-pressed={currentMode === mode}
-                        >
-                          {mode}
-                        </button>
-                      ))}
+                <React.Fragment key={featureKey}>
+                  <div className="rounded-2xl border border-border bg-white px-4 py-4">
+                    <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-text-primary">{definition.label}</div>
+                        <p className="mt-1 text-sm leading-6 text-text-secondary">{definition.description}</p>
+                      </div>
+                      <div className="grid min-w-full grid-cols-3 gap-2 rounded-2xl border border-border bg-surface p-2 sm:min-w-[20rem]">
+                        {(['hidden', 'disabled', 'visible'] as StaffAccessMode[]).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setFeatureMode(featureKey, mode)}
+                            className={cn(
+                              'flex min-h-11 items-center justify-center rounded-xl border px-2 py-2 text-center text-[0.68rem] font-black uppercase tracking-[0.14em] transition-all',
+                              currentMode === mode
+                                ? 'border-transparent'
+                                : 'border-primary/15 bg-primary/8 text-primary/75 hover:border-primary/20 hover:text-primary'
+                            )}
+                            style={getModeButtonStyle(mode, currentMode)}
+                            aria-pressed={currentMode === mode}
+                          >
+                            {mode}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
+
+                  {children.length > 0 && (
+                    <div className="ml-4 space-y-2 border-l-2 border-border pl-4">
+                      {currentMode !== 'visible' && (
+                        <p className="text-xs font-semibold text-text-muted">
+                          These only take effect while {definition.label} above is Visible.
+                        </p>
+                      )}
+                      {children.map((child) => {
+                        const childMode = permissions[child.key];
+                        return (
+                          <div
+                            key={child.key}
+                            className={cn(
+                              'rounded-2xl border border-border bg-white px-4 py-3',
+                              currentMode !== 'visible' && 'opacity-50'
+                            )}
+                          >
+                            <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+                              <div className="min-w-0">
+                                <div className="text-sm font-bold text-text-primary">{child.label}</div>
+                                <p className="mt-1 text-xs leading-5 text-text-secondary">{child.description}</p>
+                              </div>
+                              <div className="grid min-w-full grid-cols-3 gap-2 rounded-2xl border border-border bg-surface p-2 sm:min-w-[18rem]">
+                                {(['hidden', 'disabled', 'visible'] as StaffAccessMode[]).map((mode) => (
+                                  <button
+                                    key={mode}
+                                    type="button"
+                                    disabled={currentMode !== 'visible'}
+                                    onClick={() => setFeatureMode(child.key, mode)}
+                                    className={cn(
+                                      'flex min-h-10 items-center justify-center rounded-xl border px-2 py-2 text-center text-[0.65rem] font-black uppercase tracking-[0.14em] transition-all disabled:cursor-not-allowed',
+                                      childMode === mode
+                                        ? 'border-transparent'
+                                        : 'border-primary/15 bg-primary/8 text-primary/75 hover:border-primary/20 hover:text-primary'
+                                    )}
+                                    style={getModeButtonStyle(mode, childMode)}
+                                    aria-pressed={childMode === mode}
+                                  >
+                                    {mode}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </React.Fragment>
               );
             })}
           </div>
