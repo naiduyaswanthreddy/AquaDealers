@@ -14,26 +14,10 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import type { Dealer } from '@/types/database';
+import type { Dealer, StaffAccessMode, StaffFeatureKey, StaffPermissions } from '@/types/database';
 import { slugify } from '@/lib/utils';
 
-export type StaffAccessMode = 'visible' | 'disabled' | 'hidden';
-
-export type StaffFeatureKey =
-  | 'dashboard'
-  | 'billHistory'
-  | 'newBill'
-  | 'farmerList'
-  | 'addFarmer'
-  | 'inventory'
-  | 'suppliers'
-  | 'cashbook'
-  | 'expenses'
-  | 'reports'
-  | 'settings'
-  | 'branches'
-  | 'staffManagement'
-  | 'transactions';
+export type { StaffAccessMode, StaffFeatureKey, StaffPermissions } from '@/types/database';
 
 export interface StaffFeatureDefinition {
   key: StaffFeatureKey;
@@ -57,8 +41,6 @@ export interface StaffDealerProfileInput {
   dealerId: string;
   shopName: string;
 }
-
-export interface StaffPermissions extends Record<StaffFeatureKey, StaffAccessMode> {}
 
 export const STAFF_FEATURES: StaffFeatureDefinition[] = [
   {
