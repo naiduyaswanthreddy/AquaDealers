@@ -607,13 +607,15 @@ const InventoryDetailPage: React.FC = () => {
                 </div>
                 <span className="text-sm font-bold text-slate-800">₹{inventory.selling_price?.toLocaleString() ?? '—'}</span>
              </div>
-             <div className="hidden lg:flex flex-col gap-1 items-center justify-center text-center border-l border-slate-100">
-                <div className="flex items-center gap-1.5">
-                   <ArrowDownCircle className="w-3.5 h-3.5 text-slate-400" />
-                   <span className="text-[10px] font-medium text-slate-500">Cost</span>
-                </div>
-                <span className="text-sm font-bold text-slate-800">₹{inventory.cost_price?.toLocaleString() ?? '—'}</span>
-             </div>
+             {canViewCostPrice && (
+               <div className="hidden lg:flex flex-col gap-1 items-center justify-center text-center border-l border-slate-100">
+                  <div className="flex items-center gap-1.5">
+                     <ArrowDownCircle className="w-3.5 h-3.5 text-slate-400" />
+                     <span className="text-[10px] font-medium text-slate-500">Cost</span>
+                  </div>
+                  <span className="text-sm font-bold text-slate-800">₹{inventory.cost_price?.toLocaleString() ?? '—'}</span>
+               </div>
+             )}
              <div className="flex flex-col gap-1 items-center justify-center text-center lg:border-l lg:border-slate-100">
                 <div className="flex items-center gap-1.5">
                    <CircleDollarSign className="w-3.5 h-3.5 text-slate-400" />
