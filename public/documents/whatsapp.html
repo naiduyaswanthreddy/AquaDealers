@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WhatsApp — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/whatsapp.html">
+<meta name="description" content="WhatsApp integration in AquaDealers — dual system with wa.me links and authkey.io API, 10 message templates, quota system, and status tracking.">
+<meta property="og:title" content="WhatsApp — AquaDealers Docs">
+<meta property="og:description" content="WhatsApp integration in AquaDealers — dual system with wa.me links and authkey.io API, 10 message templates, quota system, and status tracking.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="WhatsApp — AquaDealers Docs">
+<meta name="twitter:description" content="WhatsApp integration in AquaDealers — dual system with wa.me links and authkey.io API, 10 message templates, quota system, and status tracking.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">WhatsApp</span>
+</div>
+<div class="page">
+
+<h1>WhatsApp Integration</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span></span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>AquaDealers uses a <strong>dual WhatsApp implementation</strong>: client-side <code>wa.me</code> links for manual sends, and a server-side Edge Function via the authkey.io API for automated bill delivery.</p>
+
+<div class="callout callout-info">Both methods share the same phone normalization logic. The API method fires automatically after bill creation; the link method is user-initiated from various report and statement screens.</div>
+
+<!-- ───────────── METHOD A ───────────── -->
+<h2>Method A: wa.me Links (Client-Side / Manual)</h2>
+
+<h3>How It Works</h3>
+<p>Builds <code>https://wa.me/91{phone}?text={encoded}</code> URLs and opens them in a new browser tab. The user must then press "Send" in WhatsApp Web or the WhatsApp app. No server round-trip required.</p>
+
+<h3>Phone Normalization</h3>
+<p>All phone numbers are cleaned before use:</p>
+<ul>
+  <li>Strip the <code>+91</code> prefix if present</li>
+  <li>Strip leading <code>0</code>s</li>
+  <li>Strip all spaces, dashes, and parentheses</li>
+  <li>Validate the result is exactly <strong>10 digits</strong> (Indian mobile number)</li>
+</ul>
+
+<h3>Entry Points</h3>
+<div class="tw"><table>
+  <tr><th>Function</th><th>Purpose</th><th>Usage</th></tr>
+  <tr><td><code>openWhatsAppText()</code></td><td>Send a text message</td><td>Reports, statements, reminders</td></tr>
+  <tr><td><code>sharePdfViaWhatsApp()</code></td><td>Share a PDF file</td><td>Downloads the PDF via a hidden &lt;a download&gt; link, then opens a blank wa.me chat for the user to manually attach the file</td></tr>
+  <tr><td><code>requirePhone()</code></td><td>Guard function</td><td>Prompts user to add farmer phone number if missing before attempting send</td></tr>
+</table></div>
+
+<h3>10 Message Templates</h3>
+<p>All templates are defined in <code>whatsAppMessages.ts</code>. Each template builds a formatted text string with dynamic data:</p>
+
+<div class="tw"><table>
+  <tr><th>#</th><th>Template</th><th>Variables</th><th>Used In</th></tr>
+  <tr><td>1</td><td><strong>Invoice</strong></td><td>Bill items, total, balance, date</td><td>Bill details page, checkout success</td></tr>
+  <tr><td>2</td><td><strong>Balance Reminder</strong></td><td>Farmer name, outstanding amount</td><td>Farmer ledger, dues page</td></tr>
+  <tr><td>3</td><td><strong>Statement</strong></td><td>Farmer name, period dates, closing balance, shop name</td><td>Farmer statement page</td></tr>
+  <tr><td>4</td><td><strong>Delivery PIN</strong></td><td>4-digit confirmation PIN</td><td>Delivery confirmation flow</td></tr>
+  <tr><td>5</td><td><strong>Collection Reminder</strong></td><td>Farmer name, amount due, shop name</td><td>Dues page</td></tr>
+  <tr><td>6</td><td><strong>Daily Summary</strong></td><td>Today's sales, cash received, credit given, shop name, date</td><td>Daily book / end-of-day</td></tr>
+  <tr><td>7</td><td><strong>Dues Report</strong></td><td>Farmer count with dues, total outstanding, shop name</td><td>Dues report page</td></tr>
+  <tr><td>8</td><td><strong>Stock Report</strong></td><td>Period dates, shop name</td><td>Stock report page</td></tr>
+  <tr><td>9</td><td><strong>Farmer Items</strong></td><td>Products a farmer has purchased</td><td>Farmer detail page</td></tr>
+  <tr><td>10</td><td><strong>Expiry Report</strong></td><td>Expiring item count, shop name</td><td>Dashboard expiry widget</td></tr>
+</table></div>
+
+<!-- ───────────── METHOD B ───────────── -->
+<h2>Method B: API (Server-Side / Automated)</h2>
+
+<h3>Architecture</h3>
+<div class="card">
+  <h4>Edge Function: <code>send-bill-whatsapp</code></h4>
+  <ul>
+    <li><strong>Runtime:</strong> Deno (Supabase Edge Functions)</li>
+    <li><strong>API Provider:</strong> authkey.io WhatsApp Business API</li>
+    <li><strong>Endpoint:</strong> <code>requestjson.php</code></li>
+    <li><strong>Template:</strong> 8 body variables + 1 button variable (share link)</li>
+  </ul>
+</div>
+
+<h3>Environment Variables</h3>
+<div class="tw"><table>
+  <tr><th>Variable</th><th>Purpose</th></tr>
+  <tr><td><code>AUTHKEY_TOKEN</code></td><td>API authentication token for authkey.io</td></tr>
+  <tr><td><code>AUTHKEY_BILL_WID</code></td><td>WhatsApp template ID for bill messages</td></tr>
+</table></div>
+
+<h3>Trigger Flow</h3>
+<div class="flow-step"><span class="flow-num">1</span><div>Bill created via <code>useCheckout.ts</code> (online) or synced via <code>offlineBillStore.ts</code> (offline bills)</div></div>
+<div class="flow-step"><span class="flow-num">2</span><div>Edge function called <strong>fire-and-forget</strong>: <code>.catch(() =&gt; {})</code> &mdash; failure never blocks checkout</div></div>
+<div class="flow-step"><span class="flow-num">3</span><div>Edge function sends request to authkey.io <code>requestjson.php</code></div></div>
+<div class="flow-step"><span class="flow-num">4</span><div>authkey.io returns HTTP 200 = "accepted into queue" (not delivery confirmation)</div></div>
+
+<div class="callout callout-warn"><strong>CORS:</strong> The edge function uses <code>Access-Control-Allow-Origin: *</code>. This is a known security issue (see <a href="security.html">Security</a> page).</div>
+
+<!-- ───────────── STATUS TRACKING ───────────── -->
+<h2>Status Tracking</h2>
+
+<h3>Status Flow</h3>
+<pre>null &rarr; 'sending' &rarr; 'sent' | 'failed'</pre>
+
+<p>The <code>whatsapp_status</code> column on the <code>bills</code> table tracks delivery status:</p>
+<div class="tw"><table>
+  <tr><th>Status</th><th>Meaning</th><th>UI Treatment</th></tr>
+  <tr><td><code>null</code></td><td>Not yet attempted</td><td>No indicator</td></tr>
+  <tr><td><code>sending</code></td><td>Request in flight</td><td>Spinner / "Sending..."</td></tr>
+  <tr><td><code>sent</code></td><td>Accepted by authkey.io</td><td>Green checkmark</td></tr>
+  <tr><td><code>failed</code></td><td>Request failed or quota exceeded</td><td>"Retry" button shown</td></tr>
+</table></div>
+
+<h3>Polling</h3>
+<ul>
+  <li>After bill creation, status is polled <strong>every 1.5 seconds</strong></li>
+  <li>Maximum <strong>6 attempts</strong> (9 seconds total)</li>
+  <li>If still <code>sending</code> after 6 polls, UI stops polling (does not mark as failed)</li>
+</ul>
+
+<h3>Failure Details</h3>
+<p>The <code>failure_reason</code> column stores a human-readable reason for debugging. Failed sends show a "Retry" button in:</p>
+<ul>
+  <li><strong>CheckoutSuccessModal</strong> &mdash; immediately after bill creation</li>
+  <li><strong>BillDetailsPage</strong> &mdash; when viewing an existing bill</li>
+</ul>
+
+<!-- ───────────── QUOTA SYSTEM ───────────── -->
+<h2>Quota System</h2>
+
+<h3>Database Tables</h3>
+<div class="tw"><table>
+  <tr><th>Table</th><th>Purpose</th><th>Key Columns</th></tr>
+  <tr><td><code>whatsapp_addon_plans</code></td><td>Plan definitions</td><td>plan name, messages_per_month, price</td></tr>
+  <tr><td><code>whatsapp_message_usage</code></td><td>Monthly usage tracking</td><td>dealer_id, month_year, messages_sent</td></tr>
+</table></div>
+
+<h3>Validation Flow</h3>
+<div class="flow-step"><span class="flow-num">1</span><div>Before sending, <code>check_and_increment_whatsapp_usage</code> RPC is called</div></div>
+<div class="flow-step"><span class="flow-num">2</span><div>RPC atomically checks <code>messages_sent</code> against plan's <code>messages_per_month</code> and increments the counter if within quota</div></div>
+<div class="flow-step"><span class="flow-num">3</span><div>If quota exceeded: status set to <code>'failed'</code>, reason set to <code>'quota_exceeded'</code></div></div>
+
+<!-- ───────────── FAILURE HANDLING ───────────── -->
+<h2>Failure Handling</h2>
+
+<div class="callout callout-err"><strong>Important:</strong> There is no automatic retry queue. Failed messages require manual retry via the UI button.</div>
+
+<div class="tw"><table>
+  <tr><th>Scenario</th><th>Behavior</th></tr>
+  <tr><td>Edge function HTTP error</td><td>Checkout succeeds; bill status = <code>failed</code>; "Retry" button shown</td></tr>
+  <tr><td>authkey.io rejects request</td><td>Same as above</td></tr>
+  <tr><td>Quota exceeded</td><td>Status = <code>failed</code>, reason = <code>quota_exceeded</code></td></tr>
+  <tr><td>Network timeout</td><td>Checkout succeeds; status may stay <code>sending</code> indefinitely</td></tr>
+  <tr><td>authkey.io HTTP 200 but no delivery</td><td><strong>No way to detect.</strong> authkey.io does not provide delivery webhooks</td></tr>
+</table></div>
+
+<div class="callout callout-warn"><strong>Known limitation:</strong> authkey.io HTTP 200 means "accepted into queue" only. There is no delivery webhook, so AquaDealers cannot confirm actual delivery to the farmer's phone. The <code>sent</code> status means "sent to authkey.io", not "delivered to WhatsApp".</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

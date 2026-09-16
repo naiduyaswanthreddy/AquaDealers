@@ -1,0 +1,239 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Information Architecture — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/information-architecture.html">
+<meta name="description" content="AquaDealers information architecture — complete route map of 73 routes, navigation structure, feature gating, and code splitting strategy.">
+<meta property="og:title" content="Information Architecture — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers information architecture — complete route map of 73 routes, navigation structure, feature gating, and code splitting strategy.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Information Architecture — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers information architecture — complete route map of 73 routes, navigation structure, feature gating, and code splitting strategy.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Information Architecture</span>
+</div>
+<div class="page">
+
+<h1>Information Architecture</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span> Against source code</span>
+  <span>73 routes total</span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<!-- ═══════ Navigation ═══════ -->
+<h2 id="navigation">Navigation Structure</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <h4>Desktop: Fixed Left Sidebar</h4>
+    <ul>
+      <li><strong>Width:</strong> 240px (collapses to 76px on the billing page to maximize product selector space)</li>
+      <li><strong>Position:</strong> Fixed, full height</li>
+      <li><strong>Breakpoint:</strong> Shown at <code>&ge; 1024px</code> (lg)</li>
+      <li><strong>Items (11):</strong></li>
+    </ul>
+    <ol>
+      <li>Dashboard</li>
+      <li>Billing</li>
+      <li>Estimates</li>
+      <li>Stock &amp; Purchase</li>
+      <li>Farmers</li>
+      <li>Dues</li>
+      <li>Daily Book</li>
+      <li>Suppliers</li>
+      <li>Cashbook</li>
+      <li>Reports</li>
+      <li>More</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h4>Mobile: Bottom Navigation</h4>
+    <ul>
+      <li><strong>Position:</strong> Fixed bottom bar</li>
+      <li><strong>Breakpoint:</strong> Shown at <code>&lt; 1024px</code></li>
+      <li><strong>Sidebar:</strong> Hidden on mobile</li>
+      <li><strong>Items (5):</strong></li>
+    </ul>
+    <ol>
+      <li>Home (Dashboard)</li>
+      <li>Farmers</li>
+      <li>Bill (center FAB — floating action button)</li>
+      <li>Stock</li>
+      <li>More (opens drawer with remaining items)</li>
+    </ol>
+  </div>
+</div>
+
+<!-- ═══════ Routes ═══════ -->
+<h2 id="routes">Complete Route Map</h2>
+
+<h3 id="routes-public">Public Routes (16)</h3>
+<div class="tw">
+<table>
+  <thead><tr><th>Route</th><th>Page</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/</code></td><td>Landing Page</td><td>Marketing homepage</td></tr>
+    <tr><td><code>/login</code></td><td>Login</td><td>Dealer email/password login</td></tr>
+    <tr><td><code>/register</code></td><td>Register</td><td>New dealer registration</td></tr>
+    <tr><td><code>/forgot-password</code></td><td>Forgot Password</td><td>Password reset via email</td></tr>
+    <tr><td><code>/onboarding</code></td><td>Onboarding</td><td>4-step setup wizard (shop name, products, branch, preferences)</td></tr>
+    <tr><td><code>/features</code></td><td>Features</td><td>Feature showcase page</td></tr>
+    <tr><td><code>/pricing</code></td><td>Pricing</td><td>Plan comparison and pricing</td></tr>
+    <tr><td><code>/contact</code></td><td>Contact</td><td>Contact form</td></tr>
+    <tr><td><code>/terms</code></td><td>Terms of Service</td><td>Legal terms</td></tr>
+    <tr><td><code>/privacy</code></td><td>Privacy Policy</td><td>Privacy policy</td></tr>
+    <tr><td><code>/f/:token</code></td><td>Farmer Portal</td><td>Public farmer statement view (shared link)</td></tr>
+    <tr><td><code>/:shopSlug/:branchSlug/staff</code></td><td>Staff Login</td><td>Staff PIN entry for specific shop/branch</td></tr>
+    <tr><td><code>/:shopSlug</code></td><td>Shop Page</td><td>Public shop profile page</td></tr>
+    <tr><td><code>/aqua-feed-billing-software</code></td><td>SEO Landing</td><td>SEO page for feed billing keywords</td></tr>
+    <tr><td><code>/aqua-medicine-inventory-software</code></td><td>SEO Landing</td><td>SEO page for medicine inventory keywords</td></tr>
+    <tr><td><code>/aquaculture-dealer-management-software</code></td><td>SEO Landing</td><td>SEO page for dealer management keywords</td></tr>
+    <tr><td><code>/stock-management-for-aqua-dealers</code></td><td>SEO Landing</td><td>SEO page for stock management keywords</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="routes-admin">Admin Routes (13+)</h3>
+<div class="tw">
+<table>
+  <thead><tr><th>Route</th><th>Page</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/admin/login</code></td><td>Admin Login</td><td>Admin email/password login</td></tr>
+    <tr><td><code>/admin/dashboard</code></td><td>Admin Dashboard</td><td>Platform overview — active dealers, revenue, usage</td></tr>
+    <tr><td><code>/admin/dealers</code></td><td>Dealer List</td><td>All registered dealers with search and filters</td></tr>
+    <tr><td><code>/admin/dealers/:id</code></td><td>Dealer Detail</td><td>Individual dealer profile, subscription, usage metrics</td></tr>
+    <tr><td><code>/admin/subscriptions</code></td><td>Subscriptions</td><td>Subscription management and billing</td></tr>
+    <tr><td><code>/admin/addons</code></td><td>Addons</td><td>WhatsApp and other addon plan management</td></tr>
+    <tr><td><code>/admin/products</code></td><td>Product Catalog</td><td>Master product catalog management</td></tr>
+    <tr><td><code>/admin/support</code></td><td>Support Tickets</td><td>All support tickets from dealers</td></tr>
+    <tr><td><code>/admin/support/:id</code></td><td>Ticket Detail</td><td>Individual support ticket conversation</td></tr>
+    <tr><td><code>/admin/broadcast</code></td><td>Broadcasts</td><td>Announcement history</td></tr>
+    <tr><td><code>/admin/broadcast/new</code></td><td>New Broadcast</td><td>Compose and send announcements</td></tr>
+    <tr><td><code>/admin/reports</code></td><td>Admin Reports</td><td>Platform-level reports</td></tr>
+    <tr><td><code>/admin/reports/:section</code></td><td>Report Section</td><td>Individual report section</td></tr>
+    <tr><td><code>/admin/analytics</code></td><td>Analytics</td><td>Platform usage analytics</td></tr>
+    <tr><td><code>/admin/settings</code></td><td>Admin Settings</td><td>Platform settings</td></tr>
+    <tr><td><code>/admin/settings/:section</code></td><td>Settings Section</td><td>Individual settings section</td></tr>
+    <tr><td><code>/admin/audit</code></td><td>Audit Log</td><td>All admin actions with timestamps</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3 id="routes-protected">Protected Dealer Routes (44)</h3>
+<p>All routes below require authentication. Routes with a <span class="badge b-pri">Gate</span> badge require the dealer's plan to include that feature.</p>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Route</th><th>Page</th><th>Feature Gate</th></tr></thead>
+  <tbody>
+    <tr><td><code>/dashboard</code></td><td>Dashboard</td><td>&mdash;</td></tr>
+    <tr><td><code>/billing</code></td><td>New Bill</td><td>&mdash;</td></tr>
+    <tr><td><code>/billing/:id</code></td><td>Bill Detail</td><td>&mdash;</td></tr>
+    <tr><td><code>/billing/:id/edit</code></td><td>Edit Bill</td><td><span class="badge b-pri">billEditing</span></td></tr>
+    <tr><td><code>/billing/:id/return</code></td><td>Create Return</td><td><span class="badge b-pri">returns</span></td></tr>
+    <tr><td><code>/bill-history</code></td><td>Bill History</td><td>&mdash;</td></tr>
+    <tr><td><code>/estimates</code></td><td>Estimate List</td><td><span class="badge b-pri">estimates</span></td></tr>
+    <tr><td><code>/estimates/new</code></td><td>New Estimate</td><td><span class="badge b-pri">estimates</span></td></tr>
+    <tr><td><code>/estimates/:id</code></td><td>Estimate Detail</td><td><span class="badge b-pri">estimates</span></td></tr>
+    <tr><td><code>/farmers</code></td><td>Farmer List</td><td>&mdash;</td></tr>
+    <tr><td><code>/farmers/new</code></td><td>Add Farmer</td><td>&mdash;</td></tr>
+    <tr><td><code>/farmers/:id</code></td><td>Farmer Profile</td><td>&mdash;</td></tr>
+    <tr><td><code>/farmers/:id/ledger</code></td><td>Farmer Ledger</td><td>&mdash;</td></tr>
+    <tr><td><code>/farmers/:id/statement</code></td><td>Farmer Statement</td><td>&mdash;</td></tr>
+    <tr><td><code>/farmers/:id/discounts</code></td><td>Farmer Discounts</td><td>&mdash;</td></tr>
+    <tr><td><code>/farmers/:id/edit</code></td><td>Edit Farmer</td><td>&mdash;</td></tr>
+    <tr><td><code>/dues</code></td><td>Dues Overview</td><td>&mdash;</td></tr>
+    <tr><td><code>/payments</code></td><td>Payment History</td><td>&mdash;</td></tr>
+    <tr><td><code>/payments/collect</code></td><td>Collect Payment</td><td>&mdash;</td></tr>
+    <tr><td><code>/payments/collect/:farmerId</code></td><td>Collect from Farmer</td><td>&mdash;</td></tr>
+    <tr><td><code>/inventory</code></td><td>Inventory List</td><td>&mdash;</td></tr>
+    <tr><td><code>/inventory/:id</code></td><td>Inventory Detail</td><td>&mdash;</td></tr>
+    <tr><td><code>/inventory/purchase</code></td><td>New Purchase</td><td>&mdash;</td></tr>
+    <tr><td><code>/inventory/purchase/:id</code></td><td>Purchase Detail</td><td>&mdash;</td></tr>
+    <tr><td><code>/inventory/transfers</code></td><td>Stock Transfers</td><td><span class="badge b-pri">multiBranch</span></td></tr>
+    <tr><td><code>/inventory/transfers/new</code></td><td>New Transfer</td><td><span class="badge b-pri">multiBranch</span></td></tr>
+    <tr><td><code>/suppliers</code></td><td>Supplier List</td><td>&mdash;</td></tr>
+    <tr><td><code>/suppliers/new</code></td><td>Add Supplier</td><td>&mdash;</td></tr>
+    <tr><td><code>/suppliers/:id</code></td><td>Supplier Detail</td><td>&mdash;</td></tr>
+    <tr><td><code>/suppliers/:id/ledger</code></td><td>Supplier Ledger</td><td>&mdash;</td></tr>
+    <tr><td><code>/suppliers/:id/pay</code></td><td>Supplier Payment</td><td>&mdash;</td></tr>
+    <tr><td><code>/daily-book</code></td><td>Daily Book</td><td>&mdash;</td></tr>
+    <tr><td><code>/daily-book/:section</code></td><td>Daily Book Section</td><td>&mdash;</td></tr>
+    <tr><td><code>/cashbook</code></td><td>Cashbook</td><td><span class="badge b-pri">cashbook</span></td></tr>
+    <tr><td><code>/expenses</code></td><td>Expense List</td><td><span class="badge b-pri">expenses</span></td></tr>
+    <tr><td><code>/expenses/new</code></td><td>New Expense</td><td><span class="badge b-pri">expenses</span></td></tr>
+    <tr><td><code>/reports</code></td><td>Reports Hub</td><td>&mdash;</td></tr>
+    <tr><td><code>/reports/:section</code></td><td>Report Section</td><td>&mdash;</td></tr>
+    <tr><td><code>/settings</code></td><td>Settings</td><td>&mdash;</td></tr>
+    <tr><td><code>/settings/:section</code></td><td>Settings Section</td><td>&mdash;</td></tr>
+    <tr><td><code>/branches</code></td><td>Branch List</td><td><span class="badge b-pri">multiBranch</span></td></tr>
+    <tr><td><code>/branches/new</code></td><td>Add Branch</td><td><span class="badge b-pri">multiBranch</span></td></tr>
+    <tr><td><code>/staff</code></td><td>Staff List</td><td><span class="badge b-pri">staffAccess</span></td></tr>
+    <tr><td><code>/transactions</code></td><td>Transaction History</td><td>&mdash;</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ═══════ Feature Gating ═══════ -->
+<h2 id="gating">Feature Gating</h2>
+
+<p>The <code>FeatureGate</code> component wraps routes and page sections that require specific plan features. When a feature is not included in the dealer's plan, the gate renders a locked state with an upgrade prompt.</p>
+
+<div class="card">
+  <h4>All Feature Gate Keys</h4>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Gate Key</th><th>Feature</th><th>Affected Routes</th></tr></thead>
+    <tbody>
+      <tr><td><code>estimates</code></td><td>Estimate/Quotation creation</td><td><code>/estimates/*</code></td></tr>
+      <tr><td><code>billEditing</code></td><td>Edit existing bills</td><td><code>/billing/:id/edit</code></td></tr>
+      <tr><td><code>returns</code></td><td>Product returns processing</td><td><code>/billing/:id/return</code></td></tr>
+      <tr><td><code>multiBranch</code></td><td>Multi-branch operations</td><td><code>/branches/*</code>, <code>/inventory/transfers/*</code></td></tr>
+      <tr><td><code>staffAccess</code></td><td>Staff member management</td><td><code>/staff</code></td></tr>
+      <tr><td><code>cashbook</code></td><td>Cashbook feature</td><td><code>/cashbook</code></td></tr>
+      <tr><td><code>expenses</code></td><td>Expense tracking</td><td><code>/expenses/*</code></td></tr>
+      <tr><td><code>whatsapp</code></td><td>WhatsApp API integration</td><td>WhatsApp send buttons throughout app</td></tr>
+      <tr><td><code>gst</code></td><td>GST billing</td><td>GST columns on invoices, HSN codes</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ═══════ Code Splitting ═══════ -->
+<h2 id="splitting">Code Splitting</h2>
+
+<p>All 64 page components are loaded via <code>React.lazy()</code>. Each route produces its own JavaScript chunk, downloaded on demand when the user first navigates to that route. This keeps the initial bundle small and ensures users only download code for features they actually use.</p>
+
+<div class="card">
+  <h4>How It Works</h4>
+  <pre>// Example from App.tsx
+const Dashboard = lazy(() =&gt; import('./features/dashboard/pages/Dashboard'));
+const NewBill = lazy(() =&gt; import('./features/billing/pages/NewBill'));
+// ... 62 more lazy imports</pre>
+  <p>A <code>&lt;Suspense&gt;</code> boundary with a loading spinner wraps all routes. Prefetching is used on hover for commonly-navigated routes (e.g., Dashboard &rarr; Billing link prefetches the billing chunk).</p>
+</div>
+
+<div class="callout callout-info">
+  <strong>Note:</strong> The sidebar and bottom navigation components are <em>not</em> lazy-loaded — they are part of the main app shell and render immediately. Only page content within the <code>&lt;Outlet /&gt;</code> is code-split.
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

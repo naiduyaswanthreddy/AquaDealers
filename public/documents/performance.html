@@ -1,0 +1,164 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Performance — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/performance.html">
+<meta name="description" content="AquaDealers performance — React Query + IndexedDB caching, code splitting, known performance issues, and optimization recommendations.">
+<meta property="og:title" content="Performance — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers performance — React Query + IndexedDB caching, code splitting, known performance issues, and optimization recommendations.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Performance — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers performance — React Query + IndexedDB caching, code splitting, known performance issues, and optimization recommendations.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Performance</span>
+</div>
+<div class="page">
+
+<h1>Performance</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span></span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>Performance profile of AquaDealers: caching architecture, code splitting strategy, known bottlenecks, and what's working well.</p>
+
+<!-- ───────────── CACHING ───────────── -->
+<h2>Caching Strategy</h2>
+
+<div class="card">
+  <h4>Two-Layer Cache: TanStack React Query + IndexedDB</h4>
+  <p>All API data flows through TanStack React Query with persistence to IndexedDB via <code>idb-keyval</code>. This provides both in-memory caching and cross-session persistence.</p>
+</div>
+
+<div class="tw"><table>
+  <tr><th>Setting</th><th>Value</th><th>Effect</th></tr>
+  <tr><td><code>staleTime</code></td><td>5 minutes</td><td>Data considered fresh for 5 min; no refetch during this window</td></tr>
+  <tr><td><code>gcTime</code></td><td>24 hours</td><td>Unused cache entries garbage-collected after 24 hours</td></tr>
+  <tr><td><code>networkMode</code></td><td><code>offlineFirst</code></td><td>Serve from cache immediately, refetch in background when online</td></tr>
+  <tr><td>Persistence</td><td>IndexedDB (<code>idb-keyval</code>)</td><td>Cache survives browser restarts; restored on app launch</td></tr>
+</table></div>
+
+<div class="callout callout-ok"><strong>Offline support:</strong> The <code>offlineFirst</code> network mode combined with IndexedDB persistence means the app remains functional (read-only) even without network connectivity. Mutations queue and replay when online.</div>
+
+<!-- ───────────── CODE SPLITTING ───────────── -->
+<h2>Code Splitting</h2>
+
+<div class="grid-2">
+  <div class="stat">
+    <div class="stat-val">64</div>
+    <div class="stat-lbl">Lazy-loaded pages</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val">PWA</div>
+    <div class="stat-lbl">Service worker precaching</div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:1rem">
+  <h4>Implementation</h4>
+  <ul>
+    <li>All 64 page components use <code>React.lazy()</code> with dynamic imports</li>
+    <li>Each page becomes a separate chunk loaded on first navigation</li>
+    <li>PWA service worker precaches the app shell and critical assets</li>
+    <li>Non-critical chunks loaded on demand</li>
+  </ul>
+</div>
+
+<!-- ───────────── KNOWN ISSUES ───────────── -->
+<h2>Known Performance Issues</h2>
+
+<div class="tw"><table>
+  <tr><th>Severity</th><th>Issue</th><th>Location</th><th>Impact</th></tr>
+  <tr>
+    <td><span class="badge b-err">High</span></td>
+    <td><strong>Monthly report unbounded fetch</strong></td>
+    <td><code>/reports</code> page</td>
+    <td>10+ queries with no row limits or pagination. Fetches ALL bills, payments, and expenses for the selected period. Will cause timeouts and memory issues for high-volume dealers (1000+ bills/month).</td>
+  </tr>
+  <tr>
+    <td><span class="badge b-err">High</span></td>
+    <td><strong>getDuesSummary fetches 10,000 farmer rows</strong></td>
+    <td>Dues summary calculation</td>
+    <td>Pulls up to 10,000 farmer rows client-side to calculate dues summary. All data transferred over the network and processed in the browser. Should be a server-side aggregation.</td>
+  </tr>
+  <tr>
+    <td><span class="badge b-err">High</span></td>
+    <td><strong>Bill PDF html2canvas freezes mobile</strong></td>
+    <td>PDF generation (Bill details)</td>
+    <td><code>html2canvas</code> renders the bill DOM to a canvas element, which freezes the main thread for 3&ndash;5 seconds on mobile devices. UI is completely unresponsive during this time.</td>
+  </tr>
+  <tr>
+    <td><span class="badge b-warn">Medium</span></td>
+    <td><strong>Dashboard 15+ parallel queries on cold load</strong></td>
+    <td>Dashboard page</td>
+    <td>Cold load fires 15+ Supabase queries simultaneously. On slow connections, this can saturate the connection pool and cause waterfall delays. Subsequent loads are fast due to caching.</td>
+  </tr>
+  <tr>
+    <td><span class="badge b-warn">Medium</span></td>
+    <td><strong>35+ queries use select('*')</strong></td>
+    <td>Various service files</td>
+    <td>Selecting all columns transfers unnecessary data over the network. Impact compounds on large tables (bills, bill_items, inventory_lots). Should select only needed columns.</td>
+  </tr>
+  <tr>
+    <td><span class="badge b-warn">Medium</span></td>
+    <td><strong>Missing loading="lazy" on images</strong></td>
+    <td>Product and farmer images</td>
+    <td>All images load eagerly, increasing initial page weight. Particularly noticeable on product listing and farmer list pages with many entries.</td>
+  </tr>
+  <tr>
+    <td><span class="badge b-pri">Low</span></td>
+    <td><strong>Cashbook no pagination</strong></td>
+    <td>Cashbook page</td>
+    <td>Loads all cashbook entries for the selected period without pagination. Acceptable for typical usage but will degrade with very high transaction volumes.</td>
+  </tr>
+</table></div>
+
+<!-- ───────────── WHAT'S WORKING ───────────── -->
+<h2>What's Working Well</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <h4>React Query + IndexedDB</h4>
+    <p>Solid offline experience. Cache persists across sessions. Background refetches keep data fresh without blocking UI. <code>offlineFirst</code> mode means instant renders from cache.</p>
+  </div>
+  <div class="card">
+    <h4>All Routes Lazy-Loaded</h4>
+    <p>64 pages all use <code>React.lazy()</code>. Initial bundle is small. Only the current page's code is loaded. Combined with service worker precaching for fast subsequent visits.</p>
+  </div>
+  <div class="card">
+    <h4>No Realtime Subscriptions</h4>
+    <p>The app uses polling (via React Query's refetch intervals) instead of Supabase Realtime. This avoids WebSocket connection overhead and simplifies the data layer. Acceptable because AquaDealers is primarily single-user (one dealer, one device at a time).</p>
+  </div>
+  <div class="card">
+    <h4>Server-Side Search</h4>
+    <p>Large dataset searches (farmers, products) use server-side search RPCs rather than loading all data client-side. This keeps search responsive even with thousands of records.</p>
+  </div>
+  <div class="card">
+    <h4>Virtualized Dues Page</h4>
+    <p>The Dues page uses <code>useWindowVirtualizer</code> (TanStack Virtual) to render only visible farmer rows. Handles thousands of farmers without DOM bloat.</p>
+  </div>
+  <div class="card">
+    <h4>Daily Book Prefetching</h4>
+    <p>The Daily Book prefetches adjacent dates (previous day, next day) so date navigation feels instant. Data is ready before the user taps the arrow.</p>
+  </div>
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

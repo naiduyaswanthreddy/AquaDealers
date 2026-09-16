@@ -1,0 +1,211 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reports — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/reports.html">
+<meta name="description" content="Reports in AquaDealers — monthly finance pack, sales register, profit report, stock report, dues ageing, daily book, and farmer statements.">
+<meta property="og:title" content="Reports — AquaDealers Docs">
+<meta property="og:description" content="Reports in AquaDealers — monthly finance pack, sales register, profit report, stock report, dues ageing, daily book, and farmer statements.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Reports — AquaDealers Docs">
+<meta name="twitter:description" content="Reports in AquaDealers — monthly finance pack, sales register, profit report, stock report, dues ageing, daily book, and farmer statements.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Reports</span>
+</div>
+<div class="page">
+
+<h1>Reports</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span></span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>AquaDealers provides 9 report types covering finance, sales, inventory, and farmer ledgers. Most support date filtering and multiple export formats.</p>
+
+<!-- ───────────── FULL TABLE ───────────── -->
+<h2>Report Summary</h2>
+
+<div class="tw"><table>
+  <tr><th>Report</th><th>Route</th><th>Data Source</th><th>Date Filters</th><th>Export Formats</th></tr>
+  <tr>
+    <td><strong>Monthly Finance Pack</strong></td>
+    <td><code>/reports</code></td>
+    <td>Revenue, expenses, dues, settlements, health score</td>
+    <td>This Month, Last Month, Last 3/6 Months, Custom</td>
+    <td>CSV, Excel-compatible HTML, Summary PDF</td>
+  </tr>
+  <tr>
+    <td><strong>Sales Register</strong></td>
+    <td><code>/sales-register</code></td>
+    <td>Per-bill detail with line items</td>
+    <td>Date range</td>
+    <td>CSV, Excel</td>
+  </tr>
+  <tr>
+    <td><strong>Profit Report</strong></td>
+    <td><code>/profit-report</code></td>
+    <td>Revenue &minus; COGS &minus; Expenses (FIFO-based COGS)</td>
+    <td>Date range</td>
+    <td>CSV</td>
+  </tr>
+  <tr>
+    <td><strong>Stock Report</strong></td>
+    <td><code>/inventory/report</code></td>
+    <td>Current stock levels, valuation, low stock alerts</td>
+    <td>Point-in-time (current)</td>
+    <td>PDF, WhatsApp</td>
+  </tr>
+  <tr>
+    <td><strong>Settlements</strong></td>
+    <td><code>/reports/settlements</code></td>
+    <td>Settlement discount details per farmer</td>
+    <td>Date range</td>
+    <td>&mdash;</td>
+  </tr>
+  <tr>
+    <td><strong>Dues Report</strong></td>
+    <td><code>/dues</code></td>
+    <td>Outstanding amounts with ageing buckets</td>
+    <td>Point-in-time (current)</td>
+    <td>PDF, WhatsApp</td>
+  </tr>
+  <tr>
+    <td><strong>Daily Book</strong></td>
+    <td><code>/book/*</code></td>
+    <td>11 daily views (register-styled)</td>
+    <td>Single date (with prev/next navigation)</td>
+    <td>&mdash;</td>
+  </tr>
+  <tr>
+    <td><strong>Farmer Statement</strong></td>
+    <td><code>/farmers/:id</code></td>
+    <td>Ledger with running balance per farmer</td>
+    <td>Date range</td>
+    <td>PDF, WhatsApp, Public link</td>
+  </tr>
+  <tr>
+    <td><strong>Expiring Medicines</strong></td>
+    <td>Dashboard widget</td>
+    <td>Medicine lots approaching expiry</td>
+    <td>30 / 60 / 90 day windows</td>
+    <td>PDF, WhatsApp</td>
+  </tr>
+</table></div>
+
+<!-- ───────────── REPORT DETAILS ───────────── -->
+<h2>Report Details</h2>
+
+<h3>1. Monthly Finance Pack</h3>
+<div class="card">
+  <p><strong>Route:</strong> <code>/reports</code></p>
+  <p>The primary financial overview. Combines revenue, expenses, dues, settlements, and a dealer health score into a single dashboard-style report.</p>
+  <h4>Date Presets</h4>
+  <ul>
+    <li>This Month</li>
+    <li>Last Month</li>
+    <li>Last 3 Months</li>
+    <li>Last 6 Months</li>
+    <li>Custom date range</li>
+  </ul>
+  <h4>Export Options</h4>
+  <ul>
+    <li><strong>CSV:</strong> Raw data export</li>
+    <li><strong>Excel-compatible HTML:</strong> Formatted table that opens in Excel</li>
+    <li><strong>Summary PDF:</strong> Formatted overview</li>
+  </ul>
+</div>
+
+<div class="callout callout-err"><strong>Performance Warning:</strong> The Monthly Finance Pack fetches ALL data unbounded &mdash; 10+ queries with no row limits or pagination. This <strong>will break</strong> for high-volume dealers with thousands of bills. See <a href="performance.html">Performance</a> page for details.</div>
+
+<h3>2. Sales Register</h3>
+<div class="card">
+  <p><strong>Route:</strong> <code>/sales-register</code></p>
+  <p>Per-bill detail with individual line items. Paginated via RPC (server-side) for performance. Supports date range filtering.</p>
+  <p><strong>Export:</strong> CSV, Excel</p>
+</div>
+
+<h3>3. Profit Report</h3>
+<div class="card">
+  <p><strong>Route:</strong> <code>/profit-report</code></p>
+  <p>Calculates: <strong>Revenue &minus; COGS &minus; Expenses = Profit</strong></p>
+  <p>COGS is calculated using <strong>FIFO lot consumption</strong> &mdash; the cost of each sold item is traced back to the specific purchase lot it came from, consumed in first-in-first-out order. Paginated via RPC.</p>
+  <p><strong>Export:</strong> CSV</p>
+</div>
+
+<h3>4. Stock Report</h3>
+<div class="card">
+  <p><strong>Route:</strong> <code>/inventory/report</code></p>
+  <p>Current snapshot of all inventory: stock levels, total valuation, and low stock alerts. Point-in-time report (no date range).</p>
+  <p><strong>Export:</strong> PDF, WhatsApp (via wa.me link using Stock Report template)</p>
+</div>
+
+<h3>5. Settlements</h3>
+<div class="card">
+  <p><strong>Route:</strong> <code>/reports/settlements</code></p>
+  <p>Details of settlement discounts applied per farmer. Shows discount amount, original balance, and settled amount.</p>
+</div>
+
+<h3>6. Dues Report</h3>
+<div class="card">
+  <p><strong>Route:</strong> <code>/dues</code></p>
+  <p>Outstanding amounts across all farmers with <strong>ageing buckets</strong>:</p>
+  <div class="tw"><table>
+    <tr><th>Bucket</th><th>Age</th></tr>
+    <tr><td>Current</td><td>0&ndash;30 days</td></tr>
+    <tr><td>Overdue</td><td>31&ndash;60 days</td></tr>
+    <tr><td>Seriously Overdue</td><td>61&ndash;90 days</td></tr>
+    <tr><td>Critical</td><td>90+ days</td></tr>
+  </table></div>
+  <p><strong>Export:</strong> PDF, WhatsApp</p>
+  <p><strong>Performance note:</strong> Uses <code>useWindowVirtualizer</code> for row virtualization on large farmer lists.</p>
+</div>
+
+<h3>7. Daily Book</h3>
+<div class="card">
+  <p><strong>Route:</strong> <code>/book/*</code></p>
+  <p>Register-styled daily views with <strong>11 sub-views</strong> covering all daily transactions. Supports date navigation (previous/next day). Prefetches adjacent dates for fast navigation.</p>
+</div>
+
+<h3>8. Farmer Statement</h3>
+<div class="card">
+  <p><strong>Route:</strong> <code>/farmers/:id</code></p>
+  <p>Complete ledger for a single farmer showing all bills, payments, returns, and adjustments with a running balance column.</p>
+  <h4>Export Options</h4>
+  <ul>
+    <li><strong>PDF:</strong> Formatted statement</li>
+    <li><strong>WhatsApp:</strong> Statement summary via wa.me link</li>
+    <li><strong>Public Link:</strong> Shareable URL the farmer can view without login</li>
+  </ul>
+</div>
+
+<h3>9. Expiring Medicines</h3>
+<div class="card">
+  <p><strong>Route:</strong> Dashboard widget (not a standalone page)</p>
+  <p>Lists medicine lots approaching expiry within configurable windows:</p>
+  <ul>
+    <li><strong>30 days:</strong> Urgent &mdash; sell or return immediately</li>
+    <li><strong>60 days:</strong> Warning &mdash; prioritize sales</li>
+    <li><strong>90 days:</strong> Watch &mdash; plan ahead</li>
+  </ul>
+  <p><strong>Export:</strong> PDF, WhatsApp</p>
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

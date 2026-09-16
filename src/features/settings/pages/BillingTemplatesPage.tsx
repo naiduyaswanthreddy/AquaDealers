@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -42,6 +43,7 @@ const dummyStatement = {
 };
 
 export const BillingTemplatesPage: React.FC = () => {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const dealer = useAuthStore(s => s.user);
   const { getActiveBranchId, getTemplateSettings, updateTemplateSettings } = useBranchStore();
@@ -85,7 +87,7 @@ export const BillingTemplatesPage: React.FC = () => {
   if (!hasProPlus) {
     return (
       <PageShell>
-        <PageHeader title="Billing Templates" />
+        <PageHeader title="Billing Templates" onBack={() => navigate('/settings')} />
         <div className="flex flex-col items-center justify-center p-12 text-center bg-white rounded-xl shadow-sm border border-slate-200 h-[60vh]">
           <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
             <Lock className="w-8 h-8" />
@@ -112,10 +114,11 @@ export const BillingTemplatesPage: React.FC = () => {
 
   return (
     <PageShell width="wide">
-      <PageHeader 
+      <PageHeader
         eyebrow="Preferences"
         title="Settings"
         description="Manage your shop profile and preferences"
+        onBack={() => navigate('/settings')}
       />
       
       <div className="mb-8 flex overflow-x-auto hide-scrollbar items-center gap-1.5 p-1.5 bg-slate-100/60 backdrop-blur-sm rounded-xl border border-slate-200 shadow-sm">

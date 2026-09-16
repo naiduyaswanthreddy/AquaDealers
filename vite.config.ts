@@ -1,11 +1,34 @@
-import { defineConfig } from 'vite';
+import { defineConfig, Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
+import fs from 'fs';
 import { VitePWA } from 'vite-plugin-pwa';
+
+function serveStaticDocs(): Plugin {
+  return {
+    name: 'serve-static-docs',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url?.split('?')[0] || '';
+        if (!url.startsWith('/documents')) return next();
+        const filePath = path.join(__dirname, 'public', url.endsWith('/') ? url + 'index.html' : url);
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+          const ext = path.extname(filePath);
+          const types: Record<string, string> = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.svg': 'image/svg+xml' };
+          res.setHeader('Content-Type', (types[ext] || 'application/octet-stream') + '; charset=utf-8');
+          fs.createReadStream(filePath).pipe(res);
+          return;
+        }
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
+    serveStaticDocs(),
     react(),
     tailwindcss(),
     VitePWA({

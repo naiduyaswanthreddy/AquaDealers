@@ -1,0 +1,450 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Page Specifications — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/page-specifications.html">
+<meta name="description" content="Detailed page specifications for AquaDealers — Dashboard, New Bill, Farmer Ledger, Inventory, Reports, Daily Book, Settings, and 15+ major pages.">
+<meta property="og:title" content="Page Specifications — AquaDealers Docs">
+<meta property="og:description" content="Detailed page specifications for AquaDealers — Dashboard, New Bill, Farmer Ledger, Inventory, Reports, Daily Book, Settings, and 15+ major pages.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Page Specifications — AquaDealers Docs">
+<meta name="twitter:description" content="Detailed page specifications for AquaDealers — Dashboard, New Bill, Farmer Ledger, Inventory, Reports, Daily Book, Settings, and 15+ major pages.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Page Specifications</span>
+</div>
+<div class="page">
+
+<h1>Page Specifications</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span> Against source code</span>
+  <span>15 major pages documented</span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="dashboard">1. Dashboard</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/dashboard</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>dashboard: "visible"</code></td></tr>
+    <tr><td>Feature gate</td><td>None</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>KPI StatCards (5)</h3>
+<p>Displayed in a horizontal row at the top. Each card shows a primary metric value, label, and comparison to the previous period.</p>
+<ol>
+  <li><strong>Today's Sales</strong> — total billing amount for today</li>
+  <li><strong>Today's Collections</strong> — total payments received today</li>
+  <li><strong>Total Outstanding</strong> — sum of all farmer dues</li>
+  <li><strong>Bills Today</strong> — count of bills created today</li>
+  <li><strong>Active Farmers</strong> — farmers with at least one bill in the last 90 days</li>
+</ol>
+
+<h3>Toggleable Widgets (10)</h3>
+<p>Each widget can be shown/hidden via a gear icon. State persisted in dealer preferences.</p>
+<ol>
+  <li><strong>Sales Trend</strong> — line chart of daily sales for last 30 days (Recharts)</li>
+  <li><strong>Top Products</strong> — bar chart of top-selling products by quantity</li>
+  <li><strong>Overdue Farmers</strong> — list of farmers with overdue payments, sorted by amount</li>
+  <li><strong>Recent Bills</strong> — last 5 bills with farmer name, amount, status</li>
+  <li><strong>Low Stock</strong> — products below reorder point</li>
+  <li><strong>Expiring Stock</strong> — lots expiring within 30 days</li>
+  <li><strong>Payment Methods</strong> — pie chart breakdown (cash/UPI/bank/cheque)</li>
+  <li><strong>Branch Comparison</strong> — sales comparison across branches (if multi-branch)</li>
+  <li><strong>Monthly Summary</strong> — month-to-date sales, collections, purchases</li>
+  <li><strong>Quick Actions</strong> — shortcut buttons for common actions</li>
+</ol>
+
+<h3>Layout</h3>
+<ul>
+  <li><strong>Desktop:</strong> KPI cards in a single row. Widgets in a 2-column grid below.</li>
+  <li><strong>Mobile:</strong> KPI cards as a horizontal scroll. Widgets stack vertically.</li>
+</ul>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="new-bill">2. New Bill</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/bills/new</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>newBill: "visible"</code></td></tr>
+    <tr><td>Feature gate</td><td>None</td></tr>
+    <tr><td>Key component</td><td><code>ProductSelector</code> (~1,600 lines)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Mobile Layout (3 Steps)</h3>
+<div class="flow-step"><div class="flow-num">1</div><div><strong>FarmerSelector</strong> — Search/select farmer. QuickAddFarmerModal for inline creation.</div></div>
+<div class="flow-step"><div class="flow-num">2</div><div><strong>ProductSelector</strong> — Full-screen product grid. Search, category filter. Tap product to add. Quantity/rate inline editing. Running total shown.</div></div>
+<div class="flow-step"><div class="flow-num">3</div><div><strong>PaymentStep + ReviewStep</strong> — Payment amount, method. Bill summary. Signature canvas. Save button.</div></div>
+
+<h3>Desktop Layout (2 Panels)</h3>
+<ul>
+  <li><strong>Left panel:</strong> Farmer search at top, product catalog below (Feed/Medicine tabs). Grid card columns are responsive: 2 columns below 1300px wide, 3 columns at 1300px and up, so cards never get squeezed at moderate desktop widths.</li>
+  <li><strong>Right panel:</strong> Selected items table, then a collapsible <strong>Payment Details</strong> card, then the total/action bar.</li>
+</ul>
+
+<h4>Payment Details Card (Desktop)</h4>
+<p>Starts <strong>collapsed</strong> by default, showing just the paid/balance-due amount. Clicking the header (or its chevron) expands it into two columns: <strong>left</strong> — payment method, amount received, settlement discount (editable); <strong>right</strong> — a read-only <strong>Bill Summary</strong> (subtotal, item discount, GST, settlement discount, total, paid, balance due).</p>
+<p>The bottom-right action button reflects this state: while the card is collapsed it reads <strong>"Payment"</strong> and clicking it only opens the card (doesn't submit). Once the card is open — whether opened via that button or by clicking the header directly — the same button becomes <strong>"Review &amp; Sign"</strong> and proceeds to the review step.</p>
+
+<h3>Draft Tabs</h3>
+<p>Up to <strong>5 concurrent drafts</strong> stored in <code>sessionStorage</code>. Tab bar at top of billing page. Each draft preserves: selected farmer, added products with quantities, and payment info. Allows switching between partial bills when interrupted.</p>
+
+<h3>Keyboard Shortcuts</h3>
+<div class="tw">
+<table>
+  <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td><code>/</code></td><td>Focus product search</td></tr>
+    <tr><td><code>Esc</code></td><td>Close modal / clear search</td></tr>
+    <tr><td><code>Enter</code></td><td>Confirm quantity / advance step</td></tr>
+    <tr><td><code>Tab</code></td><td>Move between quantity fields</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Empty State</h3>
+<p>If no products are configured yet, shows a prompt to "Add your first product" with a link to inventory setup.</p>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="farmer-ledger">3. Farmer Ledger</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/farmers/:id/ledger</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>farmerList: "visible"</code></td></tr>
+    <tr><td>Data source</td><td>Paginated RPC with infinite scroll</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Tabs</h3>
+<ul>
+  <li><strong>Ledger</strong> — Chronological list of all transactions (bills, payments, returns, adjustments). Infinite scroll with paginated RPC. Each entry shows date, type, amount, running balance.</li>
+  <li><strong>Items</strong> — Products purchased by this farmer with quantities and totals.</li>
+  <li><strong>Discounts</strong> — Per-product discount rates configured for this farmer.</li>
+</ul>
+
+<h3>Actions</h3>
+<ul>
+  <li>Collect Payment (opens payment flow with farmer pre-selected)</li>
+  <li>Create Bill (opens billing with farmer pre-selected)</li>
+  <li>Share Statement (WhatsApp or PDF)</li>
+  <li>View Statement (formatted printable view)</li>
+  <li>Edit Farmer (profile details)</li>
+</ul>
+
+<h3>Layout</h3>
+<ul>
+  <li><strong>Desktop:</strong> Farmer summary card at top (name, phone, outstanding, credit limit). Tabs below with full-width table.</li>
+  <li><strong>Mobile:</strong> Farmer summary as compact header. Tabs as swipeable. Ledger entries as cards instead of table rows.</li>
+</ul>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="farmer-list">4. Farmer List</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/farmers</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>farmerList: "visible"</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Searchable, filterable list of all farmers. Search by name or phone number. Filter by: outstanding balance range, last bill date, active/inactive status. Sort by: name, outstanding amount, last activity. Pagination: server-side with page size of 20.</p>
+
+<p><strong>Empty state:</strong> "No farmers yet. Add your first farmer to get started" with an "Add Farmer" button.</p>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="inventory">5. Inventory</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/inventory</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>inventory: "visible"</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Product list with current stock levels. Each row shows: product name, category, current stock quantity, unit, latest rate, total stock value. Search by product name. Filter by category, stock status (in stock, low stock, out of stock). Color-coded stock indicators: green (adequate), yellow (low), red (out of stock).</p>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="inventory-detail">6. Inventory Detail</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/inventory/:id</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>inventory: "visible"</code></td></tr>
+    <tr><td>Component size</td><td>1,444 lines</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Sections</h3>
+<ul>
+  <li><strong>Product Summary:</strong> Name, category, current stock, average cost, latest selling rate, MRP</li>
+  <li><strong>Active Lots:</strong> Table of FIFO lots — purchase date, quantity remaining, cost per unit, expiry date, supplier. Sorted oldest first.</li>
+  <li><strong>Movement History:</strong> All stock movements for this product — purchases, sales, returns, transfers, adjustments. Filterable by type and date range.</li>
+  <li><strong>Rate Adjustment:</strong> Change selling rate per lot with reason tracking. Creates audit entry in movements.</li>
+</ul>
+
+<h3>Actions</h3>
+<ul>
+  <li>Record Purchase (opens purchase form pre-filled with this product)</li>
+  <li>Adjust Rate (change selling rate with reason)</li>
+  <li>Stock Adjustment (manual correction with reason)</li>
+  <li>View by Branch (if multi-branch, toggle stock view per branch)</li>
+</ul>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="reports">7. Reports</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/reports</code> and <code>/reports/:section</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>reports: "visible"</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Date Presets</h3>
+<p>All reports support: Today, Yesterday, This Week, This Month, Last Month, This Quarter, This Year, Custom Range.</p>
+
+<h3>Report Sections</h3>
+<ul>
+  <li><strong>Sales Register</strong> — Every bill with line items, grouped by date</li>
+  <li><strong>Profit Report</strong> — Revenue minus cost of goods sold, per product</li>
+  <li><strong>Stock Report</strong> — Current stock levels, valuation, expiring items</li>
+  <li><strong>Dues Report</strong> — Farmer-wise outstanding with ageing</li>
+  <li><strong>Collection Report</strong> — Payments received, grouped by method</li>
+  <li><strong>Purchase Report</strong> — Supplier-wise purchases</li>
+  <li><strong>GST Report</strong> — Tax breakdown for filing</li>
+</ul>
+
+<h3>Export Formats</h3>
+<p>PDF (via jsPDF) and Excel-compatible CSV. Reports open in a printable view for direct browser printing.</p>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="daily-book">8. Daily Book</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/daily-book</code> and <code>/daily-book/:section</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer</td></tr>
+    <tr><td>Style</td><td>Register-style daily view</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Sub-pages (11)</h3>
+<ol>
+  <li><strong>Summary</strong> — Day overview with totals for all categories</li>
+  <li><strong>Bills</strong> — All bills created on the selected date</li>
+  <li><strong>Payments</strong> — All payments received</li>
+  <li><strong>Purchases</strong> — All stock purchases</li>
+  <li><strong>Supplier Payments</strong> — Payments made to suppliers</li>
+  <li><strong>Returns</strong> — All returns processed</li>
+  <li><strong>Expenses</strong> — All expenses recorded</li>
+  <li><strong>Cash Entries</strong> — Manual cash book entries</li>
+  <li><strong>Stock Transfers</strong> — Inter-branch transfers</li>
+  <li><strong>Adjustments</strong> — Stock and rate adjustments</li>
+  <li><strong>Cancellations</strong> — Cancelled bills</li>
+</ol>
+
+<h3>Key Behaviors</h3>
+<ul>
+  <li><strong>Date navigation:</strong> Left/right arrows to move between days. Date picker for jumping to specific date.</li>
+  <li><strong>Prefetching:</strong> Adjacent days (yesterday and tomorrow) are prefetched for instant navigation.</li>
+  <li><strong>Empty state:</strong> "No activity on this date" with option to navigate to nearest active date.</li>
+</ul>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="settings">9. Settings</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/settings</code> and <code>/settings/:section</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Settings Sections</h3>
+<ul>
+  <li><strong>Shop Profile</strong> — Shop name, address, phone, logo, GSTIN, PAN</li>
+  <li><strong>Lock Screen</strong> — Auto-lock timeout, PIN configuration</li>
+  <li><strong>Billing Templates</strong> — Choose from 5 invoice designs (TemplateOne through TemplateFive). Configure which columns to show: HSN code, rate, discount, GST breakdown, MRP, expiry date, signature area. Branch-specific template selection.</li>
+  <li><strong>Feature Badges</strong> — Visual indicators for enabled features on the plan</li>
+  <li><strong>WhatsApp</strong> — Configure authkey.io API key, manage templates, view message quota</li>
+  <li><strong>Branches</strong> — Add/edit branches (if multi-branch enabled)</li>
+  <li><strong>Staff</strong> — Manage staff members (if staff access enabled)</li>
+  <li><strong>Subscription</strong> — View current plan, upgrade, manage billing</li>
+</ul>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="dues">10. Dues</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/dues</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Ageing Buckets</h3>
+<p>Farmers grouped by how long their dues have been outstanding:</p>
+<ul>
+  <li><strong>0&ndash;30 days</strong> — Current dues (normal)</li>
+  <li><strong>31&ndash;60 days</strong> — Overdue (yellow)</li>
+  <li><strong>61&ndash;90 days</strong> — Significantly overdue (orange)</li>
+  <li><strong>90+ days</strong> — Critical (red)</li>
+</ul>
+
+<h3>Key Behaviors</h3>
+<ul>
+  <li><strong>Virtualized list:</strong> Uses windowed rendering for performance with 500+ farmers</li>
+  <li>Click farmer to open ledger</li>
+  <li>"Collect Payment" action per farmer row</li>
+  <li>"Send Reminder" via WhatsApp per farmer</li>
+  <li>Sort by: amount, name, age of oldest due</li>
+  <li>Summary card at top: total outstanding, number of farmers with dues</li>
+</ul>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="cashbook">11. Cashbook</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/cashbook</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>cashbook: "visible"</code></td></tr>
+    <tr><td>Feature gate</td><td><span class="badge b-pri">cashbook</span></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Daily cash register view. Shows opening balance, all cash movements (sales, payments received, purchases, expenses, manual entries), and closing balance. Date navigation with prefetching. Manual entry option for corrections. Linked to all bill and payment transactions via cash_book table.</p>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="expenses">12. Expenses</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/expenses</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>expenses: "visible"</code></td></tr>
+    <tr><td>Feature gate</td><td><span class="badge b-pri">expenses</span></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Expense tracking with categories (rent, transport, salary, utilities, misc). Each expense: date, amount, category, description, payment method. List view with date filters and category filters. Monthly summary chart. Totals by category. Creates entries in cash_book when payment method is cash.</p>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="suppliers">13. Suppliers</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Routes</td><td><code>/suppliers</code>, <code>/suppliers/:id</code>, <code>/suppliers/:id/ledger</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>suppliers: "visible"</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Supplier List</h3>
+<p>All suppliers with name, phone, outstanding balance. Search and sort.</p>
+
+<h3>Supplier Detail / Ledger</h3>
+<p>Similar to Farmer Ledger but for supplier transactions: purchases, payments made. Running balance. Actions: Record Purchase, Make Payment, View Statement.</p>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="bill-history">14. Bill History</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/bill-history</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>billHistory: "visible"</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Searchable list of all bills. Search by bill number, farmer name. Filter by: date range, status (active, cancelled, edited), payment status (paid, partial, unpaid), branch. Sort by date, amount, farmer name. Pagination with server-side cursor. Each row: bill number, date, farmer, amount, paid, status badges.</p>
+
+<!-- ════════════════════════════════════════ -->
+<h2 id="bill-detail">15. Bill Detail</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Route</td><td><code>/billing/:id</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>billHistory: "visible"</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Display</h3>
+<p>Renders the bill using the configured invoice template (TemplateOne through TemplateFive). Shows: bill number, date, farmer details, line items with quantities/rates/amounts, subtotal, discounts, GST breakdown (if applicable), total, payment received, balance due, signature (if captured).</p>
+
+<h3>Actions</h3>
+<ul>
+  <li><strong>Edit</strong> — Opens <code>/billing/:id/edit</code>. Requires <code>billEditing</code> feature gate.</li>
+  <li><strong>Cancel</strong> — Same-day only, unpaid only. Confirmation dialog. Calls <code>cancel_bill_v1</code> RPC.</li>
+  <li><strong>Return</strong> — Opens <code>/billing/:id/return</code>. Requires <code>returns</code> feature gate.</li>
+  <li><strong>Share via WhatsApp</strong> — Sends bill notification via authkey.io or opens wa.me link.</li>
+  <li><strong>Download PDF</strong> — Renders bill to PDF via html2canvas (DOM &rarr; canvas &rarr; PNG &rarr; PDF).</li>
+  <li><strong>Print</strong> — Opens browser print dialog with the invoice template.</li>
+  <li><strong>Collect Payment</strong> — If balance due &gt; 0, opens payment flow pre-filled with this bill's farmer and remaining amount.</li>
+</ul>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

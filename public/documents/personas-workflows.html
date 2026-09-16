@@ -1,0 +1,219 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Personas &amp; Workflows — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/personas-workflows.html">
+<meta name="description" content="User personas and workflows in AquaDealers — Dealer, Staff, and Admin roles with permissions, authentication methods, and step-by-step daily workflows.">
+<meta property="og:title" content="Personas &amp; Workflows — AquaDealers Docs">
+<meta property="og:description" content="User personas and workflows in AquaDealers — Dealer, Staff, and Admin roles with permissions, authentication methods, and step-by-step daily workflows.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Personas &amp; Workflows — AquaDealers Docs">
+<meta name="twitter:description" content="User personas and workflows in AquaDealers — Dealer, Staff, and Admin roles with permissions, authentication methods, and step-by-step daily workflows.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Personas &amp; Workflows</span>
+</div>
+<div class="page">
+
+<h1>Personas &amp; Workflows</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span> Against source code</span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<!-- ═══════════ DEALER ═══════════ -->
+<h2 id="dealer">Dealer (Owner)</h2>
+
+<div class="card">
+  <h4>Authentication</h4>
+  <ul>
+    <li><strong>Method:</strong> Supabase Auth — email + password</li>
+    <li><strong>Session:</strong> JWT-based, managed by Supabase client SDK</li>
+    <li><strong>Entry point:</strong> <code>/login</code></li>
+    <li><strong>Registration:</strong> <code>/register</code> &rarr; 4-step onboarding wizard</li>
+    <li><strong>Password reset:</strong> <code>/forgot-password</code> via Supabase Auth email</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>Access Level</h4>
+  <p>Full access to all features. The dealer is the account owner and has unrestricted access to:</p>
+  <ul>
+    <li>All billing, inventory, and financial features</li>
+    <li>Staff management — create, edit, disable staff accounts</li>
+    <li>Branch management — create branches, assign staff</li>
+    <li>Profit and cost data (hidden from staff by default)</li>
+    <li>Settings — shop profile, billing templates, integrations</li>
+    <li>Subscription management</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>Daily Activity Profile</h4>
+  <ul>
+    <li><strong>Bills per day:</strong> 5&ndash;20</li>
+    <li><strong>Payments collected per day:</strong> 2&ndash;10</li>
+    <li><strong>Purchases per week:</strong> 2&ndash;5</li>
+    <li><strong>Primary device:</strong> Mobile (70%+ of sessions)</li>
+  </ul>
+</div>
+
+<!-- ═══════════ STAFF ═══════════ -->
+<h2 id="staff">Staff Member</h2>
+
+<div class="card">
+  <h4>Authentication</h4>
+  <ul>
+    <li><strong>Method:</strong> PIN-based login (4+ digit PIN)</li>
+    <li><strong>PIN storage:</strong> bcrypt hashed via <code>trg_staff_hash_pin</code> trigger</li>
+    <li><strong>Session:</strong> <code>staff_sessions</code> table with SHA-256 hashed tokens</li>
+    <li><strong>Entry point:</strong> <code>/:shopSlug/:branchSlug/staff</code></li>
+    <li><strong>Context RPC:</strong> <code>staff_portal_context_v2</code> — resolves shop/branch from URL slugs</li>
+    <li><strong>Rate limiting:</strong> <code>staff_login_attempts</code> table tracks failed attempts</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>Branch Scoping</h4>
+  <p>Each staff member is assigned to one or more branches via <code>branch_ids UUID[]</code> on the <code>staff_members</code> table. Staff can only see and create data within their assigned branches. The branch context is set on login and cannot be changed without re-authenticating.</p>
+</div>
+
+<div class="card">
+  <h4>Permissions (JSONB)</h4>
+  <p>Staff permissions are stored as a JSONB object on <code>staff_members.permissions</code>. Each key maps to a module and the value is either <code>"visible"</code> or <code>"hidden"</code>.</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Permission Key</th><th>Module</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>dashboard</code></td><td>Dashboard</td><td>visible</td></tr>
+      <tr><td><code>billHistory</code></td><td>Bill History</td><td>visible</td></tr>
+      <tr><td><code>newBill</code></td><td>Create New Bill</td><td>visible</td></tr>
+      <tr><td><code>farmerList</code></td><td>Farmer List</td><td>visible</td></tr>
+      <tr><td><code>addFarmer</code></td><td>Add New Farmer</td><td>visible</td></tr>
+      <tr><td><code>inventory</code></td><td>Inventory / Stock</td><td>visible</td></tr>
+      <tr><td><code>suppliers</code></td><td>Suppliers</td><td>hidden</td></tr>
+      <tr><td><code>cashbook</code></td><td>Cashbook</td><td>hidden</td></tr>
+      <tr><td><code>expenses</code></td><td>Expenses</td><td>hidden</td></tr>
+      <tr><td><code>reports</code></td><td>Reports</td><td>hidden</td></tr>
+      <tr><td><code>settings</code></td><td>Settings</td><td>hidden</td></tr>
+      <tr><td><code>branches</code></td><td>Branch Management</td><td>hidden</td></tr>
+      <tr><td><code>staffManagement</code></td><td>Staff Management</td><td>hidden</td></tr>
+      <tr><td><code>transactions</code></td><td>Transaction History</td><td>hidden</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout callout-warn">
+    <strong>Important:</strong> Permissions are enforced <strong>client-side only</strong>. The RLS (Row Level Security) policies grant full data access for the staff member's dealer. A technically savvy staff member could bypass these restrictions via direct API calls.
+  </div>
+</div>
+
+<!-- ═══════════ ADMIN ═══════════ -->
+<h2 id="admin">Platform Admin</h2>
+
+<div class="card">
+  <h4>Authentication</h4>
+  <ul>
+    <li><strong>Method:</strong> Separate auth system (not Supabase Auth)</li>
+    <li><strong>Session:</strong> <code>admin_sessions</code> table with SHA-256 hashed tokens</li>
+    <li><strong>Entry point:</strong> <code>/admin/login</code></li>
+    <li><strong>Layout:</strong> Separate <code>AdminLayout</code> component, completely isolated from dealer UI</li>
+    <li><strong>Rate limiting:</strong> None on admin login</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>Roles</h4>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Role</th><th>Capabilities</th></tr></thead>
+    <tbody>
+      <tr><td><code>superadmin</code></td><td>Full platform access — manage all dealers, subscriptions, product catalog, broadcasts, audit logs, admin users</td></tr>
+      <tr><td><code>admin</code></td><td>Manage dealers, subscriptions, support tickets, product catalog</td></tr>
+      <tr><td><code>support</code></td><td>View dealers (read-only), manage support tickets, impersonate dealers (read-only)</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h4>Admin Capabilities</h4>
+  <ul>
+    <li><strong>Dealer management:</strong> View all registered dealers, their subscription status, usage metrics</li>
+    <li><strong>Subscription management:</strong> Extend trials, upgrade/downgrade plans, manage billing</li>
+    <li><strong>Impersonation:</strong> Read-only view of any dealer's account for debugging and support</li>
+    <li><strong>Product catalog:</strong> Manage the master product catalog that dealers can import from</li>
+    <li><strong>Broadcasts:</strong> Send announcements to all dealers or filtered segments</li>
+    <li><strong>Audit logs:</strong> View all admin actions with timestamps and actor</li>
+    <li><strong>WhatsApp addon plans:</strong> Manage WhatsApp message quota plans and pricing</li>
+  </ul>
+</div>
+
+<!-- ═══════════ WORKFLOWS ═══════════ -->
+<h2 id="workflows">Key Workflows</h2>
+
+<h3 id="wf-bill">1. Creating a Bill</h3>
+<p>The core workflow. On mobile it's a 3-step wizard; on desktop it's a 2-panel layout. Both converge on the same save logic.</p>
+
+<div class="flow-step"><div class="flow-num">1</div><div><strong>Select Farmer</strong> — Search by name or phone. The <code>FarmerSelector</code> component shows recent farmers first, with a search field. If the farmer doesn't exist, <code>QuickAddFarmerModal</code> allows inline creation without leaving the bill flow.</div></div>
+<div class="flow-step"><div class="flow-num">2</div><div><strong>Select Products</strong> — The <code>ProductSelector</code> component (1,519 lines) shows the dealer's product catalog. Search, filter by category. For each product: enter quantity, confirm rate (auto-filled from latest lot), apply per-farmer discount if configured. Products are added to the bill items list. Up to 5 concurrent draft tabs in <code>sessionStorage</code> for switching between partial bills.</div></div>
+<div class="flow-step"><div class="flow-num">3</div><div><strong>Payment &amp; Review</strong> — The <code>PaymentStep</code> shows the bill total. Enter payment amount (can be 0 for full credit, partial, or full). Select payment method (cash, UPI, bank transfer, cheque). The <code>ReviewStep</code> shows a summary. Optional: capture signature on canvas.</div></div>
+<div class="flow-step"><div class="flow-num">4</div><div><strong>Save</strong> — Calls <code>create_bill_v2</code> RPC. This is an atomic PostgreSQL function that in a single transaction: creates the bill record, inserts bill items, deducts stock from FIFO lots, records payment (if any), allocates payment to the bill, creates cash book entry, updates farmer due balance. On success, the user is shown the bill detail with options to share via WhatsApp or download PDF.</div></div>
+
+<h3 id="wf-payment">2. Collecting a Payment</h3>
+
+<div class="flow-step"><div class="flow-num">1</div><div><strong>Select Farmer</strong> — Navigate to farmer's ledger or use the "Collect Payment" action from the dues page.</div></div>
+<div class="flow-step"><div class="flow-num">2</div><div><strong>Enter Amount</strong> — Enter the payment amount. The farmer's current outstanding balance is displayed for reference.</div></div>
+<div class="flow-step"><div class="flow-num">3</div><div><strong>Choose Method</strong> — Select payment method: Cash, UPI, Bank Transfer, or Cheque.</div></div>
+<div class="flow-step"><div class="flow-num">4</div><div><strong>Allocate to Bills</strong> — The system allocates the payment to the farmer's oldest unpaid bills first (FIFO). The user can also manually allocate to specific bills. Settlement discounts can be applied during allocation.</div></div>
+<div class="flow-step"><div class="flow-num">5</div><div><strong>Confirm</strong> — Payment is recorded, farmer due balance is updated, cash book entry is created. A payment receipt can be shared via WhatsApp.</div></div>
+
+<h3 id="wf-morning">3. Morning Routine</h3>
+
+<div class="flow-step"><div class="flow-num">1</div><div><strong>Check Dashboard</strong> — Review 5 KPI cards: today's sales, collections, outstanding dues, number of bills, active farmers. Scan the 10 toggleable widgets for alerts and trends.</div></div>
+<div class="flow-step"><div class="flow-num">2</div><div><strong>Review Dues</strong> — Open the Dues page to see farmers sorted by outstanding amount. Focus on the ageing buckets — 90+ day dues need immediate attention.</div></div>
+<div class="flow-step"><div class="flow-num">3</div><div><strong>Plan Collections</strong> — Identify farmers to visit or call. Use WhatsApp due reminders to send automated reminders to farmers with overdue balances.</div></div>
+
+<h3 id="wf-eod">4. End of Day</h3>
+
+<div class="flow-step"><div class="flow-num">1</div><div><strong>Review Daily Book</strong> — Navigate to the Daily Book page and review all transactions for the day: bills created, payments received, purchases made, expenses recorded.</div></div>
+<div class="flow-step"><div class="flow-num">2</div><div><strong>Close Cash</strong> — Check the Cashbook for today. Verify the closing balance matches the physical cash. Record any discrepancies.</div></div>
+<div class="flow-step"><div class="flow-num">3</div><div><strong>Reconcile</strong> — Confirm all payments are recorded, all bills are accounted for. The Daily Book's summary view shows totals for each category.</div></div>
+
+<!-- ═══════════ COMPARISON ═══════════ -->
+<h2 id="comparison">Persona Comparison Matrix</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Dimension</th><th>Dealer (Owner)</th><th>Staff Member</th><th>Platform Admin</th></tr></thead>
+  <tbody>
+    <tr><td>Auth method</td><td>Email + password (Supabase Auth)</td><td>4+ digit PIN (bcrypt)</td><td>Email + password (custom)</td></tr>
+    <tr><td>Session storage</td><td>JWT (Supabase SDK)</td><td><code>staff_sessions</code> table</td><td><code>admin_sessions</code> table</td></tr>
+    <tr><td>Entry URL</td><td><code>/login</code></td><td><code>/:shopSlug/:branchSlug/staff</code></td><td><code>/admin/login</code></td></tr>
+    <tr><td>Data scope</td><td>All own dealer data</td><td>Assigned branch(es) only</td><td>All dealers (platform-wide)</td></tr>
+    <tr><td>Rate limiting</td><td>Supabase default</td><td><code>staff_login_attempts</code></td><td>None</td></tr>
+    <tr><td>Permission model</td><td>Full access</td><td>14-key JSONB (client-side)</td><td>Role-based (superadmin/admin/support)</td></tr>
+    <tr><td>Can create bills</td><td class="perm-y">Yes</td><td class="perm-y">Yes (if <code>newBill</code> = visible)</td><td class="perm-n">No</td></tr>
+    <tr><td>Can manage staff</td><td class="perm-y">Yes</td><td class="perm-n">No (unless granted)</td><td class="perm-n">No</td></tr>
+    <tr><td>Can view profit</td><td class="perm-y">Yes</td><td class="perm-n">No</td><td class="perm-y">Yes (impersonation)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

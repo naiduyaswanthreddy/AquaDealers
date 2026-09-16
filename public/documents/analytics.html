@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analytics — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/analytics.html">
+<meta name="description" content="Analytics in AquaDealers — PostHog event tracking with autocapture disabled, Sentry error monitoring with session replays.">
+<meta property="og:title" content="Analytics — AquaDealers Docs">
+<meta property="og:description" content="Analytics in AquaDealers — PostHog event tracking with autocapture disabled, Sentry error monitoring with session replays.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Analytics — AquaDealers Docs">
+<meta name="twitter:description" content="Analytics in AquaDealers — PostHog event tracking with autocapture disabled, Sentry error monitoring with session replays.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Analytics</span>
+</div>
+<div class="page">
+
+<h1>Analytics</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span> Against source code</span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>AquaDealers uses <strong>PostHog</strong> for product analytics and <strong>Sentry</strong> for error tracking and session replays. Both are initialized in <code>src/lib/telemetry.ts</code> via the <code>initTelemetry()</code> function, called at app startup in <code>src/main.tsx</code>.</p>
+
+<div class="callout callout-info"><strong>Environment variables required:</strong> <code>VITE_POSTHOG_KEY</code>, <code>VITE_POSTHOG_HOST</code> (optional, defaults to <code>https://app.posthog.com</code>), and <code>VITE_SENTRY_DSN</code>. If any are missing, the respective SDK silently skips initialization with a console warning.</div>
+
+<!-- ───────────── POSTHOG ───────────── -->
+<h2>PostHog (Product Analytics)</h2>
+
+<div class="card">
+  <h4>Configuration</h4>
+  <div class="tw"><table>
+    <tr><th>Setting</th><th>Value</th><th>Notes</th></tr>
+    <tr><td>Package</td><td><code>posthog-js ^1.376.0</code></td><td>Client-side JS SDK</td></tr>
+    <tr><td>API Key</td><td><code>VITE_POSTHOG_KEY</code></td><td>Environment variable</td></tr>
+    <tr><td>API Host</td><td><code>VITE_POSTHOG_HOST</code></td><td>Defaults to <code>https://app.posthog.com</code> if unset</td></tr>
+    <tr><td>Autocapture</td><td><code>false</code></td><td>Disabled for privacy &mdash; no automatic click/pageview tracking</td></tr>
+    <tr><td>Capture mode</td><td>Manual only</td><td>Explicit <code>trackEvent()</code> calls required</td></tr>
+  </table></div>
+</div>
+
+<h3>Exported API</h3>
+<p>Two functions are exported from <code>src/lib/telemetry.ts</code>:</p>
+
+<div class="tw"><table>
+  <tr><th>Function</th><th>Signature</th><th>Purpose</th></tr>
+  <tr>
+    <td><code>trackEvent</code></td>
+    <td><code>(name: string, properties?: object)</code></td>
+    <td>Capture a named event with optional properties</td>
+  </tr>
+  <tr>
+    <td><code>identifyUser</code></td>
+    <td><code>(userId: string, traits?: object)</code></td>
+    <td>Associate the current session with a dealer ID</td>
+  </tr>
+</table></div>
+
+<div class="callout callout-err"><strong>Not instrumented:</strong> Neither <code>trackEvent</code> nor <code>identifyUser</code> are called anywhere in the application code. The hooks are defined and exported, but zero feature files import or invoke them. PostHog currently receives no events from AquaDealers. This means product analytics is effectively non-functional.</div>
+
+<h3>Privacy Design</h3>
+<ul>
+  <li><strong>Autocapture disabled:</strong> PostHog does not capture clicks, page views, or form submissions automatically</li>
+  <li><strong>Manual-only:</strong> When instrumented, only explicitly tracked events would be sent</li>
+  <li><strong>User identification:</strong> Designed to use dealer UUID, not personal information</li>
+</ul>
+
+<!-- ───────────── SENTRY ───────────── -->
+<h2>Sentry (Error Tracking)</h2>
+
+<div class="card">
+  <h4>Configuration</h4>
+  <div class="tw"><table>
+    <tr><th>Setting</th><th>Value</th><th>Notes</th></tr>
+    <tr><td>Package</td><td><code>@sentry/react ^10.53.1</code></td><td>React-specific SDK with ErrorBoundary support</td></tr>
+    <tr><td>DSN</td><td><code>VITE_SENTRY_DSN</code></td><td>Sentry project identifier (env var)</td></tr>
+    <tr><td>Browser Tracing</td><td>Enabled</td><td><code>Sentry.browserTracingIntegration()</code></td></tr>
+    <tr><td>Session Replay</td><td>Enabled</td><td><code>Sentry.replayIntegration()</code></td></tr>
+    <tr><td><code>tracesSampleRate</code></td><td><code>1.0</code></td><td>100% of transactions sampled</td></tr>
+    <tr><td><code>replaysSessionSampleRate</code></td><td><code>0.1</code></td><td>10% of all sessions get a replay (even without errors)</td></tr>
+    <tr><td><code>replaysOnErrorSampleRate</code></td><td><code>1.0</code></td><td>100% of error sessions get a replay</td></tr>
+    <tr><td>ErrorBoundary</td><td>Wraps entire app</td><td><code>src/main.tsx</code> &mdash; branded crash fallback with <code>captureException</code></td></tr>
+    <tr><td>Source Maps</td><td>Enabled</td><td><code>vite.config.ts</code> &mdash; <code>sourcemap: true</code> for readable stack traces</td></tr>
+  </table></div>
+</div>
+
+<div class="callout callout-warn"><strong>Cost warning:</strong> <code>tracesSampleRate: 1.0</code> samples every transaction. <code>replaysSessionSampleRate: 0.1</code> records 10% of all sessions even without errors. At scale, this generates significant Sentry billing. Consider reducing <code>tracesSampleRate</code> to <code>0.1&ndash;0.3</code> as the user base grows.</div>
+
+<h3>What Sentry Captures</h3>
+<ul>
+  <li><strong>Unhandled exceptions:</strong> JavaScript errors, promise rejections — caught by the app-wide <code>Sentry.ErrorBoundary</code> in <code>src/main.tsx</code></li>
+  <li><strong>Performance traces:</strong> Page load times, navigation timing, API call durations (100% sampled)</li>
+  <li><strong>Session replays:</strong> DOM recording on 100% of error sessions and 10% of all sessions — allows replaying exactly what the user did before an error</li>
+  <li><strong>Breadcrumbs:</strong> Automatic trail of user actions (clicks, navigation, console logs) leading up to an error</li>
+  <li><strong>Source maps:</strong> Stack traces resolve to original TypeScript sources, not minified bundles</li>
+</ul>
+
+<h3>Error Boundary</h3>
+<p>The entire app is wrapped in <code>&lt;Sentry.ErrorBoundary&gt;</code> in <code>src/main.tsx</code>. When an unhandled React error occurs:</p>
+<ol>
+  <li>Sentry captures the exception with full stack trace</li>
+  <li>A branded crash fallback screen is shown to the user (<code>CrashFallback</code> component)</li>
+  <li>The user can reload the page to recover</li>
+</ol>
+
+<!-- ───────────── INSTRUMENTATION GAP ───────────── -->
+<h2>Instrumentation Status</h2>
+
+<div class="card" style="border-left:3px solid var(--err)">
+  <h4>Current Gap</h4>
+  <p>The telemetry infrastructure is in place but <strong>product analytics is not wired up</strong>:</p>
+  <div class="tw"><table>
+    <tr><th>Capability</th><th>Status</th><th>Notes</th></tr>
+    <tr><td>PostHog SDK initialization</td><td><span class="badge b-ok">Ready</span></td><td>Initializes when env var is present</td></tr>
+    <tr><td><code>trackEvent()</code> function</td><td><span class="badge b-ok">Exported</span></td><td>Available in <code>src/lib/telemetry.ts</code></td></tr>
+    <tr><td><code>identifyUser()</code> function</td><td><span class="badge b-ok">Exported</span></td><td>Available in <code>src/lib/telemetry.ts</code></td></tr>
+    <tr><td>Event instrumentation</td><td><span class="badge b-err">Missing</span></td><td>Zero call sites in the codebase &mdash; no events are tracked</td></tr>
+    <tr><td>User identification</td><td><span class="badge b-err">Missing</span></td><td>Never called &mdash; sessions are anonymous</td></tr>
+    <tr><td>Sentry error tracking</td><td><span class="badge b-ok">Active</span></td><td>Fully functional with ErrorBoundary + replays</td></tr>
+    <tr><td>Sentry performance tracing</td><td><span class="badge b-ok">Active</span></td><td>100% sample rate</td></tr>
+  </table></div>
+</div>
+
+<h3>Recommended Instrumentation</h3>
+<p>High-value events to instrument when enabling product analytics:</p>
+<div class="tw"><table>
+  <tr><th>Event</th><th>Where to Add</th><th>Properties</th></tr>
+  <tr><td><code>bill_created</code></td><td><code>useCheckout.ts</code> after successful save</td><td>item_count, total, payment_type, is_offline</td></tr>
+  <tr><td><code>payment_collected</code></td><td>Payment collection flow</td><td>amount, method, farmer_id</td></tr>
+  <tr><td><code>whatsapp_sent</code></td><td><code>whatsAppService.ts</code></td><td>message_type, method (api/wa.me)</td></tr>
+  <tr><td><code>report_exported</code></td><td>Report export handlers</td><td>report_type, format, date_range</td></tr>
+  <tr><td><code>user_identified</code></td><td>Auth store on login</td><td>plan, branch_count, staff_count</td></tr>
+</table></div>
+
+<!-- ───────────── ARCHITECTURE ───────────── -->
+<h2>Architecture</h2>
+
+<div class="card">
+  <h4>File Map</h4>
+  <div class="tw"><table>
+    <tr><th>File</th><th>Purpose</th></tr>
+    <tr><td><code>src/lib/telemetry.ts</code></td><td>PostHog + Sentry initialization, <code>trackEvent()</code>, <code>identifyUser()</code></td></tr>
+    <tr><td><code>src/main.tsx</code></td><td>Calls <code>initTelemetry()</code>, wraps app in <code>Sentry.ErrorBoundary</code></td></tr>
+    <tr><td><code>vite.config.ts</code></td><td><code>sourcemap: true</code> for Sentry stack traces</td></tr>
+    <tr><td><code>.env</code></td><td><code>VITE_SENTRY_DSN</code>, <code>VITE_POSTHOG_KEY</code>, <code>VITE_POSTHOG_HOST</code></td></tr>
+  </table></div>
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

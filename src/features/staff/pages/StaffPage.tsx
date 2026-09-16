@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Copy,
@@ -79,6 +80,7 @@ const getDefaultBranchSelection = (branches: Branch[]): string[] => {
 };
 
 const StaffPage: React.FC = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { branches } = useBranchStore();
@@ -712,6 +714,7 @@ const StaffPage: React.FC = () => {
         eyebrow="Access Control"
         title="Staff"
         description="Create staff profiles, assign branches, set PINs, and decide which parts of the app each staff member can see."
+        onBack={() => navigate('/more')}
         action={
           <Button leftIcon={<Plus className="h-4.5 w-4.5" />} onClick={openCreateModal}>
             Add Staff

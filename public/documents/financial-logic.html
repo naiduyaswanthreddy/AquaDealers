@@ -1,0 +1,243 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Financial Logic — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/financial-logic.html">
+<meta name="description" content="Financial logic in AquaDealers — cash flow system, daily cash closing, profit calculation with FIFO-based COGS, expense tracking, and supplier financial flows.">
+<meta property="og:title" content="Financial Logic — AquaDealers Docs">
+<meta property="og:description" content="Financial logic in AquaDealers — cash flow system, daily cash closing, profit calculation with FIFO-based COGS, expense tracking, and supplier financial flows.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Financial Logic — AquaDealers Docs">
+<meta name="twitter:description" content="Financial logic in AquaDealers — cash flow system, daily cash closing, profit calculation with FIFO-based COGS, expense tracking, and supplier financial flows.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Financial Logic</span>
+</div>
+<div class="page">
+
+<h1>Financial Logic</h1>
+<p class="page-meta">
+  <span>Cash flow, daily closing, profit calculation, expenses, and supplier finances</span>
+</p>
+
+<!-- ─── CASH FLOW SYSTEM ─── -->
+<h2 id="cash-flow">Cash Flow System</h2>
+
+<p>All money movement in AquaDealers flows through the <code>cash_book</code> table, providing a unified ledger for every financial transaction.</p>
+
+<div class="card">
+  <h4>Cash Book Structure</h4>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>entry_type</code></td><td><span class="badge b-ok">cash_in</span> Money received (from bills, payments) &nbsp; <span class="badge b-err">cash_out</span> Money paid out (purchases, supplier payments, expenses)</td></tr>
+        <tr><td><code>source</code></td><td>Origin of the entry &mdash; see source types below</td></tr>
+        <tr><td><code>amount</code></td><td>Absolute amount of the transaction</td></tr>
+        <tr><td><code>reference_id</code></td><td>Links back to the originating record (bill ID, payment ID, etc.)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h3>Cash Book Source Types</h3>
+<div class="tw">
+  <table>
+    <thead>
+      <tr><th>Source</th><th>Entry Type</th><th>Created By</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>bill</code></td><td><span class="badge b-ok">cash_in</span></td><td>Bill creation (amount_paid portion)</td></tr>
+      <tr><td><code>payment</code></td><td><span class="badge b-ok">cash_in</span></td><td>Farmer payment collection</td></tr>
+      <tr><td><code>purchase</code></td><td><span class="badge b-err">cash_out</span></td><td>Stock purchase from supplier</td></tr>
+      <tr><td><code>supplier_payment</code></td><td><span class="badge b-err">cash_out</span></td><td>Payment made to supplier</td></tr>
+      <tr><td><code>expense</code></td><td><span class="badge b-err">cash_out</span></td><td>Expense recording</td></tr>
+      <tr><td><code>manual</code></td><td><span class="badge b-warn">either</span></td><td>Manual cash book adjustment</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout callout-info">
+  Each financial operation (bill creation, payment collection, purchase, expense, etc.) automatically creates a corresponding <code>cash_book</code> entry via its respective RPC. This ensures the cash book is always in sync with the underlying transactions.
+</div>
+
+<!-- ─── DAILY CASH CLOSING ─── -->
+<h2 id="daily-closing">Daily Cash Closing</h2>
+
+<div class="card">
+  <h4>close_cash_day_v1 RPC</h4>
+  <p>At the end of each business day, the dealer performs a cash closing to reconcile actual cash on hand with the system's expected balance.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>opening_balance</code></td><td>Cash at start of day (previous day's closing or manual override)</td></tr>
+        <tr><td><code>total_in</code></td><td>Sum of all cash_in entries for the day</td></tr>
+        <tr><td><code>total_out</code></td><td>Sum of all cash_out entries for the day</td></tr>
+        <tr><td><code>expected_closing</code></td><td><code>opening_balance + total_in &minus; total_out</code></td></tr>
+        <tr><td><code>actual_closing</code></td><td>Actual cash counted by the dealer</td></tr>
+        <tr><td><code>variance</code></td><td><code>actual_closing &minus; expected_closing</code></td></tr>
+        <tr><td><code>notes</code></td><td>Optional notes explaining variance</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<details>
+  <summary>How opening balance is determined</summary>
+  <div class="detail-body">
+    <p>The opening balance for a new day is automatically set to the previous day's <code>actual_closing</code> value. If no previous closing exists (first day, or gap in closings), the dealer can enter a manual opening balance override. This ensures continuity even if days are skipped.</p>
+  </div>
+</details>
+
+<!-- ─── KEY FINANCIAL METRICS ─── -->
+<h2 id="metrics">Key Financial Metrics</h2>
+
+<div class="tw">
+  <table>
+    <thead>
+      <tr><th>Metric</th><th>Calculation</th><th>Source</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Today's Sales</strong></td>
+        <td><code>&Sigma; bills.total WHERE bill_date = today AND status &ne; cancelled</code></td>
+        <td><code>get_dashboard_aggregates</code> RPC</td>
+      </tr>
+      <tr>
+        <td><strong>Today's Collection</strong></td>
+        <td><code>&Sigma; payments.amount WHERE payment_date = today</code></td>
+        <td><code>get_dashboard_aggregates</code> RPC</td>
+      </tr>
+      <tr>
+        <td><strong>Outstanding Dues</strong></td>
+        <td><code>&Sigma; farmers.total_due WHERE total_due &gt; 0</code></td>
+        <td>Dashboard + Dues page</td>
+      </tr>
+      <tr>
+        <td><strong>Cash in Hand</strong></td>
+        <td><code>opening + cash_in &minus; cash_out</code> for today</td>
+        <td>Cashbook daily counter</td>
+      </tr>
+      <tr>
+        <td><strong>Inventory Value</strong></td>
+        <td><code>&Sigma;(inventory.quantity_in_stock &times; inventory.cost_price)</code></td>
+        <td>Dashboard stat</td>
+      </tr>
+      <tr>
+        <td><strong>Supplier Dues</strong></td>
+        <td><code>&Sigma; suppliers.total_due</code></td>
+        <td>Supplier list</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ─── PROFIT CALCULATION ─── -->
+<h2 id="profit">Profit Calculation</h2>
+
+<div class="card">
+  <h4>Profit Report <span class="badge b-pri">Route: /profit-report</span></h4>
+  <p>Uses the <code>get_profit_report_data</code> RPC to calculate profitability.</p>
+
+  <pre>Profit = Revenue &minus; COGS &minus; Expenses
+
+Where:
+  Revenue = &Sigma;(bill totals) for the period
+  COGS    = &Sigma;(FIFO lot cost_price &times; quantity sold) per item
+  Expenses = &Sigma;(expenses.amount) for the period</pre>
+</div>
+
+<h3>FIFO Cost Basis</h3>
+<p>Cost of Goods Sold (COGS) is calculated using <strong>FIFO lot tracking</strong>. When items are sold, the cost price comes from the specific inventory lots that were consumed (earliest first). This gives an accurate per-item cost basis rather than using average cost.</p>
+
+<div class="callout callout-info">
+  The profit report is <strong>paginated</strong> for performance. Large date ranges with many transactions are broken into pages to avoid timeout issues.
+</div>
+
+<!-- ─── EXPENSE TRACKING ─── -->
+<h2 id="expenses">Expense Tracking</h2>
+
+<div class="card">
+  <h4>Expense System <span class="badge b-pri">Route: /expenses</span></h4>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>category</code></td><td>User-defined category (electricity, rent, transport, etc.)</td></tr>
+        <tr><td><code>amount</code></td><td>Expense amount</td></tr>
+        <tr><td><code>description</code></td><td>Free-text description</td></tr>
+        <tr><td><code>paid_via</code></td><td>Payment method used (cash, upi, etc.)</td></tr>
+        <tr><td><code>expense_date</code></td><td>Date of the expense</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Each expense automatically creates a <code>cash_book</code> entry with <code>entry_type = cash_out</code> and <code>source = expense</code>.</p>
+</div>
+
+<details>
+  <summary>Expense categories</summary>
+  <div class="detail-body">
+    <p>Categories are <strong>user-defined</strong> &mdash; dealers can create and manage their own expense categories. There are no hard-coded categories in the system. Common examples include: electricity, rent, transport, labour, repairs, feed wastage.</p>
+  </div>
+</details>
+
+<!-- ─── SUPPLIER FINANCIAL FLOW ─── -->
+<h2 id="supplier-flow">Supplier Financial Flow</h2>
+
+<p>Supplier finances mirror the farmer side but in the opposite direction &mdash; the dealer owes money to suppliers instead of receiving it.</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h4>Stock Purchases <span class="badge b-err">cash_out</span></h4>
+    <p>Recorded in <code>stock_purchases</code> table.</p>
+    <ul>
+      <li>Each purchase has a <code>cost_price_per_unit</code></li>
+      <li>Creates inventory lots for FIFO tracking</li>
+      <li>Updates <code>supplier.total_due</code> via triggers</li>
+      <li>Creates cash_book entry if paid upfront</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Supplier Payments <span class="badge b-ok">Reduces Due</span></h4>
+    <p>Recorded in <code>supplier_payments</code> table.</p>
+    <ul>
+      <li>Reduces <code>supplier.total_due</code></li>
+      <li>Creates <code>cash_book</code> entry (cash_out, source: supplier_payment)</li>
+      <li>Supports partial payments</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Supplier Ledger</h3>
+<p>Available at <code>/suppliers/:id</code>. Shows a chronological view of all purchases and payments for a given supplier, with running balance calculation.</p>
+
+<div class="callout callout-warn">
+  <code>supplier.total_due</code> is maintained by database triggers, similar to <code>farmers.total_due</code>. It is automatically recalculated whenever stock purchases or supplier payments are inserted, updated, or deleted.
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

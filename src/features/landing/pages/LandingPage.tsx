@@ -7,11 +7,12 @@ import {
   ArrowRight, CheckCircle2, Package, CreditCard, 
   FileText, BarChart3, Clock, Check, Settings,
   Users, PenTool, Smartphone, ShieldCheck, PlayCircle, MessageCircle, AlertTriangle, TrendingUp, Cloud, Zap, Lock, Search, Puzzle, Headset, Sparkles, Rocket,
-  NotebookPen, WifiOff, RefreshCw, ChevronLeft, ChevronRight
+  NotebookPen, WifiOff, RefreshCw, ChevronLeft, ChevronRight, Menu, X
 } from 'lucide-react';
 
 const LandingPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('billing');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const youtubeUrl = 'https://youtube.com/@aquadealers?si=sZUYaQ7vRPHjh8zm';
   const whatsappUrl = 'https://wa.me/917207171544';
 
@@ -62,17 +63,48 @@ const LandingPage: React.FC = () => {
             <a href="#features" className="hover:text-blue-600 transition-colors">Features</a>
             <a href="#pricing" className="hover:text-blue-600 transition-colors">Pricing</a>
             <a href="#tutorials" className="hover:text-blue-600 transition-colors">Tutorials</a>
+            <a href="/documents/" className="hover:text-blue-600 transition-colors flex items-center gap-1"><FileText className="w-3.5 h-3.5" />Docs</a>
             <a href="#contact" className="hover:text-blue-600 transition-colors">Contact</a>
           </div>
           <div className="flex items-center gap-4">
-            <Link to="/login" className="text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors">
+            <Link to="/login" className="hidden sm:inline text-sm font-bold text-slate-600 hover:text-blue-600 transition-colors">
               Sign In
             </Link>
             <a href="tel:7207171544" className="inline-flex px-4 py-2 text-xs sm:text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
               Book Demo
             </a>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              className="lg:hidden inline-flex items-center justify-center p-2 -mr-2 text-slate-600 hover:text-blue-600"
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="lg:hidden overflow-hidden border-t border-slate-200 bg-white"
+            >
+              <div className="px-6 py-4 flex flex-col gap-4 font-medium text-slate-600 text-sm">
+                <a href="#benefits" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-600 transition-colors">Benefits</a>
+                <a href="#features" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-600 transition-colors">Features</a>
+                <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-600 transition-colors">Pricing</a>
+                <a href="#tutorials" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-600 transition-colors">Tutorials</a>
+                <a href="/documents/" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-600 transition-colors flex items-center gap-1"><FileText className="w-3.5 h-3.5" />Docs</a>
+                <a href="#contact" onClick={() => setMobileMenuOpen(false)} className="hover:text-blue-600 transition-colors">Contact</a>
+                <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="sm:hidden font-bold text-slate-900">Sign In</Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* 2. HERO SECTION - FOMO & URGENCY */}

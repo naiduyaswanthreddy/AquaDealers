@@ -1,0 +1,351 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Database — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/database.html">
+<meta name="description" content="AquaDealers database schema — 55+ PostgreSQL tables, 30+ triggers, RLS policies, views, and indexes on Supabase.">
+<meta property="og:title" content="Database — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers database schema — 55+ PostgreSQL tables, 30+ triggers, RLS policies, views, and indexes on Supabase.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Database — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers database schema — 55+ PostgreSQL tables, 30+ triggers, RLS policies, views, and indexes on Supabase.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Database</span>
+</div>
+<div class="page">
+
+  <h1>Database</h1>
+  <div class="page-meta">
+    <span>Last updated Sep 2026</span>
+    <span>55+ tables &middot; 30+ triggers &middot; 1 view</span>
+  </div>
+
+  <div class="callout callout-warn">
+    <strong>No secrets, tokens, or credentials are documented here.</strong> All values shown are schema-level metadata only.
+  </div>
+
+  <!-- ───────── Core Tables ───────── -->
+  <h2>Core Tables</h2>
+
+  <div class="tw"><table>
+    <thead><tr><th>Table</th><th>Purpose</th><th>Key Columns</th><th>RLS</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>dealers</code></td>
+        <td>Dealer accounts</td>
+        <td>id, shop_name, name, phone, email, plan, gst_billing_enabled, pin_hash, address, gstin, drug_license_no, language, onboarding_progress, branch_count, whatsapp_enabled</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>branches</code></td>
+        <td>Multi-branch support</td>
+        <td>id, dealer_id, name, slug, is_main, is_active, color_theme</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>farmers</code></td>
+        <td>Customer records</td>
+        <td>id, dealer_id, branch_id, name, phone, village, total_due, credit_limit, opening_balance, return_credit_balance, crop_status, stocking_date, estimated_harvest_date, notes, follow_up_date</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>products</code></td>
+        <td>Product catalog</td>
+        <td>id, dealer_id, type (feed/medicine), company, name, variant, unit, hsn_code, gst_rate, default_price, is_active</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>inventory</code></td>
+        <td>Branch stock levels</td>
+        <td>id, dealer_id, branch_id, product_id, quantity_in_stock, cost_price, selling_price, mrp, medicine_discount_percentage, min_stock_alert, track_expiry, expiry_date</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>inventory_lots</code></td>
+        <td>FIFO lot tracking</td>
+        <td>id, inventory_id, stock_purchase_id, batch_number, expiry_date, quantity_received, remaining_quantity, cost_price, selling_price, mrp, received_at, is_expired</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>inventory_movements</code></td>
+        <td>Stock audit trail</td>
+        <td>id, inventory_id, product_id, lot_id, reference_type, reference_id, quantity_change, notes, created_at</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>bills</code></td>
+        <td>Sale invoices</td>
+        <td>id, bill_number, dealer_id, branch_id, farmer_id, subtotal, gst_amount, discount_amount, total, amount_paid, balance_due, payment_type, status, is_estimate, is_edited, bill_date, client_ref, whatsapp_status, created_at</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>bill_items</code></td>
+        <td>Line items</td>
+        <td>id, bill_id, product_id, inventory_id, quantity, unit_price, gst_rate, gst_amount, total_price, discount_percentage</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>bill_item_lot_allocations</code></td>
+        <td>FIFO consumption</td>
+        <td>id, bill_item_id, lot_id, allocated_quantity, cost_price</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>payments</code></td>
+        <td>Farmer payments</td>
+        <td>id, dealer_id, farmer_id, bill_id, amount, method, payment_date, notes</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>payment_allocations</code></td>
+        <td>Payment-to-bill mapping</td>
+        <td>id, payment_id, bill_id, allocated_amount, allocation_order</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>suppliers</code></td>
+        <td>Supplier directory</td>
+        <td>id, dealer_id, name, company, phone, total_due</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>stock_purchases</code></td>
+        <td>Purchase records</td>
+        <td>id, dealer_id, branch_id, supplier_id, product_id, inventory_id, quantity, cost_price_per_unit, total_amount, batch_number, expiry_date, invoice_number</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>supplier_payments</code></td>
+        <td>Supplier payment records</td>
+        <td>id, dealer_id, supplier_id, amount, method, payment_date</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>expenses</code></td>
+        <td>Expense tracking</td>
+        <td>id, dealer_id, branch_id, category, amount, description, paid_via, expense_date</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>cash_book</code></td>
+        <td>Cash ledger entries</td>
+        <td>id, dealer_id, branch_id, entry_type, source, reference_id, amount, notes, entry_date</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>cash_closings</code></td>
+        <td>Daily cash reconciliation</td>
+        <td>id, dealer_id, branch_id, closing_date, opening_balance, total_cash_in, total_cash_out, expected_closing, actual_closing, variance, notes</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>bill_returns</code></td>
+        <td>Sales returns</td>
+        <td>id, dealer_id, bill_id, farmer_id, return_number, total_amount, notes, created_at</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>bill_return_items</code></td>
+        <td>Return line items (bill-first flow)</td>
+        <td>id, return_id, bill_item_id, product_id, quantity, unit_price, total_price</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>farmer_return_lines</code></td>
+        <td>Return line items (farmer-first flow)</td>
+        <td>id, return_id, product_id, quantity, unmatched_quantity, unmatched_unit_price, total_amount</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>bill_return_allocations</code></td>
+        <td>Farmer-first return lines split across the bills they were matched to</td>
+        <td>id, return_id, return_line_id, bill_id, bill_item_id, quantity, unit_price, total_amount, balance_reduction, settlement_amount</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>stock_transfers</code></td>
+        <td>Branch-to-branch transfers</td>
+        <td>id, dealer_id, from_branch_id, to_branch_id, total_quantity, notes, created_at</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>stock_transfer_items</code></td>
+        <td>Transfer line items</td>
+        <td>id, transfer_id, product_id, quantity, lot_id, batch_number, expiry_date, cost_price</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>transaction_events</code></td>
+        <td>Undo/audit events</td>
+        <td>id, dealer_id, event_type, reference_type, reference_id, metadata, undone_at, undo_deadline, created_at</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>farmer_product_discounts</code></td>
+        <td>Per-farmer pricing</td>
+        <td>id, dealer_id, farmer_id, product_id, custom_price, discount_percentage</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>farmer_return_credit_applications</code></td>
+        <td>Return credit usage</td>
+        <td>id, dealer_id, farmer_id</td>
+        <td><span class="badge b-err">No</span></td>
+      </tr>
+      <tr>
+        <td><code>staff_members</code></td>
+        <td>Staff accounts</td>
+        <td>id, dealer_id, name, phone, pin_hash, permissions (JSONB), branch_ids (UUID[]), is_active</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>staff_sessions</code></td>
+        <td>Active staff sessions</td>
+        <td>id, staff_id, dealer_id, branch_id, token_hash, expires_at, created_at</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>staff_login_attempts</code></td>
+        <td>Login rate limiting</td>
+        <td>id, staff_id, ip_address, success, created_at</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>admin_users</code></td>
+        <td>Platform admins</td>
+        <td>id, email, name, password_hash, role (superadmin/admin/support)</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>admin_sessions</code></td>
+        <td>Admin sessions</td>
+        <td>id, admin_id, token_hash, expires_at</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>onboarding_progress</code></td>
+        <td>Setup wizard tracking</td>
+        <td>id, dealer_id, step, completed_at</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>support_tickets</code></td>
+        <td>Help desk</td>
+        <td>id, dealer_id, subject, description, status, priority</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>ticket_messages</code></td>
+        <td>Ticket conversation</td>
+        <td>id, ticket_id, sender_type, message, created_at</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>whatsapp_addon_plans</code></td>
+        <td>WhatsApp plan tiers</td>
+        <td>id, name, messages_per_month, price</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>whatsapp_message_usage</code></td>
+        <td>Monthly message counts</td>
+        <td>id, dealer_id, month_year, messages_sent, addon_plan_id</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>bill_audit_logs</code></td>
+        <td>Bill change history</td>
+        <td>id, bill_id, dealer_id, user_id, changes_jsonb (JSONB), created_at</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+      <tr>
+        <td><code>plan_definitions</code></td>
+        <td>Subscription plans</td>
+        <td>id, name, price, features (TEXT[]), limits (JSONB)</td>
+        <td><span class="badge b-ok">Yes</span></td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <div class="finding">
+    <h4>Missing RLS: <code>farmer_return_credit_applications</code></h4>
+    <p>This table has <strong>no row-level security policy</strong>. Any authenticated user can read and write all rows. Add an RLS policy filtering on <code>dealer_id = auth.uid()</code> to match the pattern used by every other tenant-scoped table.</p>
+  </div>
+
+  <!-- ───────── Triggers ───────── -->
+  <h2>Key Triggers</h2>
+
+  <div class="tw"><table>
+    <thead><tr><th>Trigger</th><th>Table</th><th>Event</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>farmer_due_from_bill</code></td><td>bills</td><td>INSERT / UPDATE / DELETE</td><td>Recalculates <code>farmers.total_due</code> from bills</td></tr>
+      <tr><td><code>farmer_due_from_payment</code></td><td>payments</td><td>INSERT / UPDATE / DELETE</td><td>Recalculates <code>farmers.total_due</code> from payments</td></tr>
+      <tr><td><code>farmer_due_from_payment_allocation</code></td><td>payment_allocations</td><td>INSERT / UPDATE / DELETE</td><td>Recalculates <code>farmers.total_due</code> from payment allocations</td></tr>
+      <tr><td><code>trg_fanout_product_to_branches</code></td><td>products</td><td>INSERT</td><td>Auto-creates inventory row in every branch when product added</td></tr>
+      <tr><td><code>trg_fanout_branch_to_products</code></td><td>branches</td><td>INSERT</td><td>Auto-creates inventory rows for all products when branch added</td></tr>
+      <tr><td><code>transaction_event_bill</code></td><td>bills</td><td>INSERT</td><td>Logs transaction event for bill creation</td></tr>
+      <tr><td><code>transaction_event_stock_purchase</code></td><td>stock_purchases</td><td>INSERT</td><td>Logs transaction event for stock purchase</td></tr>
+      <tr><td><code>transaction_event_farmer_payment</code></td><td>payments</td><td>INSERT</td><td>Logs transaction event for payment</td></tr>
+      <tr><td><code>transaction_event_supplier_payment</code></td><td>supplier_payments</td><td>INSERT</td><td>Logs transaction event for supplier payment</td></tr>
+      <tr><td><code>transaction_event_bill_return</code></td><td>bill_returns</td><td>INSERT</td><td>Logs transaction event for return</td></tr>
+      <tr><td><code>transaction_event_stock_transfer</code></td><td>stock_transfers</td><td>INSERT</td><td>Logs transaction event for transfer</td></tr>
+      <tr><td><code>transaction_event_expense</code></td><td>expenses</td><td>INSERT</td><td>Logs transaction event for expense</td></tr>
+      <tr><td><code>trg_bcrypt_dealer_pin</code></td><td>dealers</td><td>INSERT / UPDATE</td><td>Hashes dealer PIN with bcrypt</td></tr>
+      <tr><td><code>trg_staff_hash_pin</code></td><td>staff_members</td><td>INSERT / UPDATE</td><td>Hashes staff PIN with bcrypt</td></tr>
+      <tr><td><code>trg_revoke_staff_sessions</code></td><td>staff_members</td><td>UPDATE</td><td>Deletes all sessions when staff deactivated (<code>is_active = false</code>)</td></tr>
+      <tr><td><code>trg_rate_limit_bills</code></td><td>bills</td><td>INSERT / UPDATE / DELETE</td><td>Rate-limits writes to 30 actions/minute per dealer</td></tr>
+      <tr><td><code>trg_rate_limit_payments</code></td><td>payments</td><td>INSERT / UPDATE / DELETE</td><td>Rate-limits writes to 30 actions/minute per dealer</td></tr>
+      <tr><td><code>trg_rate_limit_farmers</code></td><td>farmers</td><td>INSERT / UPDATE / DELETE</td><td>Rate-limits writes to 30 actions/minute per dealer</td></tr>
+      <tr><td><code>trg_rate_limit_inventory</code></td><td>inventory</td><td>INSERT / UPDATE / DELETE</td><td>Rate-limits writes to 30 actions/minute per dealer</td></tr>
+      <tr><td><code>trg_rate_limit_cash_book</code></td><td>cash_book</td><td>INSERT / UPDATE / DELETE</td><td>Rate-limits writes to 30 actions/minute per dealer</td></tr>
+      <tr><td><code>trg_rate_limit_expenses</code></td><td>expenses</td><td>INSERT / UPDATE / DELETE</td><td>Rate-limits writes to 30 actions/minute per dealer</td></tr>
+    </tbody>
+  </table></div>
+
+
+  <!-- ───────── Views ───────── -->
+  <h2>Views</h2>
+
+  <div class="card">
+    <h3><code>archived_bills</code></h3>
+    <p>Bills older than 2 years. Uses <code>security_invoker</code> (runs with the caller's RLS context, not the view owner). Purpose: archival queries without touching the hot <code>bills</code> table.</p>
+  </div>
+
+  <!-- ───────── Key Indexes ───────── -->
+  <h2>Key Indexes</h2>
+
+  <div class="tw"><table>
+    <thead><tr><th>Index Columns</th><th>Table</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>(dealer_id, bill_date)</code></td><td>bills</td><td>Dashboard queries</td></tr>
+      <tr><td><code>(dealer_id, farmer_id)</code></td><td>bills</td><td>Farmer ledger</td></tr>
+      <tr><td><code>(dealer_id, branch_id, status)</code></td><td>bills</td><td>Branch filtering</td></tr>
+      <tr><td><code>(dealer_id, phone)</code></td><td>farmers</td><td>Unique phone per dealer</td></tr>
+      <tr><td><code>(dealer_id, branch_id, product_id)</code></td><td>inventory</td><td>Stock lookups</td></tr>
+      <tr><td><code>(inventory_id, is_expired, remaining_quantity)</code></td><td>inventory_lots</td><td>FIFO selection</td></tr>
+      <tr><td><code>(dealer_id, farmer_id)</code></td><td>payments</td><td>Payment history</td></tr>
+      <tr><td><code>(bill_id)</code></td><td>bill_items</td><td>Bill detail joins</td></tr>
+      <tr><td><code>(dealer_id, branch_id, entry_date)</code></td><td>cash_book</td><td>Daily book queries</td></tr>
+      <tr><td><code>(dealer_id, reference_type, reference_id)</code></td><td>transaction_events</td><td>Undo lookups</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

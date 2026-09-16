@@ -3,6 +3,7 @@ Allow: /
 Allow: /about
 Allow: /features
 Allow: /contact
+Allow: /documents/
 
 Disallow: /dashboard
 Disallow: /inventory

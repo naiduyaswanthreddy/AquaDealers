@@ -1,0 +1,164 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roadmap — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/roadmap.html">
+<meta name="description" content="AquaDealers roadmap — completed features and recommended next priorities ranked P0 through P3 with effort estimates.">
+<meta property="og:title" content="Roadmap — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers roadmap — completed features and recommended next priorities ranked P0 through P3 with effort estimates.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Roadmap — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers roadmap — completed features and recommended next priorities ranked P0 through P3 with effort estimates.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Roadmap</span>
+</div>
+<div class="page">
+
+<h1>Roadmap</h1>
+<div class="page-meta">
+  <span><span class="badge b-pri">Planning</span></span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>A complete view of what has shipped and what comes next, organized by completion status and priority.</p>
+
+<!-- ── Completed ── -->
+<h2>Completed Features</h2>
+<p>All features below are live in production as of AquaDealers v3.0.0.</p>
+
+<div class="card">
+<h4>Core Billing &amp; Inventory</h4>
+<ul>
+  <li>&#10003; Core billing with FIFO lot tracking</li>
+  <li>&#10003; Estimates and returns</li>
+  <li>&#10003; Bill editing with audit trail</li>
+  <li>&#10003; Bill cancellation (same-day)</li>
+  <li>&#10003; Per-farmer product discounts and rate memory</li>
+  <li>&#10003; GST billing (per-item rates, CGST/SGST)</li>
+  <li>&#10003; Rate adjustment history</li>
+  <li>&#10003; Expiry management</li>
+  <li>&#10003; Low stock alerts</li>
+  <li>&#10003; Transaction undo (48h window)</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>Farmer &amp; Supplier Management</h4>
+<ul>
+  <li>&#10003; Farmer management with paginated ledger</li>
+  <li>&#10003; Public farmer statement sharing</li>
+  <li>&#10003; Supplier management with ledger</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>Multi-branch &amp; Staff</h4>
+<ul>
+  <li>&#10003; Multi-branch with stock transfers</li>
+  <li>&#10003; Staff access with PIN auth</li>
+  <li>&#10003; Admin portal with impersonation</li>
+  <li>&#10003; Branch color theming</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>Financials &amp; Reports</h4>
+<ul>
+  <li>&#10003; Cash book with daily closing</li>
+  <li>&#10003; Expense tracking</li>
+  <li>&#10003; Daily Book register</li>
+  <li>&#10003; Monthly finance pack</li>
+  <li>&#10003; Profit report (FIFO-based COGS)</li>
+  <li>&#10003; Sales register</li>
+  <li>&#10003; Stock report with valuation</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>Communication &amp; Platform</h4>
+<ul>
+  <li>&#10003; WhatsApp API bill notifications</li>
+  <li>&#10003; Offline-first PWA billing</li>
+  <li>&#10003; Invoice template customization (5 designs)</li>
+</ul>
+</div>
+
+<!-- ── Recommended Next ── -->
+<h2>Recommended Next</h2>
+<p>Prioritized backlog ranked by impact and urgency. Effort estimates: <span class="badge b-ok">Low</span> = days, <span class="badge b-warn">Medium</span> = 1-2 weeks, <span class="badge b-err">High</span> = 2+ weeks.</p>
+
+<!-- P0 -->
+<h3>P0 &mdash; Critical <span class="badge b-err">Security</span></h3>
+<div class="callout callout-err">These items address active security vulnerabilities and should be resolved before any feature work.</div>
+
+<div class="tw"><table>
+<thead><tr><th>#</th><th>Item</th><th>Effort</th><th>Notes</th></tr></thead>
+<tbody>
+  <tr><td>1</td><td>Rotate leaked service role key</td><td><span class="badge b-ok">Low</span></td><td>Key is in <code>scripts/migrate/.env.migration</code>. Rotate in Supabase dashboard, update deploy scripts.</td></tr>
+  <tr><td>2</td><td>Add RLS to <code>farmer_return_credit_applications</code></td><td><span class="badge b-ok">Low</span></td><td>Table was created without <code>ENABLE ROW LEVEL SECURITY</code>. Single migration.</td></tr>
+  <tr><td>3</td><td>Remove anon grants on admin RPCs</td><td><span class="badge b-ok">Low</span></td><td>All <code>admin_*</code> functions currently callable by unauthenticated users.</td></tr>
+</tbody>
+</table></div>
+
+<!-- P1 -->
+<h3>P1 &mdash; High Impact</h3>
+
+<div class="tw"><table>
+<thead><tr><th>#</th><th>Item</th><th>Effort</th><th>Notes</th></tr></thead>
+<tbody>
+  <tr><td>1</td><td>Server-side PDF generation</td><td><span class="badge b-warn">Medium</span></td><td>Eliminate 3-5s mobile freeze from <code>html2canvas</code>. Edge function with Puppeteer or similar.</td></tr>
+  <tr><td>2</td><td>Server-side report aggregation</td><td><span class="badge b-warn">Medium</span></td><td>Fix unbounded queries in <code>reportsService.ts</code>. New aggregate RPCs for monthly reports.</td></tr>
+  <tr><td>3</td><td>Round-off field on bills</td><td><span class="badge b-ok">Low</span></td><td>Indian dealers round to nearest rupee. Add <code>round_off</code> column to bills table.</td></tr>
+  <tr><td>4</td><td>Admin login rate limiting</td><td><span class="badge b-ok">Low</span></td><td>No brute-force protection on admin auth. Add rate limit trigger similar to staff.</td></tr>
+  <tr><td>5</td><td>Restrict storage bucket access</td><td><span class="badge b-ok">Low</span></td><td>farmer-profiles and product-images buckets are public. Switch to authenticated policies.</td></tr>
+</tbody>
+</table></div>
+
+<!-- P2 -->
+<h3>P2 &mdash; Useful</h3>
+
+<div class="tw"><table>
+<thead><tr><th>#</th><th>Item</th><th>Effort</th><th>Notes</th></tr></thead>
+<tbody>
+  <tr><td>1</td><td>Batch WhatsApp dues reminders</td><td><span class="badge b-warn">Medium</span></td><td>Send dues reminders to all farmers with outstanding balance in one action.</td></tr>
+  <tr><td>2</td><td>Profit per product report</td><td><span class="badge b-warn">Medium</span></td><td>Breakdown FIFO COGS by product/category.</td></tr>
+  <tr><td>3</td><td>Harvest-timed collection reminders</td><td><span class="badge b-warn">Medium</span></td><td>Trigger reminders based on farmer stocking_date and typical crop cycle.</td></tr>
+  <tr><td>4</td><td>Farmer risk scoring UI</td><td><span class="badge b-warn">Medium</span></td><td>Visualize payment history patterns. Data already exists in ledger.</td></tr>
+  <tr><td>5</td><td>Dark mode support</td><td><span class="badge b-warn">Medium</span></td><td>Currently hardcoded <code>color-scheme: light</code>. Needs token remap.</td></tr>
+  <tr><td>6</td><td>WhatsApp delivery webhooks</td><td><span class="badge b-err">High</span></td><td>Replace polling with authkey.io webhook callbacks for real-time status.</td></tr>
+  <tr><td>7</td><td>Server-side staff permission enforcement</td><td><span class="badge b-err">High</span></td><td>Current staff permissions are client-side only. Add RPC-level checks.</td></tr>
+</tbody>
+</table></div>
+
+<!-- P3 -->
+<h3>P3 &mdash; Nice to Have</h3>
+
+<div class="tw"><table>
+<thead><tr><th>#</th><th>Item</th><th>Effort</th><th>Notes</th></tr></thead>
+<tbody>
+  <tr><td>1</td><td>Tablet-specific layouts</td><td><span class="badge b-warn">Medium</span></td><td>768-1024px currently gets mobile layout. Dedicated breakpoint needed.</td></tr>
+  <tr><td>2</td><td>Barcode/QR scanning for products</td><td><span class="badge b-err">High</span></td><td>Camera-based scanning for faster product selection at counter.</td></tr>
+  <tr><td>3</td><td>Multi-language invoice templates</td><td><span class="badge b-warn">Medium</span></td><td>Telugu, Hindi invoice output. App already has i18next but PDF templates are English-only.</td></tr>
+  <tr><td>4</td><td>Farmer mobile app (view statements)</td><td><span class="badge b-err">High</span></td><td>Dedicated farmer-facing app for statement viewing and payment history. Currently public link only.</td></tr>
+</tbody>
+</table></div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

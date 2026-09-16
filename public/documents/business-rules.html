@@ -1,0 +1,252 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Business Rules — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/business-rules.html">
+<meta name="description" content="AquaDealers business rules — billing calculations, GST handling, payment allocation (oldest-first), credit limits, settlement discounts, and farmer due reconciliation.">
+<meta property="og:title" content="Business Rules — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers business rules — billing calculations, GST handling, payment allocation (oldest-first), credit limits, settlement discounts, and farmer due reconciliation.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Business Rules — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers business rules — billing calculations, GST handling, payment allocation (oldest-first), credit limits, settlement discounts, and farmer due reconciliation.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Business Rules</span>
+</div>
+<div class="page">
+
+<h1>Business Rules</h1>
+<p class="page-meta">
+  <span>Core billing, pricing, payment, and credit logic</span>
+</p>
+
+<!-- ─── BILLING CALCULATIONS ─── -->
+<h2 id="billing-calculations">Billing Calculations &mdash; Per-item Pricing</h2>
+
+<p>AquaDealers supports two product categories with different pricing models. The pricing strategy depends on the product type.</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h4>Feed Products <span class="badge b-ok">Simple</span></h4>
+    <p><code>selling_price</code> is the rate the farmer pays. There is no MRP/discount split. The price is directly editable by the dealer at billing time.</p>
+    <ul>
+      <li>Rate comes from inventory or farmer-specific memory</li>
+      <li>Dealer can override on each bill line</li>
+      <li>No computed discount field</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Medicine Products <span class="badge b-pri">Computed</span></h4>
+    <p>Price is derived from MRP and a discount percentage:</p>
+    <pre>unit_price = MRP &times; (1 &minus; discount_percentage / 100)</pre>
+    <p><strong>Discount cascade</strong> (checked in order):</p>
+    <ol>
+      <li>Farmer-product specific discount</li>
+      <li>Farmer default discount</li>
+      <li>Product default discount</li>
+    </ol>
+  </div>
+</div>
+
+<h3 id="rate-memory">Per-Farmer Rate Memory</h3>
+<div class="callout callout-info">
+  When a bill is saved, the specific rate given to a farmer for each product is stored via <code>upsertFarmerProductDiscount()</code>. The next time that farmer purchases the same product, their previously-given rate is automatically pre-filled in the product selector.
+</div>
+<p>This means dealers don't need to remember individual farmer rates &mdash; the system tracks the last rate used for each farmer+product combination and applies it as the default on the next purchase.</p>
+
+<!-- ─── GST ─── -->
+<h2 id="gst">GST Handling</h2>
+
+<div class="card">
+  <h4>Per-Item GST Calculation</h4>
+  <pre>gst_amount = ROUND(unit_price &times; quantity &times; gst_rate / 100, 2)</pre>
+  <ul>
+    <li>Split 50/50 into <strong>CGST</strong> and <strong>SGST</strong></li>
+    <li>No IGST &mdash; all transactions are intra-state only</li>
+    <li>Toggleable via <code>gst_billing_enabled</code> dealer setting</li>
+  </ul>
+</div>
+
+<div class="callout callout-warn">
+  <strong>Known issue:</strong> Step 1 (ProductSelector) uses a flat 18% GST rate for display preview purposes, while Step 3 (ReviewStep) uses the actual per-item <code>gst_rate</code> from the product record. The final bill total is always correct &mdash; only the in-progress preview may differ slightly.
+</div>
+
+<!-- ─── BILL TOTAL ─── -->
+<h2 id="bill-total">Bill Total Formula</h2>
+
+<pre>subtotal = &Sigma;(unit_price &times; quantity) for each item
+gst      = &Sigma;(item.gst_amount) for each item
+total    = GREATEST(ROUND(subtotal + gst &minus; discount_amount, 2), 0)</pre>
+
+<p>The <code>GREATEST(..., 0)</code> guard ensures the total never goes negative even if the discount exceeds the subtotal + GST.</p>
+
+<!-- ─── PAYMENT METHODS ─── -->
+<h2 id="payment-methods">Payment Methods</h2>
+
+<div class="tw">
+  <table>
+    <thead>
+      <tr><th>Method</th><th>Code</th><th>Behavior</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Cash</td><td><code>cash</code></td><td>Standard cash payment. Amount entered manually.</td></tr>
+      <tr><td>UPI</td><td><code>upi</code></td><td>Digital payment. Amount entered manually.</td></tr>
+      <tr><td>Credit</td><td><code>credit</code></td><td>Auto-sets <code>amount_paid = 0</code>. Full amount added to farmer's due.</td></tr>
+      <tr><td>Other</td><td><code>other</code></td><td>Bank transfer, cheque, etc. Amount entered manually.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h3 id="balance-due">Balance Due</h3>
+<pre>balance_due = total &minus; amount_paid</pre>
+
+<div class="grid-2">
+  <div class="card">
+    <h4>Walk-in Bills <span class="badge b-err">Must Pay Full</span></h4>
+    <p>Walk-in customers must pay in full. This is enforced in <code>useCheckout.ts</code> (line ~163&ndash;164). No credit is allowed for walk-in bills.</p>
+  </div>
+  <div class="card">
+    <h4>Farmer Bills <span class="badge b-ok">Partial OK</span></h4>
+    <p>Farmer bills allow partial payment. The remaining <code>balance_due</code> is added to the farmer's outstanding total and can be collected later.</p>
+  </div>
+</div>
+
+<div class="callout callout-info">
+  <strong>No round-off field:</strong> The system does not currently support automatic rounding of bill totals (e.g., rounding to nearest rupee). This is a known limitation.
+</div>
+
+<!-- ─── SETTLEMENT DISCOUNT ─── -->
+<h2 id="settlement-discount">Settlement Discount</h2>
+
+<p>Settlement discounts are applied <strong>at payment time</strong>, separate from per-item discounts on the bill itself. They reduce the effective total the farmer needs to pay.</p>
+
+<ul>
+  <li>Applied when collecting payment, not during bill creation</li>
+  <li>Can be applied post-creation on existing bills</li>
+  <li>Reduces the effective balance due</li>
+  <li>Distinct from medicine discount percentages (which affect unit price)</li>
+</ul>
+
+<!-- ─── FARMER DUE ─── -->
+<h2 id="farmer-due">Farmer Due Calculation</h2>
+
+<p>Farmer dues are <strong>trigger-based</strong> &mdash; recalculated automatically whenever bills, payments, or payment allocations change.</p>
+
+<pre>total_due = GREATEST(0,
+  opening_balance
+  + &Sigma;(active_bills.balance_due)
+  &minus; (&Sigma;(payments.amount) &minus; &Sigma;(allocated_payments))
+  &minus; return_credit_balance
+)</pre>
+
+<h3>Triggers That Recalculate Dues</h3>
+<div class="tw">
+  <table>
+    <thead>
+      <tr><th>Trigger</th><th>Fires On</th><th>Action</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>farmer_due_from_bill</code></td><td>bills table INSERT/UPDATE/DELETE</td><td>Recalculates total_due from all active bills</td></tr>
+      <tr><td><code>farmer_due_from_payment</code></td><td>payments table INSERT/UPDATE/DELETE</td><td>Recalculates total_due factoring payment totals</td></tr>
+      <tr><td><code>farmer_due_from_payment_allocation</code></td><td>payment_allocations table INSERT/UPDATE/DELETE</td><td>Recalculates total_due factoring allocated amounts</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout callout-info">
+  The <code>GREATEST(0, ...)</code> wrapper ensures a farmer's due never shows as a negative number, even if overpayments exist. Overpayments are tracked but do not create a &ldquo;credit&rdquo; balance on the farmer record itself.
+</div>
+
+<!-- ─── PAYMENT ALLOCATION ─── -->
+<h2 id="payment-allocation">Payment Allocation</h2>
+
+<p>When a payment is collected from a farmer, it can be allocated in one of two modes:</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h4>Mode 1: Specific Bill <span class="badge b-pri">Targeted</span></h4>
+    <p>Payment targets a single bill. This typically happens at bill creation time when the farmer pays for a specific purchase.</p>
+    <ul>
+      <li>Payment linked directly to one bill</li>
+      <li>Creates a single payment_allocation record</li>
+      <li>Reduces that specific bill's <code>balance_due</code></li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Mode 2: Oldest First <span class="badge b-acc">Auto-Allocate</span></h4>
+    <p>The <code>collect_farmer_payment_v2</code> RPC iterates unpaid bills ordered by <code>bill_date ASC</code> and allocates until the payment is exhausted.</p>
+    <ul>
+      <li>Creates multiple <code>payment_allocations</code> records</li>
+      <li>Each record has an <code>allocation_order</code></li>
+      <li>Oldest outstanding bills are cleared first</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ─── CREDIT LIMITS ─── -->
+<h2 id="credit-limits">Credit Limits</h2>
+
+<div class="card">
+  <h4>How Credit Limits Work</h4>
+  <ul>
+    <li>Each farmer has a configurable <code>credit_limit</code> field</li>
+    <li>At billing time, the system checks: <code>projected_due &gt; credit_limit</code></li>
+    <li>If exceeded, a <strong>warning</strong> is shown (not a hard block)</li>
+    <li>Override is allowed &mdash; records <code>credit_override_used = true</code> with a reason</li>
+  </ul>
+</div>
+
+<div class="callout callout-warn">
+  Credit limits are <strong>advisory, not enforced</strong>. Dealers can override the limit and proceed with billing. The override is logged for audit purposes, including the reason entered by the dealer.
+</div>
+
+<!-- ─── BILL NUMBERING ─── -->
+<h2 id="bill-numbering">Bill Numbering</h2>
+
+<pre>AD-{YYYYMMDD}-{sequence}</pre>
+
+<ul>
+  <li>Format: <code>AD-20260909-001</code>, <code>AD-20260909-002</code>, etc.</li>
+  <li>Sequence counter is <strong>branch-specific</strong> &mdash; each branch maintains its own sequence</li>
+  <li>Resets are date-based &mdash; new day starts a new sequence</li>
+</ul>
+
+<!-- ─── WALK-IN CUSTOMERS ─── -->
+<h2 id="walk-in">Walk-in Customers</h2>
+
+<div class="card">
+  <h4>Walk-in Bill Rules</h4>
+  <p>Walk-in bills are identified by <code>farmer_id = NULL</code> or a designated walk-in farmer record.</p>
+  <ul>
+    <li><span class="badge b-err">Required</span> Must pay in full &mdash; no partial payments</li>
+    <li><span class="badge b-err">Blocked</span> No credit method allowed</li>
+    <li>No outstanding dues tracked (no farmer entity to attach to)</li>
+    <li>No rate memory (no farmer to remember rates for)</li>
+  </ul>
+</div>
+
+<details>
+  <summary>Why walk-in bills require full payment</summary>
+  <div class="detail-body">
+    <p>Since walk-in customers have no farmer profile, the system cannot track outstanding dues or collect future payments. Enforcing full payment at checkout ensures the dealer doesn't accidentally create uncollectable credit for anonymous customers.</p>
+  </div>
+</details>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

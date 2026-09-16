@@ -1,0 +1,178 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roles &amp; Permissions — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/roles-permissions.html">
+<meta name="description" content="Roles and permissions in AquaDealers — permission matrix for Dealer, Staff, and Admin roles. RLS enforcement, staff JSONB permissions, and admin capabilities.">
+<meta property="og:title" content="Roles &amp; Permissions — AquaDealers Docs">
+<meta property="og:description" content="Roles and permissions in AquaDealers — permission matrix for Dealer, Staff, and Admin roles. RLS enforcement, staff JSONB permissions, and admin capabilities.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Roles &amp; Permissions — AquaDealers Docs">
+<meta name="twitter:description" content="Roles and permissions in AquaDealers — permission matrix for Dealer, Staff, and Admin roles. RLS enforcement, staff JSONB permissions, and admin capabilities.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Roles &amp; Permissions</span>
+</div>
+<div class="page">
+
+  <h1>Roles &amp; Permissions</h1>
+  <div class="page-meta">
+    <span>Last updated Sep 2026</span>
+    <span>3 role types &middot; 14 staff permission keys</span>
+  </div>
+
+  <!-- ── Permission Matrix ── -->
+  <h2>Permission Matrix</h2>
+  <p>Overview of what each role can access across the platform. Staff capabilities depend on per-member permission flags set by the dealer.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Feature</th><th>Dealer</th><th>Staff</th><th>Admin</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Dashboard</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-y">&#10003;</span> (platform-wide)</td></tr>
+        <tr><td>Create/Edit Bills</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>View Bills</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (read-only)</td></tr>
+        <tr><td>Cancel Bills</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Collect Payments</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Manage Farmers</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span> (view only)</td></tr>
+        <tr><td>Manage Products</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Manage Inventory</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Stock Purchases</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Supplier Payments</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Expenses</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Cash Book / Daily Book</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Cash Closing</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-n">&mdash;</span></td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Reports (Profit, Ageing)</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-n">&mdash;</span></td><td><span class="perm-y">&#10003;</span></td></tr>
+        <tr><td>Branch Management</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-n">&mdash;</span></td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Staff Management</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-n">&mdash;</span></td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Stock Transfers</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-n">&mdash;</span></td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Undo Transactions</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-n">&mdash;</span></td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Settings / Profile</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-n">&mdash;</span></td><td>Own profile</td></tr>
+        <tr><td>WhatsApp Sending</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Support Tickets</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-n">&mdash;</span></td><td>Manage</td></tr>
+        <tr><td>Subscription/Plans</td><td>View</td><td><span class="perm-n">&mdash;</span></td><td>Manage</td></tr>
+        <tr><td>Farmer Statements</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Bill Returns</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-y">&#10003;</span> (if permitted)</td><td><span class="perm-n">&mdash;</span></td></tr>
+        <tr><td>Farmer Discounts</td><td><span class="perm-y">&#10003;</span></td><td><span class="perm-n">&mdash;</span></td><td><span class="perm-n">&mdash;</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Staff Permission Keys ── -->
+  <h2>Staff Permission Keys</h2>
+  <p>Staff permissions are stored as a JSONB column on <code>staff_members.permissions</code>. Each key maps to one of three access modes:</p>
+  <ul>
+    <li><code>"visible"</code> — full access to the module</li>
+    <li><code>"disabled"</code> — the module appears in the sidebar but is greyed out / non-interactive (staff can see it exists but cannot use it)</li>
+    <li><code>"hidden"</code> — the module is completely removed from the UI</li>
+  </ul>
+  <p>When a dealer creates a new staff member, all keys default to the values shown below. The dealer can then toggle individual permissions from the Staff Management screen.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Controls</th><th>Default</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>dashboard</code></td><td>Dashboard access</td><td><span class="badge b-warn">hidden</span></td></tr>
+        <tr><td><code>billHistory</code></td><td>View past bills</td><td><span class="badge b-warn">hidden</span></td></tr>
+        <tr><td><code>newBill</code></td><td>Create/edit bills</td><td><span class="badge b-ok">visible</span></td></tr>
+        <tr><td><code>farmerList</code></td><td>View farmer list</td><td><span class="badge b-warn">hidden</span></td></tr>
+        <tr><td><code>addFarmer</code></td><td>Add new farmers</td><td><span class="badge b-ok">visible</span></td></tr>
+        <tr><td><code>inventory</code></td><td>Stock levels</td><td><span class="badge b-warn">hidden</span></td></tr>
+        <tr><td><code>suppliers</code></td><td>Supplier management</td><td><span class="badge b-warn">hidden</span></td></tr>
+        <tr><td><code>cashbook</code></td><td>Daily book</td><td><span class="badge b-warn">hidden</span></td></tr>
+        <tr><td><code>expenses</code></td><td>Expense tracking</td><td><span class="badge b-warn">hidden</span></td></tr>
+        <tr><td><code>reports</code></td><td>Reports section</td><td><span class="badge b-warn">hidden</span></td></tr>
+        <tr><td><code>settings</code></td><td>Shop settings</td><td><span class="badge b-warn">hidden</span></td></tr>
+        <tr><td><code>branches</code></td><td>Branch management</td><td><span class="badge b-warn">hidden</span></td></tr>
+        <tr><td><code>staffManagement</code></td><td>Manage other staff</td><td><span class="badge b-warn">hidden</span></td></tr>
+        <tr><td><code>transactions</code></td><td>Payment collection</td><td><span class="badge b-ok">visible</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="finding">
+    <h4>Enforcement</h4>
+    <p>Most staff permissions are enforced client-side only. However, <code>cashbook</code> and <code>expenses</code> are also enforced server-side: the <code>staff_has_permission()</code> SQL function is called within RLS policies to block access at the database level for those modules. Other modules remain client-side only — a technically savvy staff member could bypass those restrictions by directly querying the Supabase REST API.</p>
+  </div>
+
+  <!-- ── Admin Roles ── -->
+  <h2>Admin Roles</h2>
+  <p>The admin portal supports three role levels. Admin accounts are managed separately from dealer/staff accounts and authenticate through their own portal.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Role</th><th>Capabilities</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="badge b-pri">super_admin</span></td><td>Full platform access. Create/delete admins, manage all dealers, subscriptions, system configuration, view all data.</td></tr>
+        <tr><td><span class="badge b-muted">support</span></td><td>View-only access to dealer data, ticket resolution, no write operations on dealer data.</td></tr>
+        <tr><td><span class="badge b-acc">sales</span></td><td>Onboarding new dealers, subscription management, limited dealer data access for demos.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── RLS Enforcement ── -->
+  <h2>RLS Enforcement</h2>
+  <p>Row Level Security (RLS) is the primary data isolation mechanism in AquaDealers. It ensures that every database query is scoped to the authenticated user's tenant.</p>
+
+  <ul>
+    <li><strong>22+ tables</strong> have RLS enabled with active policies</li>
+    <li><strong>Dealer policies</strong> use the pattern <code>dealer_id = auth.uid()</code> to scope all queries to the authenticated dealer</li>
+    <li><strong>Staff policies</strong> use the <code>staff_dealer_id()</code> function that resolves a staff session token to the parent dealer's ID, giving staff the same data scope as their dealer</li>
+    <li><strong>SECURITY DEFINER RPCs</strong> bypass per-row checks for complex multi-table operations (e.g., bill creation with inventory updates). These functions run with elevated privileges and perform their own authorization checks internally.</li>
+    <li><strong><code>service_role</code> key</strong> bypasses RLS entirely and is used only within Edge Functions running on the server side</li>
+  </ul>
+
+  <div class="callout callout-info">
+    <p><strong>Tenant Isolation.</strong> RLS policies ensure complete tenant isolation. A dealer can never access another dealer's data, even through direct API calls.</p>
+  </div>
+
+  <!-- ── Authentication Flow ── -->
+  <h2>Authentication Flow</h2>
+
+  <h3>Dealer Auth</h3>
+  <ol>
+    <li>Supabase Auth (email/password or OTP)</li>
+    <li>JWT stored in browser, auto-refreshed by Supabase client</li>
+    <li>Optional app-lock PIN (verified via <code>verify_dealer_pin</code> RPC)</li>
+  </ol>
+
+  <h3>Staff Auth</h3>
+  <ol>
+    <li>Staff enters phone number + 4-digit PIN on the staff portal</li>
+    <li><code>staff_portal_login</code> RPC verifies the PIN against a bcrypt hash</li>
+    <li>Custom token issued (not a Supabase JWT)</li>
+    <li>Token stored in <code>sessionStorage</code>, expires in 4 hours</li>
+    <li>Rate limited: 8 failed attempts per 15 minutes</li>
+  </ol>
+
+  <h3>Admin Auth</h3>
+  <ol>
+    <li>Email + password on the admin portal</li>
+    <li>bcrypt verification, custom session token issued</li>
+    <li>Session expires in 4 hours</li>
+  </ol>
+
+  <div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

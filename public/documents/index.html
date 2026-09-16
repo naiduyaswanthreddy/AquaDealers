@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AquaDealers Documentation</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/">
+<meta name="description" content="Complete product, technical, design and operational documentation for AquaDealers — billing, inventory, and farmer management software for aqua feed dealers.">
+<meta property="og:title" content="AquaDealers Documentation">
+<meta property="og:description" content="Complete product, technical, design and operational documentation for AquaDealers — billing, inventory, and farmer management software for aqua feed dealers.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="AquaDealers Documentation">
+<meta name="twitter:description" content="Complete product, technical, design and operational documentation for AquaDealers — billing, inventory, and farmer management software for aqua feed dealers.">
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <span class="topbar-title">Documentation</span>
+  <div class="topbar-nav">
+    <a href="/documents/" class="active">All Docs</a>
+    <a href="/">Back to App</a>
+  </div>
+</div>
+
+<div class="page">
+
+<h1>AquaDealers Documentation</h1>
+<p style="color:var(--tx2);margin-bottom:.5rem">Complete product, technical, design and operational documentation for AquaDealers v3.0.0</p>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span> 24 documents verified against source code</span>
+  <span><span class="badge b-warn">Review</span> 2 documents need review</span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<!-- Product -->
+<div class="cat-label">Product</div>
+<div class="idx-grid">
+  <a href="product-overview.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Product Overview</h3>
+    <p>What AquaDealers is, who it's for, core capabilities, and tech stack.</p>
+  </a>
+  <a href="personas-workflows.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Personas &amp; Workflows</h3>
+    <p>Dealer, Staff, and Admin roles — permissions, entry points, key workflows.</p>
+  </a>
+  <a href="information-architecture.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Information Architecture</h3>
+    <p>Navigation structure, all 73 routes, feature gating, and layout system.</p>
+  </a>
+  <a href="page-specifications.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Page Specifications</h3>
+    <p>Detailed specs for every major page — Dashboard, New Bill, Farmer Ledger, Reports, Settings.</p>
+  </a>
+  <a href="feature-specifications.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Feature Specifications</h3>
+    <p>Billing, Estimates, Returns, Transfers, Bill Editing, Cancellation, Transaction Undo.</p>
+  </a>
+</div>
+
+<!-- Business -->
+<div class="cat-label">Business</div>
+<div class="idx-grid">
+  <a href="business-rules.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Business Rules</h3>
+    <p>Billing calculations, GST, payment allocation, credit limits, settlement discounts.</p>
+  </a>
+  <a href="financial-logic.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Financial Logic</h3>
+    <p>Cash flow, daily closing, financial metrics, profit calculation.</p>
+  </a>
+  <a href="inventory-logic.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Inventory Logic</h3>
+    <p>Three-level stock system, FIFO lot consumption, expiry management, auto-fanout.</p>
+  </a>
+</div>
+
+<!-- Engineering -->
+<div class="cat-label">Engineering</div>
+<div class="idx-grid">
+  <a href="database.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Database</h3>
+    <p>48+ tables, triggers, RLS policies, views — complete Supabase PostgreSQL schema.</p>
+  </a>
+  <a href="api.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>API &amp; RPCs</h3>
+    <p>All Supabase RPCs, Edge Functions, and API endpoints.</p>
+  </a>
+  <a href="roles-permissions.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Roles &amp; Permissions</h3>
+    <p>Permission matrix, staff JSONB permissions, admin roles, RLS enforcement.</p>
+  </a>
+  <a href="ui-design-system.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>UI Design System</h3>
+    <p>Color palette, typography, 23 UI components, notifications, design tokens.</p>
+  </a>
+  <a href="mobile-ux.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Mobile UX</h3>
+    <p>Bottom nav, mobile billing wizard, responsive patterns, touch targets.</p>
+  </a>
+  <a href="desktop-ux.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Desktop UX</h3>
+    <p>Sidebar layout, desktop billing, keyboard shortcuts, wide-screen optimizations.</p>
+  </a>
+</div>
+
+<!-- Operations -->
+<div class="cat-label">Operations</div>
+<div class="idx-grid">
+  <a href="whatsapp.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>WhatsApp</h3>
+    <p>Dual system — wa.me links + authkey.io API, 10 templates, quota system.</p>
+  </a>
+  <a href="reports.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Reports</h3>
+    <p>Monthly finance pack, sales register, profit report, stock report, daily book.</p>
+  </a>
+  <a href="security.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Security</h3>
+    <p>Authentication, RLS, known security issues, storage permissions.</p>
+  </a>
+  <a href="performance.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Performance</h3>
+    <p>Caching strategy, code splitting, known performance issues, what's working.</p>
+  </a>
+  <a href="testing.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Testing</h3>
+    <p>11 unit tests (Vitest), 3 E2E specs (Playwright), configuration.</p>
+  </a>
+  <a href="analytics.html" class="idx-card">
+    <span class="badge b-warn">Review</span>
+    <h3>Analytics</h3>
+    <p>PostHog event tracking, Sentry error monitoring, session replays.</p>
+  </a>
+  <a href="onboarding-support.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Onboarding &amp; Support</h3>
+    <p>4-step onboarding wizard, support ticket system.</p>
+  </a>
+</div>
+
+<!-- Meta -->
+<div class="cat-label">Meta</div>
+<div class="idx-grid">
+  <a href="roadmap.html" class="idx-card">
+    <span class="badge b-pri">Planned</span>
+    <h3>Roadmap</h3>
+    <p>Completed features, recommended next priorities.</p>
+  </a>
+  <a href="changelog.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Changelog</h3>
+    <p>Version history from git — recent changes by month.</p>
+  </a>
+  <a href="known-issues.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Known Issues</h3>
+    <p>All known bugs and limitations ranked by severity.</p>
+  </a>
+  <a href="glossary.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>Glossary</h3>
+    <p>Domain terminology — Dealer, Farmer, Lot, FIFO, MRP, HSN, and more.</p>
+  </a>
+  <a href="ai-codex-rules.html" class="idx-card">
+    <span class="badge b-ok">Verified</span>
+    <h3>AI / Codex Rules</h3>
+    <p>Development rules for AI assistants — before changing anything, never do, architecture reference.</p>
+  </a>
+</div>
+
+<div class="doc-footer">
+  <p>AquaDealers Documentation v1.0 — Generated from source code analysis</p>
+  <p>26 documents &middot; 24 verified &middot; 2 needs review</p>
+</div>
+
+</div>
+</body>
+</html>

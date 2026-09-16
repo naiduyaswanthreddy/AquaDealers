@@ -1,0 +1,152 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mobile UX — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/mobile-ux.html">
+<meta name="description" content="Mobile UX in AquaDealers — bottom navigation, 3-step billing wizard, responsive patterns, touch targets, and gesture-based interactions.">
+<meta property="og:title" content="Mobile UX — AquaDealers Docs">
+<meta property="og:description" content="Mobile UX in AquaDealers — bottom navigation, 3-step billing wizard, responsive patterns, touch targets, and gesture-based interactions.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Mobile UX — AquaDealers Docs">
+<meta name="twitter:description" content="Mobile UX in AquaDealers — bottom navigation, 3-step billing wizard, responsive patterns, touch targets, and gesture-based interactions.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Mobile UX</span>
+</div>
+<div class="page">
+
+  <h1>Mobile UX</h1>
+  <div class="page-meta">
+    <span>Last updated Sep 2026</span>
+    <span>Primary platform &middot; 80%+ users on mobile</span>
+  </div>
+
+  <!-- Layout -->
+  <h2>Layout</h2>
+  <p>The mobile interface is anchored by a bottom navigation bar, visible on all screens below the <code>1024px</code> breakpoint. It provides single-tap access to the five primary sections of the app.</p>
+
+  <div class="card">
+    <h4>Bottom Navigation Bar</h4>
+    <p>Five items arranged horizontally across the bottom of the viewport:</p>
+    <ul>
+      <li><strong>Home</strong> &mdash; Dashboard overview</li>
+      <li><strong>Farmers</strong> &mdash; Farmer directory and ledgers</li>
+      <li><strong>Bill Center</strong> <span class="badge b-pri">FAB</span> &mdash; Elevated floating action button in the center position. Larger and visually prominent to encourage billing as the primary action.</li>
+      <li><strong>Stock</strong> &mdash; Inventory management</li>
+      <li><strong>More</strong> &mdash; Expands to secondary navigation</li>
+    </ul>
+    <p>The nav bar uses <code>env(safe-area-inset-bottom)</code> via the <code>content-safe-bottom</code> utility to avoid overlap with the iOS home indicator. It is hidden on desktop (<code>&ge;1024px</code>).</p>
+  </div>
+
+  <!-- Billing Flow -->
+  <h2>Billing Flow &mdash; Mobile</h2>
+  <p>Mobile billing is a 3-step wizard, each step on its own screen with a progress indicator at the top.</p>
+
+  <div class="flow-step">
+    <div class="flow-num">1</div>
+    <div>
+      <h4>Items</h4>
+      <p>Product selection via category cards (<strong>Feed</strong> / <strong>Medicine</strong>) that open a modal sheet. Users can search within a category and tap a product to add it to the cart.</p>
+      <p>The cart is displayed inline below the category selector with editable quantity and price per item. A running subtotal is shown at the bottom of the item list.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-num">2</div>
+    <div>
+      <h4>Payment</h4>
+      <p>Payment type selection: <span class="badge b-ok">Credit</span> <span class="badge b-acc">Cash</span> <span class="badge b-warn">Partial</span>. Amount input field appears for cash and partial payments with auto-calculated balance due. A date picker allows setting the bill date.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-num">3</div>
+    <div>
+      <h4>Review</h4>
+      <p>Full bill summary showing all line items, quantities, prices, and totals. A canvas-based signature pad accepts touch input for the farmer's signature.</p>
+      <p>A sticky <strong>"Create Bill"</strong> button sits at the bottom of the screen. After creation, the user is offered the option to send the bill via WhatsApp.</p>
+    </div>
+  </div>
+
+  <!-- Responsive Strategy -->
+  <h2>Responsive Strategy</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Pattern</th><th>Implementation</th></tr></thead>
+      <tbody>
+        <tr><td>Mobile-first</td><td>Default styles target mobile. Desktop overrides use the <code>lg:</code> prefix (1024px breakpoint).</td></tr>
+        <tr><td>Layout toggling</td><td><code>lg:hidden</code> / <code>hidden lg:flex</code> to render separate mobile and desktop blocks.</td></tr>
+        <tr><td>Dashboard</td><td>Separate mobile and desktop layout components loaded per breakpoint.</td></tr>
+        <tr><td>Spacing</td><td>Fluid gutter: <code>--page-gutter: clamp(1rem, 3vw, 1.5rem)</code></td></tr>
+        <tr><td>Tablet</td><td>No tablet-specific breakpoint. 768&ndash;1024px receives the mobile layout.</td></tr>
+        <tr><td>Tables</td><td>Horizontal scroll on mobile via the <code>.tw</code> wrapper.</td></tr>
+        <tr><td>Modals</td><td>Slide-up sheet on mobile; scale-in centered dialog on desktop.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Touch Targets -->
+  <h2>Touch Targets</h2>
+  <ul>
+    <li>Minimum <strong>44px</strong> tap targets on all buttons and interactive elements.</li>
+    <li>Bottom nav items stretch the full width of their section.</li>
+    <li>Cart +/&minus; buttons are 44&times;44px minimum.</li>
+    <li>Form inputs have <strong>48px</strong> height on mobile.</li>
+    <li>Adequate spacing between adjacent tap targets to prevent mis-taps.</li>
+  </ul>
+
+  <!-- Gestures & Interactions -->
+  <h2>Gestures &amp; Interactions</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Gesture</th><th>Where</th><th>Behavior</th></tr></thead>
+      <tbody>
+        <tr><td>Date swipe</td><td>Daily Book page</td><td>Swipe left/right to navigate between dates.</td></tr>
+        <tr><td>Pull-to-refresh</td><td>List views</td><td>Triggers a React Query refetch of the current data.</td></tr>
+        <tr><td>Tap-hold</td><td><span class="badge b-muted">Not used</span></td><td>Avoided for simplicity; no long-press actions.</td></tr>
+        <tr><td>Quantity +/&minus;</td><td>Cart items</td><td>Tap to increment/decrement. Hold for rapid change.</td></tr>
+        <tr><td>Swipe to dismiss</td><td><span class="badge b-muted">Not used</span></td><td>Standard back navigation is used instead.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Performance Considerations -->
+  <h2>Performance Considerations</h2>
+  <div class="callout callout-warn">
+    <h4>Mobile Performance Notes</h4>
+    <ul>
+      <li><strong>PDF Generation</strong> &mdash; <code>html2canvas</code> for bill PDF export freezes the UI for 3&ndash;5 seconds on mobile. It runs on the main thread.</li>
+      <li><strong>Image Compression</strong> &mdash; The <code>browser-image-compression</code> library compresses images before upload to reduce bandwidth usage.</li>
+      <li><strong>Bundle Size</strong> &mdash; Code-split by route. The billing module is the largest chunk.</li>
+      <li><strong>Offline</strong> &mdash; Bills can be created offline with a <code>client_ref</code> for idempotent sync when the connection returns.</li>
+    </ul>
+  </div>
+
+  <!-- Navigation Patterns -->
+  <h2>Navigation Patterns</h2>
+  <ul>
+    <li><strong>Tab bar</strong> for primary navigation (5 items at the bottom).</li>
+    <li><strong>Stack navigation</strong> within each tab &mdash; push/pop pattern for drilling into detail views.</li>
+    <li><strong>Modal sheets</strong> for selection UI (products, farmers) &mdash; slide up from the bottom.</li>
+    <li><strong>"More" tab</strong> expands to secondary sections: Settings, Reports, Support, Stock Transfers, Expenses, Suppliers.</li>
+    <li><strong>Back button</strong> in the topbar for nested views within a stack.</li>
+  </ul>
+
+  <div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

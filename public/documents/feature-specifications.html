@@ -1,0 +1,316 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Feature Specifications — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/feature-specifications.html">
+<meta name="description" content="Feature specifications for AquaDealers — Billing, Estimates, Returns, Stock Transfers, Bill Editing, Cancellation, and Transaction Undo with 48-hour window.">
+<meta property="og:title" content="Feature Specifications — AquaDealers Docs">
+<meta property="og:description" content="Feature specifications for AquaDealers — Billing, Estimates, Returns, Stock Transfers, Bill Editing, Cancellation, and Transaction Undo with 48-hour window.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Feature Specifications — AquaDealers Docs">
+<meta name="twitter:description" content="Feature specifications for AquaDealers — Billing, Estimates, Returns, Stock Transfers, Bill Editing, Cancellation, and Transaction Undo with 48-hour window.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Feature Specifications</span>
+</div>
+<div class="page">
+
+<h1>Feature Specifications</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span> Against source code</span>
+  <span>7 core features documented</span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="billing">Billing (Core)</h2>
+
+<p>Billing is the primary feature of AquaDealers. Every bill creates a cascade of data changes across multiple tables in a single atomic transaction.</p>
+
+<h3>Atomic Save: <code>create_bill_v2</code> RPC</h3>
+<p>A single PostgreSQL function that performs all of the following in one transaction. If any step fails, the entire transaction is rolled back — no partial state.</p>
+
+<div class="tw">
+<table>
+  <thead><tr><th>#</th><th>Operation</th><th>Table</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Insert bill header (number, date, farmer, totals, branch)</td><td><code>bills</code></td></tr>
+    <tr><td>2</td><td>Insert line items with quantities, rates, discounts</td><td><code>bill_items</code></td></tr>
+    <tr><td>3</td><td>Deduct stock from oldest FIFO lots per item</td><td><code>inventory_lots</code></td></tr>
+    <tr><td>4</td><td>Record inventory movements (type: 'sale')</td><td><code>inventory_movements</code></td></tr>
+    <tr><td>5</td><td>Insert payment record (if amount_paid &gt; 0)</td><td><code>payments</code></td></tr>
+    <tr><td>6</td><td>Allocate payment to this bill</td><td><code>payment_allocations</code></td></tr>
+    <tr><td>7</td><td>Create cash book entry (if cash payment)</td><td><code>cash_book</code></td></tr>
+    <tr><td>8</td><td>Update farmer due balance (via trigger)</td><td><code>farmers</code></td></tr>
+    <tr><td>9</td><td>Record transaction event for undo capability</td><td><code>transaction_events</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Offline Sync</h3>
+<p>When the device is offline, bills are saved locally and synced when connectivity returns. The sync mechanism uses <code>create_bill_offline_sync</code> RPC with <code>client_ref</code> idempotency.</p>
+
+<div class="card">
+  <h4>Idempotency</h4>
+  <p>Each offline bill gets a <code>client_ref</code> — a UUID generated on the client. There is a <strong>unique index</strong> on <code>(dealer_id, client_ref)</code> on the <code>bills</code> table. If the sync request is sent twice (e.g., network timeout followed by retry), the second attempt is safely rejected as a duplicate.</p>
+</div>
+
+<h3>Draft Tabs</h3>
+<p>Up to <strong>5 concurrent drafts</strong> stored in <code>sessionStorage</code>. Each draft preserves:</p>
+<ul>
+  <li>Selected farmer</li>
+  <li>Added products with quantities, rates, discounts</li>
+  <li>Payment amount and method</li>
+  <li>Any notes</li>
+</ul>
+<p>Drafts survive page refreshes within the same browser tab but not across tabs or after closing the browser.</p>
+
+<h3>Invoice Templates</h3>
+<p>5 invoice template designs available:</p>
+<div class="tw">
+<table>
+  <thead><tr><th>Template</th><th>Style</th></tr></thead>
+  <tbody>
+    <tr><td>TemplateOne</td><td>Clean minimal — product, qty, rate, amount</td></tr>
+    <tr><td>TemplateTwo</td><td>Detailed — includes HSN, MRP, discount columns</td></tr>
+    <tr><td>TemplateThree</td><td>GST-focused — full GST breakdown (CGST + SGST)</td></tr>
+    <tr><td>TemplateFour</td><td>Compact — smaller font, more items per page</td></tr>
+    <tr><td>TemplateFive</td><td>Modern — styled header, signature area prominent</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>Configurable Columns</h4>
+<p>Each template supports toggling these columns on/off via Settings:</p>
+<ul>
+  <li>HSN code</li>
+  <li>Rate per unit</li>
+  <li>Discount (% or amount)</li>
+  <li>GST breakdown</li>
+  <li>MRP</li>
+  <li>Expiry date</li>
+  <li>Signature area</li>
+</ul>
+<p>Templates are <strong>branch-specific</strong> — different branches can use different templates.</p>
+
+<h3>PDF Generation</h3>
+<ul>
+  <li><strong>Bills:</strong> <code>html2canvas</code> renders the invoice DOM to a canvas, converts to PNG, then embeds in a <code>jsPDF</code> document. This ensures the PDF matches the on-screen invoice pixel-for-pixel.</li>
+  <li><strong>Reports/Statements:</strong> Programmatic <code>jsPDF</code> — directly draws text, tables, and lines for consistent layout regardless of screen rendering.</li>
+</ul>
+
+<h3>Bill Numbering</h3>
+<p>Format: <code>AD-{YYYYMMDD}-{sequence}</code></p>
+<p>The sequence is a branch-specific auto-incrementing counter. Example: <code>AD-20260909-042</code> is the 42nd bill from this branch on September 9, 2026.</p>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="estimates">Estimates</h2>
+
+<p>Estimates (quotations) use the same billing flow but with no side effects.</p>
+
+<div class="card">
+  <h4>How Estimates Differ from Bills</h4>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Aspect</th><th>Bill</th><th>Estimate</th></tr></thead>
+    <tbody>
+      <tr><td>Database flag</td><td><code>is_estimate = false</code></td><td><code>is_estimate = true</code></td></tr>
+      <tr><td>Stock impact</td><td>Deducts from FIFO lots</td><td>None</td></tr>
+      <tr><td>Payment</td><td>Records payment, updates cash book</td><td>None</td></tr>
+      <tr><td>Farmer due</td><td>Increases outstanding balance</td><td>No change</td></tr>
+      <tr><td>WhatsApp notification</td><td>Sent (if configured)</td><td>Not sent</td></tr>
+      <tr><td>Listed in</td><td><code>/bill-history</code></td><td><code>/estimates</code></td></tr>
+      <tr><td>Conversion</td><td>&mdash;</td><td>Can be converted to a real bill</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<p>When an estimate is converted to a bill, the system creates a new bill using the estimate's items and runs the full <code>create_bill_v2</code> transaction. The estimate record is updated with a reference to the new bill.</p>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="returns">Returns</h2>
+
+<p>Returns handle the reversal of sold goods. There are two entry points that both restore stock and adjust balances, but differ in scope:</p>
+<ul>
+  <li><strong>Bill-first (<code>create_bill_return</code>):</strong> return against one specific bill, started from Bill Details.</li>
+  <li><strong>Farmer-first (<code>create_farmer_return_v1</code>):</strong> return started from the farmer, spanning a date range across that farmer's bills; the server auto-allocates the returned quantity across the matching <code>bill_items</code> (most recent bill first) and reports any leftover as an "unmatched" line at a dealer-entered price.</li>
+</ul>
+
+<h3>Database Tables</h3>
+<ul>
+  <li><code>bill_returns</code> — shared header for both flows: linked bill (bill-first) or farmer + date range (farmer-first), return date, total amount, settlement method</li>
+  <li><code>bill_return_items</code> — bill-first line items: product, quantity returned, <code>bill_item_id</code></li>
+  <li><code>farmer_return_lines</code> — farmer-first line items: product, requested/matched/unmatched quantity, unmatched price</li>
+  <li><code>bill_return_allocations</code> — farmer-first: how a <code>farmer_return_lines</code> row was split across specific <code>bill_items</code> (one row per bill hit)</li>
+</ul>
+<p>Both <code>bill_return_items.bill_item_id</code> and <code>bill_return_allocations.bill_item_id</code> are what <code>get_farmer_items_v1</code>/<code>get_farmer_item_bills_v1</code> sum up to net returned quantity/value out of the farmer's purchase totals (see below) — a return only ever reduces a <code>bill_item</code>'s effective quantity for reporting, it never edits the original <code>bill_items</code> row.</p>
+
+<h3>Stock Restoration</h3>
+<p>Returns restock the same lots the sale consumed, walked in the <strong>same order they were consumed</strong> (earliest-consumed lot first — i.e. FIFO order, not LIFO), via <code>bill_item_lot_allocations</code>. If a lot record is gone, restocking falls back to the inventory row's <code>quantity_in_stock</code> directly.</p>
+
+<h3>Excess Returns and Credit</h3>
+<p>How the excess (return value beyond what's owed) is handled differs by flow:</p>
+<ul>
+  <li><strong>Bill-first:</strong> the bill's <code>balance_due</code> is clamped at 0; any excess just lets <code>farmers.total_due</code> go negative (rendered as a negative balance). <code>return_credit_balance</code> is not touched.</li>
+  <li><strong>Farmer-first:</strong> excess is resolved by the dealer's chosen <code>settlement_method</code> — <code>farmer_credit</code> adds to <code>farmers.return_credit_balance</code> (applied to the farmer's next bill), or <code>cash_refund</code> logs an expense in <code>cash_book</code> instead.</li>
+</ul>
+
+<h3>Audit Trail</h3>
+<p>Every return creates inventory movement records (<code>reference_type = 'bill_return'</code> for bill-first, <code>'farmer_return'</code> for farmer-first) pointing to the return, plus a <code>transaction_events</code> row so it shows up in and can be undone from <code>/transactions</code>.</p>
+
+<h3>RPCs</h3>
+<div class="tw">
+<table>
+  <thead><tr><th>RPC</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>create_bill_return</code></td><td>Bill-first: execute a return against one bill's items — restock lots, reduce that bill's balance, refresh farmer due</td></tr>
+    <tr><td><code>get_returns_for_bill</code></td><td>List returns (either flow) that touched a given bill, for the Bill Details page</td></tr>
+    <tr><td><code>preview_farmer_return_v1</code></td><td>Farmer-first: preview what will happen — shows affected bills, amounts, credit calculation — before committing</td></tr>
+    <tr><td><code>create_farmer_return_v1</code></td><td>Farmer-first: execute the return — restore stock, adjust farmer balance, create audit entries</td></tr>
+    <tr><td><code>replace_farmer_return_v1</code></td><td>Farmer-first: replace (edit) an existing return — undoes the previous and applies the new</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout callout-warn"><strong>Fixed 2026-09-16:</strong> <code>get_farmer_items_v1</code> and <code>get_farmer_item_bills_v1</code> (the farmer detail page's Items tab and its per-item bill drilldown) used to sum <code>bill_items</code> directly with no idea returns existed, so a farmer's purchased quantity/value never dropped after a return — stock correctly went back up, but the farmer-facing numbers were stuck at pre-return values indefinitely. Both RPCs now subtract <code>bill_return_items</code> + <code>bill_return_allocations</code> per <code>bill_item</code> before aggregating. Bills, statements, the ledger, and farmer due totals were never affected by this bug — those already read <code>bills.balance_due</code>/<code>farmers.total_due</code>, which the return RPCs update directly.</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="transfers">Stock Transfers</h2>
+
+<p>Transfer stock between branches while preserving FIFO lot data. Each transfer creates movement records at both ends.</p>
+
+<h3>How It Works</h3>
+<div class="flow-step"><div class="flow-num">1</div><div><strong>Select source branch and product</strong> — shows available lots at that branch</div></div>
+<div class="flow-step"><div class="flow-num">2</div><div><strong>Select destination branch</strong> — must be a different branch owned by the same dealer</div></div>
+<div class="flow-step"><div class="flow-num">3</div><div><strong>Enter quantity</strong> — cannot exceed available stock at source</div></div>
+<div class="flow-step"><div class="flow-num">4</div><div><strong>Execute via <code>create_stock_transfer</code> RPC</strong></div></div>
+
+<h3>What the RPC Does</h3>
+<ul>
+  <li>Deducts from source lot(s) using FIFO order</li>
+  <li>Creates new lot(s) at destination with the same cost, expiry, and supplier data</li>
+  <li>Creates inventory movement at source: <code>type = 'transfer_out'</code></li>
+  <li>Creates inventory movement at destination: <code>type = 'transfer_in'</code></li>
+  <li>Both movements reference each other via <code>reference_id</code></li>
+</ul>
+
+<div class="callout callout-info">
+  <strong>FIFO Preservation:</strong> If transferring 100 units and the source has Lot A (80 units, Jan expiry) and Lot B (50 units, Mar expiry), the transfer creates two lots at the destination: 80 from Lot A and 20 from Lot B, preserving the original cost and expiry dates.
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="bill-editing">Bill Editing</h2>
+
+<h3>RPC: <code>edit_bill_v1</code></h3>
+
+<h3>What Can Be Edited</h3>
+<ul>
+  <li>Quantities (increase or decrease)</li>
+  <li>Unit prices</li>
+  <li>Discounts (per-item)</li>
+  <li>Bill date</li>
+  <li>Payment amount</li>
+  <li>Payment type</li>
+</ul>
+
+<h3>Stock Adjustment Logic</h3>
+<ul>
+  <li><strong>Quantity decreased:</strong> Stock is restored using LIFO (same as returns)</li>
+  <li><strong>Quantity increased:</strong> Additional stock is consumed using FIFO (same as new billing)</li>
+  <li><strong>Product removed:</strong> Full stock restoration for that item</li>
+  <li><strong>Product added:</strong> Full FIFO consumption for the new item</li>
+</ul>
+
+<h3>Audit Trail</h3>
+<p>Every edit creates a record in <code>bill_audit_logs</code> with:</p>
+<ul>
+  <li><strong>Before state:</strong> Complete snapshot of the bill before the edit (items, amounts, payments)</li>
+  <li><strong>After state:</strong> Complete snapshot after the edit</li>
+  <li><strong>Changed by:</strong> User/staff who made the edit</li>
+  <li><strong>Timestamp</strong></li>
+</ul>
+<p>The bill record itself is flagged with <code>is_edited = true</code> so edited bills are visually distinguished in bill history.</p>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="bill-cancellation">Bill Cancellation</h2>
+
+<h3>RPC: <code>cancel_bill_v1</code></h3>
+
+<h3>Constraints</h3>
+<div class="tw">
+<table>
+  <thead><tr><th>Constraint</th><th>Rule</th><th>Reason</th></tr></thead>
+  <tbody>
+    <tr><td>Timing</td><td>Same-day only</td><td>Prevents backdated financial manipulation</td></tr>
+    <tr><td>Payment</td><td><code>amount_paid</code> must be 0</td><td>Bills with payments must be handled via returns or editing</td></tr>
+    <tr><td>Status</td><td>Must not already be cancelled</td><td>Idempotency — returns <code>'already_cancelled'</code> without error</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>What Cancellation Does</h3>
+<ol>
+  <li>Sets bill <code>status = 'cancelled'</code></li>
+  <li>Restores all stock to original FIFO lots (LIFO restoration)</li>
+  <li>Reduces farmer outstanding balance by the bill amount</li>
+  <li>Creates inventory movements with <code>reference_type = 'cancellation'</code></li>
+  <li>Records transaction event for audit</li>
+</ol>
+
+<div class="callout callout-ok">
+  <strong>Idempotent:</strong> Calling <code>cancel_bill_v1</code> on an already-cancelled bill returns <code>'already_cancelled'</code> status without error or side effects. Safe to retry.
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="transaction-undo">Transaction Undo</h2>
+
+<p>A universal undo system that covers all financial transactions in the application.</p>
+
+<h3>Supported Transaction Types</h3>
+<div class="tw">
+<table>
+  <thead><tr><th>Type</th><th>Undo Behavior</th></tr></thead>
+  <tbody>
+    <tr><td>Bills</td><td>Cancels the bill, restores stock, reverses farmer due</td></tr>
+    <tr><td>Purchases</td><td>Removes inventory lots, reverses supplier balance</td></tr>
+    <tr><td>Payments (farmer)</td><td>Reverses payment allocation, restores farmer due</td></tr>
+    <tr><td>Supplier Payments</td><td>Reverses payment, restores supplier balance</td></tr>
+    <tr><td>Returns</td><td>Re-deducts returned stock, reverses farmer credit</td></tr>
+    <tr><td>Stock Transfers</td><td>Reverses transfer at both branches</td></tr>
+    <tr><td>Expenses</td><td>Removes expense record and cash book entry</td></tr>
+    <tr><td>Manual Cash Entries</td><td>Removes the entry from cash book</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>How It Works</h3>
+<ul>
+  <li><strong>Table:</strong> <code>transaction_events</code> records every financial transaction with type, reference ID, timestamp, and actor</li>
+  <li><strong>Window:</strong> <strong>48 hours</strong> from creation. After 48 hours, the undo option disappears.</li>
+  <li><strong>RPC:</strong> <code>undo_transaction_v1</code></li>
+  <li><strong>Method:</strong> Soft-delete using <code>deleted_at</code> or <code>cancelled_at</code> timestamps rather than hard deletion. This preserves the audit trail — undone transactions are still visible but marked as undone.</li>
+</ul>
+
+<div class="callout callout-warn">
+  <strong>48-Hour Window:</strong> The undo window is enforced server-side in the RPC. The UI hides the undo button after 48 hours, but even if called directly, the RPC rejects undo attempts outside the window.
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

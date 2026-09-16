@@ -1,0 +1,195 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UI Design System — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/ui-design-system.html">
+<meta name="description" content="AquaDealers UI design system — color palette, typography (Plus Jakarta Sans), 23 UI components, design tokens, notifications, and icon system.">
+<meta property="og:title" content="UI Design System — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers UI design system — color palette, typography (Plus Jakarta Sans), 23 UI components, design tokens, notifications, and icon system.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="UI Design System — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers UI design system — color palette, typography (Plus Jakarta Sans), 23 UI components, design tokens, notifications, and icon system.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">UI Design System</span>
+</div>
+<div class="page">
+
+  <h1>UI Design System</h1>
+  <div class="page-meta">
+    <span>Last updated Sep 2026</span>
+    <span>23 components &middot; 7 branch themes</span>
+  </div>
+
+  <!-- ── Color Palette ── -->
+  <h2>Color Palette</h2>
+
+  <h3>Primary</h3>
+  <div class="grid-3">
+    <div class="card"><span class="swatch" style="background-color:#0052cc"></span> Primary <code>#0052cc</code></div>
+    <div class="card"><span class="swatch" style="background-color:#3385ff"></span> Primary Light <code>#3385ff</code></div>
+    <div class="card"><span class="swatch" style="background-color:#003380"></span> Primary Dark <code>#003380</code></div>
+  </div>
+
+  <h3>Accent</h3>
+  <div class="grid-3">
+    <div class="card"><span class="swatch" style="background-color:#ea8e1b"></span> Accent <code>#ea8e1b</code></div>
+    <div class="card"><span class="swatch" style="background-color:#f6b14f"></span> Accent Light <code>#f6b14f</code></div>
+  </div>
+
+  <h3>Semantic</h3>
+  <div class="grid-3">
+    <div class="card"><span class="swatch" style="background-color:#1fa971"></span> Success <code>#1fa971</code></div>
+    <div class="card"><span class="swatch" style="background-color:#d64545"></span> Danger <code>#d64545</code></div>
+    <div class="card"><span class="swatch" style="background-color:#d97706"></span> Warning <code>#d97706</code></div>
+  </div>
+
+  <h3>Surfaces</h3>
+  <div class="grid-3">
+    <div class="card"><span class="swatch" style="background-color:#e7f5ff"></span> Surface <code>#e7f5ff</code></div>
+    <div class="card"><span class="swatch" style="background-color:#d8eefc"></span> Surface Muted <code>#d8eefc</code></div>
+    <div class="card"><span class="swatch" style="background-color:#ffffff; border:1px solid #d9e5ee"></span> Card <code>#ffffff</code></div>
+    <div class="card"><span class="swatch" style="background-color:#f7f9fc"></span> Background <code>#f7f9fc</code></div>
+  </div>
+
+  <h3>Text</h3>
+  <div class="grid-3">
+    <div class="card"><span class="swatch" style="background-color:#173042"></span> Primary <code>#173042</code></div>
+    <div class="card"><span class="swatch" style="background-color:#5d7486"></span> Secondary <code>#5d7486</code></div>
+    <div class="card"><span class="swatch" style="background-color:#8ba0af"></span> Muted <code>#8ba0af</code></div>
+  </div>
+
+  <h3>Border</h3>
+  <div class="grid-3">
+    <div class="card"><span class="swatch" style="background-color:#d9e5ee"></span> Border <code>#d9e5ee</code></div>
+  </div>
+
+  <!-- ── Branch Theming ── -->
+  <h2>Branch Theming</h2>
+  <p>Each branch gets a <code>color_theme</code> value stored in the <code>branches</code> table. The theme color is applied to the sidebar accent, active/selected states, and branch indicator badges throughout the UI.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Theme</th><th>Primary Color</th><th>Use</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="swatch" style="background-color:#0052cc"></span> Blue</td><td><code>#0052cc</code></td><td>Default theme</td></tr>
+        <tr><td><span class="swatch" style="background-color:#16a34a"></span> Green</td><td><code>#16a34a</code></td><td>Agriculture/organic focus</td></tr>
+        <tr><td><span class="swatch" style="background-color:#ea580c"></span> Orange</td><td><code>#ea580c</code></td><td>Warm/energetic branding</td></tr>
+        <tr><td><span class="swatch" style="background-color:#0d9488"></span> Teal</td><td><code>#0d9488</code></td><td>Calm/professional tone</td></tr>
+        <tr><td><span class="swatch" style="background-color:#7c3aed"></span> Purple</td><td><code>#7c3aed</code></td><td>Premium/distinct branches</td></tr>
+        <tr><td><span class="swatch" style="background-color:#e11d48"></span> Rose</td><td><code>#e11d48</code></td><td>Bold/attention-grabbing</td></tr>
+        <tr><td><span class="swatch" style="background-color:#475569"></span> Slate</td><td><code>#475569</code></td><td>Neutral/understated</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Typography ── -->
+  <h2>Typography</h2>
+  <ul>
+    <li><strong>Primary:</strong> Plus Jakarta Sans (weights: 400, 500, 600, 700, 800)</li>
+    <li><strong>Fallback:</strong> Noto Sans for regional scripts</li>
+    <li><strong>System stack fallback:</strong> system-ui, sans-serif</li>
+    <li><strong>Monospace:</strong> JetBrains Mono (code blocks, technical displays only &mdash; not used in app UI)</li>
+    <li><strong>Base size:</strong> 15px</li>
+    <li><strong>Line height:</strong> 1.65</li>
+  </ul>
+
+  <!-- ── Design Tokens ── -->
+  <h2>Design Tokens</h2>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Token</th><th>Value</th><th>Usage</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>--card-radius</code></td><td>1.25rem (20px)</td><td>Card border radius</td></tr>
+        <tr><td><code>--card-radius-lg</code></td><td>1.5rem (24px)</td><td>Large card/modal radius</td></tr>
+        <tr><td><code>--page-gutter</code></td><td>clamp(1rem, 3vw, 1.5rem)</td><td>Page horizontal padding</td></tr>
+        <tr><td><code>--shadow-soft</code></td><td>0 1px 3px rgba(0,0,0,.06)</td><td>Subtle elevation</td></tr>
+        <tr><td><code>--shadow-card</code></td><td>0 2px 8px rgba(0,0,0,.08)</td><td>Card default shadow</td></tr>
+        <tr><td><code>--shadow-card-hover</code></td><td>0 4px 16px rgba(0,0,0,.12)</td><td>Card hover state</td></tr>
+        <tr><td><code>--safe-bottom</code></td><td>env(safe-area-inset-bottom)</td><td>iOS home indicator</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Core Components ── -->
+  <h2>Core Components</h2>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Component</th><th>Variants / Props</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Button</td><td>9 variants (primary, secondary, accent, danger, ghost, outline, success, dark, darkOutline), 3 sizes (sm, md, lg), loading state, 400ms debounce</td><td>Most used component</td></tr>
+        <tr><td>Input</td><td>3 sizes, label, error message, helper text, left/right icons, password toggle</td><td>Controlled components only</td></tr>
+        <tr><td>Card</td><td>Default with shadow, hover variant, clickable variant</td><td>1.25rem border-radius</td></tr>
+        <tr><td>Select</td><td>Native select wrapper, label, error state</td><td>No custom dropdown</td></tr>
+        <tr><td>Badge</td><td>6 color variants (success, danger, warning, info, neutral, accent)</td><td>Uppercase, 11px</td></tr>
+        <tr><td>Skeleton</td><td>4 types (line, circle, card, table row)</td><td>Pulse animation</td></tr>
+        <tr><td>Textarea</td><td>Auto-resize, character count, max length</td><td>Same styling as Input</td></tr>
+        <tr><td>SearchableSelect</td><td>Dropdown with search filter, async loading</td><td>Used for farmer/product selection</td></tr>
+        <tr><td>ConfirmModal</td><td>Destructive action confirmation, customizable message</td><td>Red confirm button for danger actions</td></tr>
+        <tr><td>SearchBar</td><td>250ms debounce, clear button, search icon</td><td>Used in all list views</td></tr>
+        <tr><td>FarmerAvatar</td><td>Initials-based avatar, color derived from name hash</td><td>2 sizes</td></tr>
+        <tr><td>Calendar</td><td>Month view, date selection, event indicators</td><td>Custom built (no library)</td></tr>
+        <tr><td>AquaLoader</td><td>Full-screen and inline variants, water drop animation</td><td>Brand-themed loading</td></tr>
+        <tr><td>BranchColorPicker</td><td>7 theme color selection, visual preview</td><td>Used in branch settings</td></tr>
+        <tr><td>EmptyState</td><td>Illustration + message + action button</td><td>Consistent empty states</td></tr>
+        <tr><td>DatePicker</td><td>Single date selection, min/max constraints</td><td>Native input[type=date] on mobile</td></tr>
+        <tr><td>DateRangeFilter</td><td>Preset ranges (Today, 7d, 30d, Custom)</td><td>Used in reports/lists</td></tr>
+        <tr><td>SyncStatusIndicator</td><td>Online/offline/syncing states</td><td>Shows in header area</td></tr>
+        <tr><td>UniversalSearchModal</td><td>Ctrl+K triggered, searches farmers/products/bills</td><td>Keyboard navigable</td></tr>
+        <tr><td>NotificationsDropdown</td><td>Bell icon, unread count badge</td><td>Stock alerts, system notices</td></tr>
+        <tr><td>ListLoadMore</td><td>&quot;Load more&quot; button with loading state</td><td>Replaces infinite scroll</td></tr>
+        <tr><td>ReloadPrompt</td><td>PWA update available notification</td><td>&quot;New version available&quot; toast</td></tr>
+        <tr><td>Modal</td><td>Portal-based, focus trap, escape close, slide-up on mobile / scale-in on desktop</td><td>Uses Radix Dialog primitives</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Notifications ── -->
+  <h2>Notifications</h2>
+  <ul>
+    <li><strong>Library:</strong> sonner</li>
+    <li><strong>Position:</strong> top-center</li>
+    <li><strong>richColors</strong> enabled, <strong>closeButton</strong> enabled</li>
+    <li>Used across <strong>60 files</strong> for success/error/info feedback</li>
+    <li>Pattern: <code>toast.success("Bill created")</code>, <code>toast.error("Failed to save")</code></li>
+  </ul>
+
+  <!-- ── Icons ── -->
+  <h2>Icons</h2>
+  <ul>
+    <li><strong>Library:</strong> lucide-react</li>
+    <li><strong>Standard sizes:</strong> 20px (default), 16px (inline/small)</li>
+    <li><strong>Stroke width:</strong> 2 (consistent across all icons)</li>
+    <li>Color inherits from parent text color</li>
+  </ul>
+
+  <!-- ── Dark Mode ── -->
+  <h2>Dark Mode</h2>
+  <div class="callout callout-warn">
+    <p><strong>Not supported.</strong> Dark mode is not supported. The app uses <code>color-scheme: light</code> hardcoded in the HTML root. All color tokens assume a light background.</p>
+  </div>
+
+  <div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>
