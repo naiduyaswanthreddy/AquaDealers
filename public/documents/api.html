@@ -1,0 +1,264 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>API &amp; RPCs — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/api.html">
+<meta name="description" content="AquaDealers API reference — all Supabase RPCs, Edge Functions, and service layer patterns for billing, payments, inventory, and reporting.">
+<meta property="og:title" content="API &amp; RPCs — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers API reference — all Supabase RPCs, Edge Functions, and service layer patterns for billing, payments, inventory, and reporting.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="API &amp; RPCs — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers API reference — all Supabase RPCs, Edge Functions, and service layer patterns for billing, payments, inventory, and reporting.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">API &amp; RPCs</span>
+</div>
+<div class="page">
+
+  <h1>API &amp; RPCs</h1>
+  <div class="page-meta">
+    <span>Last updated Sep 2026</span>
+    <span>22 RPCs &middot; 1 Edge Function</span>
+  </div>
+
+  <!-- ───────── Supabase RPCs ───────── -->
+  <h2>Supabase RPCs</h2>
+
+  <div class="tw"><table>
+    <thead><tr><th>RPC</th><th>Purpose</th><th>Key Parameters</th><th>Auth</th><th>Returns</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>create_bill_v2</code></td>
+        <td>Atomic bill creation with FIFO lot allocation</td>
+        <td>farmer_id, items[], payment_type, amount_paid, branch_id, client_ref</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Bill record with bill_number</td>
+      </tr>
+      <tr>
+        <td><code>create_bill_offline_sync</code></td>
+        <td>Idempotent offline bill creation using client_ref unique index</td>
+        <td>Same as create_bill_v2</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Bill record (skips if client_ref exists)</td>
+      </tr>
+      <tr>
+        <td><code>collect_farmer_payment_v2</code></td>
+        <td>Payment collection + auto-allocate oldest-first</td>
+        <td>farmer_id, amount, method, notes</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Payment record + allocation details</td>
+      </tr>
+      <tr>
+        <td><code>record_stock_purchase_v2</code></td>
+        <td>Record purchase + create FIFO lot</td>
+        <td>supplier_id, product_id, quantity, cost_price, batch_number, expiry_date</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Purchase record + lot</td>
+      </tr>
+      <tr>
+        <td><code>record_supplier_payment_v2</code></td>
+        <td>Supplier payment + reduce total_due</td>
+        <td>supplier_id, amount, method</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Payment record</td>
+      </tr>
+      <tr>
+        <td><code>cancel_bill_v1</code></td>
+        <td>Cancel same-day unpaid bill</td>
+        <td>bill_id</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Void status</td>
+      </tr>
+      <tr>
+        <td><code>edit_bill_v1</code></td>
+        <td>Edit bill items/quantities/prices</td>
+        <td>bill_id, items[], payment changes</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Updated bill</td>
+      </tr>
+      <tr>
+        <td><code>close_cash_day_v1</code></td>
+        <td>Daily cash closing reconciliation</td>
+        <td>branch_id, actual_closing, notes</td>
+        <td><span class="badge b-pri">dealer</span></td>
+        <td>Cash closing record</td>
+      </tr>
+      <tr>
+        <td><code>adjust_inventory_stock_v1</code></td>
+        <td>Manual stock adjustment (count correction)</td>
+        <td>inventory_id, new_quantity, notes</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Adjusted record</td>
+      </tr>
+      <tr>
+        <td><code>preview_fifo_bill_lines</code></td>
+        <td>Preview FIFO consumption without committing</td>
+        <td>items[]</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Lot allocation preview (read-only)</td>
+      </tr>
+      <tr>
+        <td><code>get_farmer_ledger_page</code></td>
+        <td>Paginated farmer ledger (bills + payments interleaved)</td>
+        <td>farmer_id, page, page_size</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Ledger rows + total</td>
+      </tr>
+      <tr>
+        <td><code>get_dashboard_aggregates</code></td>
+        <td>Dashboard KPI aggregates</td>
+        <td>date range, branch_id</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Sales, payments, dues, stock value</td>
+      </tr>
+      <tr>
+        <td><code>get_dues_ageing</code></td>
+        <td>Ageing report buckets</td>
+        <td>branch_id</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>0-30, 31-60, 61-90, 90+ day buckets</td>
+      </tr>
+      <tr>
+        <td><code>get_farmer_public_statement</code></td>
+        <td>Public statement via share token</td>
+        <td>token</td>
+        <td><span class="badge b-acc">public</span></td>
+        <td>Statement rows (no auth required)</td>
+      </tr>
+      <tr>
+        <td><code>create_stock_transfer</code></td>
+        <td>Branch transfer preserving FIFO lots</td>
+        <td>from_branch_id, to_branch_id, items[]</td>
+        <td><span class="badge b-pri">dealer</span></td>
+        <td>Transfer record</td>
+      </tr>
+      <tr>
+        <td><code>undo_transaction_v1</code></td>
+        <td>Undo transaction within 48h window</td>
+        <td>event_id</td>
+        <td><span class="badge b-pri">dealer</span></td>
+        <td>Reversed state</td>
+      </tr>
+      <tr>
+        <td><code>staff_portal_login</code></td>
+        <td>Staff PIN authentication</td>
+        <td>phone, pin, dealer_slug</td>
+        <td><span class="badge b-acc">public</span></td>
+        <td>Session token + permissions</td>
+      </tr>
+      <tr>
+        <td><code>staff_portal_context_v2</code></td>
+        <td>Resolve shop name + branch for staff portal</td>
+        <td>dealer_slug</td>
+        <td><span class="badge b-acc">public</span></td>
+        <td>Shop info + branches</td>
+      </tr>
+      <tr>
+        <td><code>verify_dealer_pin</code></td>
+        <td>App lock PIN verification</td>
+        <td>pin</td>
+        <td><span class="badge b-pri">dealer</span></td>
+        <td>Boolean</td>
+      </tr>
+      <tr>
+        <td><code>preview_farmer_return_v1</code></td>
+        <td>Preview return calculation</td>
+        <td>bill_id, items[]</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Return preview</td>
+      </tr>
+      <tr>
+        <td><code>create_farmer_return_v1</code></td>
+        <td>Create sales return</td>
+        <td>bill_id, items[], notes</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Return record + credit</td>
+      </tr>
+      <tr>
+        <td><code>replace_farmer_return_v1</code></td>
+        <td>Replace/edit existing return</td>
+        <td>return_id, items[], notes</td>
+        <td><span class="badge b-pri">dealer/staff</span></td>
+        <td>Updated return</td>
+      </tr>
+      <tr>
+        <td><code>check_whatsapp_quota</code></td>
+        <td>Verify monthly WhatsApp send quota</td>
+        <td>(none)</td>
+        <td><span class="badge b-pri">dealer</span></td>
+        <td>Remaining count</td>
+      </tr>
+      <tr>
+        <td><code>get_profit_report_data</code></td>
+        <td>Profit report with COGS</td>
+        <td>date range, branch_id</td>
+        <td><span class="badge b-pri">dealer</span></td>
+        <td>Revenue, COGS, gross profit</td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout callout-info">
+    <strong>All RPCs use SECURITY DEFINER</strong> and run as the function owner, bypassing row-level security for complex multi-table operations. Input validation happens inside the function.
+  </div>
+
+  <!-- ───────── Edge Functions ───────── -->
+  <h2>Edge Functions</h2>
+
+  <div class="card">
+    <details open>
+      <summary><code>send-bill-whatsapp</code></summary>
+      <div class="detail-body">
+        <div class="tw"><table>
+          <tbody>
+            <tr><th>Runtime</th><td>Deno (Supabase Edge)</td></tr>
+            <tr><th>Provider</th><td>authkey.io WhatsApp Business API</td></tr>
+            <tr><th>Template</th><td>8 body variables + 1 button (public statement link)</td></tr>
+            <tr><th>CORS</th><td>Wildcard (<code>Access-Control-Allow-Origin: *</code>)</td></tr>
+            <tr><th>Pattern</th><td>Fire-and-forget after bill creation</td></tr>
+            <tr><th>Status tracking</th><td><code>whatsapp_status</code> column on <code>bills</code> table<br><span class="badge b-muted">pending</span> &rarr; <span class="badge b-ok">sent</span> &rarr; <span class="badge b-ok">delivered</span> &rarr; <span class="badge b-ok">read</span> &rarr; <span class="badge b-err">failed</span></td></tr>
+            <tr><th>Rate limit</th><td>Checked via <code>check_whatsapp_quota</code> RPC before send</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </details>
+  </div>
+
+  <!-- ───────── Client Service Layer ───────── -->
+  <h2>Client Service Layer</h2>
+
+  <p>All database access from the React frontend goes through service modules. No component calls Supabase directly.</p>
+
+  <ul>
+    <li><strong>Pattern:</strong> <code>src/features/*/services/*.ts</code></li>
+    <li>Each service wraps Supabase client calls: <code>.from().select()</code>, <code>.insert()</code>, <code>.rpc()</code></li>
+    <li>Services handle error extraction and return typed results</li>
+    <li>No direct DB access from components &mdash; always through the service layer</li>
+  </ul>
+
+  <h4>Example</h4>
+<pre><code>// src/features/billing/services/billService.ts
+export async function createBill(params: CreateBillParams) {
+  const { data, error } = await supabase.rpc('create_bill_v2', params)
+  if (error) throw new AppError(error.message)
+  return data
+}</code></pre>
+
+  <div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

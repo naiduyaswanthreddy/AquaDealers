@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Lock, Delete, ArrowRight, Store } from 'lucide-react';
+import { Lock, Delete, ArrowRight, Store, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageShell } from '@/components/layout/PageShell';
 import { SectionCard } from '@/components/layout/SectionCard';
@@ -11,6 +11,7 @@ import { useStaffStore } from '@/stores/staffStore';
 import { useAuthStore } from '@/stores/authStore';
 import { buildStaffDealerProfile, getStaffDefaultRoute } from '@/lib/staffAccess';
 import { cn } from '@/lib/utils';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 function humanizeSlug(value: string | undefined): string {
   if (!value) return '';
@@ -26,6 +27,7 @@ export const StaffPortalPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { session } = useAuthStore();
   const { setStaffSession } = useStaffStore();
+  const { isInstallable, promptInstall } = usePWAInstall();
 
   const [isLoadingContext, setIsLoadingContext] = useState(true);
   const [contextError, setContextError] = useState<string | null>(null);
@@ -248,6 +250,22 @@ export const StaffPortalPage: React.FC = () => {
           <div className="rounded-2xl border border-border bg-surface/35 p-4 text-xs leading-6 text-text-secondary">
             Portal path: <span className="font-semibold text-text-primary">{portalUrl}</span>
           </div>
+
+          {isInstallable && (
+            <div className="flex flex-col items-center border-t border-slate-100 pt-6">
+              <p className="mb-3 text-sm font-bold text-slate-600">Get quick access from your home screen</p>
+              <Button
+                type="button"
+                onClick={promptInstall}
+                variant="outline"
+                fullWidth
+                className="h-12 rounded-xl border-blue-200 font-black text-blue-700 hover:bg-blue-50"
+                leftIcon={<Download className="h-5 w-5" />}
+              >
+                Install Staff App
+              </Button>
+            </div>
+          )}
         </div>
       </SectionCard>
     </PageShell>

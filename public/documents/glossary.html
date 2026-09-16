@@ -1,0 +1,177 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glossary — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/glossary.html">
+<meta name="description" content="AquaDealers glossary — 30+ domain and technical terms including Dealer, Farmer, FIFO, Lot, MRP, HSN, RPC, RLS, PWA, and more.">
+<meta property="og:title" content="Glossary — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers glossary — 30+ domain and technical terms including Dealer, Farmer, FIFO, Lot, MRP, HSN, RPC, RLS, PWA, and more.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Glossary — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers glossary — 30+ domain and technical terms including Dealer, Farmer, FIFO, Lot, MRP, HSN, RPC, RLS, PWA, and more.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Glossary</span>
+</div>
+<div class="page">
+
+<h1>Glossary</h1>
+<div class="page-meta">
+  <span>30 terms</span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>Domain and technical terminology used throughout AquaDealers. Sorted alphabetically.</p>
+
+<div class="tw"><table>
+<thead><tr><th style="width:180px">Term</th><th>Definition</th></tr></thead>
+<tbody>
+  <tr>
+    <td><strong>Balance Due</strong></td>
+    <td>Unpaid portion of a single bill: <code>total &minus; amount_paid</code>. A bill with zero balance due is considered settled.</td>
+  </tr>
+  <tr>
+    <td><strong>Bill / Invoice</strong></td>
+    <td>A sales transaction created at the counter. Deducts inventory (FIFO), records payment (full or partial), and updates the farmer's ledger. Generated via the <code>create_bill_v2</code> RPC.</td>
+  </tr>
+  <tr>
+    <td><strong>Branch</strong></td>
+    <td>A physical shop location. Each dealer has one main branch plus optional additional branches. Each branch maintains its own inventory and can have its own color theme.</td>
+  </tr>
+  <tr>
+    <td><strong>Cashbook</strong></td>
+    <td>Daily record of all cash inflows (collections, walk-in sales) and outflows (purchases, expenses). Supports daily closing with opening/closing balance.</td>
+  </tr>
+  <tr>
+    <td><strong>client_ref</strong></td>
+    <td>UUID generated client-side before a bill is created. Used for offline sync idempotency &mdash; if the same <code>client_ref</code> is sent twice, the server returns the existing bill instead of creating a duplicate.</td>
+  </tr>
+  <tr>
+    <td><strong>Collection</strong></td>
+    <td>A payment received from a farmer against outstanding dues. Allocated to specific bills using the payment allocation system. Reduces <code>farmer.total_due</code>.</td>
+  </tr>
+  <tr>
+    <td><strong>Crop Status</strong></td>
+    <td>Current state of a farmer's aquaculture cycle. Tracks whether ponds are stocked, growing, or harvested. Used for harvest-timed collection planning.</td>
+  </tr>
+  <tr>
+    <td><strong>Daily Book</strong></td>
+    <td>AquaDealers' register-styled daily summary. Shows all bills, collections, purchases, and expenses for a single day in a traditional register format.</td>
+  </tr>
+  <tr>
+    <td><strong>Dealer</strong></td>
+    <td>The business owner using AquaDealers. Sells aqua feed and medicines to farmers. Each dealer has their own isolated data space via RLS. The primary user role.</td>
+  </tr>
+  <tr>
+    <td><strong>Due / Outstanding</strong></td>
+    <td>Money owed by a farmer. Stored as <code>farmer.total_due</code> and automatically recalculated by database triggers whenever bills, payments, or returns change.</td>
+  </tr>
+  <tr>
+    <td><strong>Edge Function</strong></td>
+    <td>Serverless Deno function deployed on Supabase infrastructure. Used for WhatsApp API integration (sending messages via authkey.io) and other server-side operations.</td>
+  </tr>
+  <tr>
+    <td><strong>Estimate</strong></td>
+    <td>A quote or proforma invoice. Created with <code>is_estimate = true</code>. Has no stock deduction, no payment recording, and no ledger impact. Can be converted to a real bill.</td>
+  </tr>
+  <tr>
+    <td><strong>Farmer</strong></td>
+    <td>The customer. An aquaculture farmer (fish or shrimp). Called "farmer" throughout the system, never "customer." Has a ledger, due balance, and optional credit limit.</td>
+  </tr>
+  <tr>
+    <td><strong>Feed</strong></td>
+    <td>Aquaculture animal feed. Sold by weight (bags/kg). Uses direct selling price (no MRP/discount system). The primary product category by volume.</td>
+  </tr>
+  <tr>
+    <td><strong>FIFO</strong></td>
+    <td>First-In-First-Out inventory method. Oldest lots (by expiry date or receipt date) are consumed first when creating bills. Determines cost of goods sold for profit reporting.</td>
+  </tr>
+  <tr>
+    <td><strong>FIFO COGS</strong></td>
+    <td>Cost of Goods Sold calculated from FIFO lot cost prices. When a bill consumes inventory, the cost is traced back to the specific lots used, giving accurate per-bill profit margins.</td>
+  </tr>
+  <tr>
+    <td><strong>HSN Code</strong></td>
+    <td>Harmonized System of Nomenclature code. Required for GST classification in India. Each product can have an HSN code that determines its GST rate.</td>
+  </tr>
+  <tr>
+    <td><strong>Ledger</strong></td>
+    <td>Chronological record of all bills and payments for a farmer, with a running balance. Each entry shows date, type (bill/payment/return), amount, and cumulative balance due.</td>
+  </tr>
+  <tr>
+    <td><strong>Lot</strong></td>
+    <td>A batch of stock from a single purchase order. Each lot has its own batch number, expiry date, cost price, and remaining quantity. Consumed in FIFO order.</td>
+  </tr>
+  <tr>
+    <td><strong>Medicine</strong></td>
+    <td>Aquaculture treatment products (probiotics, minerals, antibiotics). Uses MRP/discount pricing model. Has expiry date tracking. Typically higher margin than feed.</td>
+  </tr>
+  <tr>
+    <td><strong>MRP</strong></td>
+    <td>Maximum Retail Price. Used for medicine products. The selling price is calculated as <code>MRP &minus; discount</code>. Feed products use direct selling price instead.</td>
+  </tr>
+  <tr>
+    <td><strong>Payment Allocation</strong></td>
+    <td>The mapping of a payment to specific bills. When a farmer pays, the amount is allocated to their oldest unpaid bills first (FIFO allocation). Tracked in <code>payment_allocations</code> table.</td>
+  </tr>
+  <tr>
+    <td><strong>PWA</strong></td>
+    <td>Progressive Web App. AquaDealers is installable on mobile devices and works offline. Uses a service worker for caching and IndexedDB + React Query for offline data persistence.</td>
+  </tr>
+  <tr>
+    <td><strong>Rate Diff</strong></td>
+    <td>The difference between a product's standard <code>selling_price</code> and a farmer-specific discounted price. Stored per-farmer per-product and recalled automatically on future bills.</td>
+  </tr>
+  <tr>
+    <td><strong>Return Credit</strong></td>
+    <td>When a return's value exceeds the bill's remaining balance, the excess is stored as <code>farmer.return_credit_balance</code>. Applied automatically to future bills.</td>
+  </tr>
+  <tr>
+    <td><strong>RLS</strong></td>
+    <td>Row Level Security. PostgreSQL feature that restricts data access per user. Every core table has RLS enabled so dealers can only access their own data. Enforced at the database level.</td>
+  </tr>
+  <tr>
+    <td><strong>RPC</strong></td>
+    <td>Remote Procedure Call. A Supabase database function called from the client via <code>supabase.rpc()</code>. All critical writes (bill creation, payments, returns) go through RPCs for atomicity and validation.</td>
+  </tr>
+  <tr>
+    <td><strong>Settlement Discount</strong></td>
+    <td>A discount applied at payment time, separate from per-item product discounts. Reduces the effective total the farmer owes. Commonly used when farmers pay in bulk.</td>
+  </tr>
+  <tr>
+    <td><strong>Stocking Date</strong></td>
+    <td>The date a farmer stocks their pond with fish or shrimp seed. Marks the start of a crop cycle (typically 3-5 months). Used for harvest-timed collection planning.</td>
+  </tr>
+  <tr>
+    <td><strong>Supplier</strong></td>
+    <td>A company or distributor from whom the dealer purchases stock. Has its own ledger tracking purchases and payments. Stock receipts create inventory lots.</td>
+  </tr>
+  <tr>
+    <td><strong>Transaction Event</strong></td>
+    <td>An audit record in the <code>transaction_events</code> table. Created for every financial operation (bill, payment, return, edit, cancellation). Enables the universal undo feature within the 48-hour window.</td>
+  </tr>
+  <tr>
+    <td><strong>Walk-in</strong></td>
+    <td>A customer without a farmer account. Walk-in sales require full payment at the counter &mdash; no credit or dues allowed. The bill is not linked to any farmer record.</td>
+  </tr>
+</tbody>
+</table></div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

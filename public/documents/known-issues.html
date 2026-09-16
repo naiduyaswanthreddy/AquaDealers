@@ -1,0 +1,230 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Known Issues — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/known-issues.html">
+<meta name="description" content="Known issues in AquaDealers — 21 bugs and limitations ranked Critical to Low across security, performance, billing, and UI.">
+<meta property="og:title" content="Known Issues — AquaDealers Docs">
+<meta property="og:description" content="Known issues in AquaDealers — 21 bugs and limitations ranked Critical to Low across security, performance, billing, and UI.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Known Issues — AquaDealers Docs">
+<meta name="twitter:description" content="Known issues in AquaDealers — 21 bugs and limitations ranked Critical to Low across security, performance, billing, and UI.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Known Issues</span>
+</div>
+<div class="page">
+
+<h1>Known Issues</h1>
+<div class="page-meta">
+  <span><span class="badge b-err">2 Critical</span></span>
+  <span><span class="badge b-warn">5 High</span></span>
+  <span><span class="badge b-pri">8 Medium</span></span>
+  <span><span class="badge b-muted">6 Low</span></span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>All known bugs, security vulnerabilities, and limitations in AquaDealers v3.0.0. Sorted by severity.</p>
+
+<!-- ── Critical ── -->
+<h2><span class="badge b-err">Critical</span> Security Vulnerabilities</h2>
+<div class="callout callout-err">These issues pose immediate security risk and should be resolved before any feature work.</div>
+
+<div class="tw"><table>
+<thead><tr><th>#</th><th>Issue</th><th>Area</th><th>Details</th><th>Recommended Fix</th></tr></thead>
+<tbody>
+  <tr>
+    <td>1</td>
+    <td><strong>Service role key committed to repo</strong></td>
+    <td>Security</td>
+    <td><code>scripts/migrate/.env.migration</code> contains plaintext <code>service_role</code> key and dealer password. File is in <code>.gitignore</code> but exists in working tree.</td>
+    <td>Rotate key immediately in Supabase dashboard. Scrub from git history with <code>git filter-repo</code>.</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td><strong><code>farmer_return_credit_applications</code> missing RLS</strong></td>
+    <td>Security</td>
+    <td>Table was created without <code>ENABLE ROW LEVEL SECURITY</code>. Any authenticated user can read/write any dealer's return credit data.</td>
+    <td><code>ALTER TABLE farmer_return_credit_applications ENABLE ROW LEVEL SECURITY;</code> + add dealer-scoped policy.</td>
+  </tr>
+</tbody>
+</table></div>
+
+<!-- ── High ── -->
+<h2><span class="badge b-warn">High</span> Severity</h2>
+
+<div class="tw"><table>
+<thead><tr><th>#</th><th>Issue</th><th>Area</th><th>Details</th><th>Recommended Fix</th></tr></thead>
+<tbody>
+  <tr>
+    <td>3</td>
+    <td><strong>Admin RPCs callable by anon</strong></td>
+    <td>Security</td>
+    <td>All <code>admin_*</code> functions have <code>GRANT EXECUTE</code> to the <code>anon</code> role. Unauthenticated requests can invoke admin operations.</td>
+    <td><code>REVOKE EXECUTE</code> from <code>anon</code>. Grant only to <code>authenticated</code> with admin session verification inside each RPC.</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td><strong>Storage buckets publicly readable</strong></td>
+    <td>Security</td>
+    <td><code>farmer-profiles</code> and <code>product-images</code> buckets are <code>public = true</code>. Farmer photos accessible without authentication.</td>
+    <td>Set <code>public = false</code> on both buckets. Add RLS policies requiring authenticated + dealer match.</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td><strong><code>pin_hash</code> leaked in admin RPC</strong></td>
+    <td>Security</td>
+    <td><code>admin_get_dealer_profile</code> returns the dealer's <code>pin_hash</code> in its response.</td>
+    <td>Exclude <code>pin_hash</code> from the SELECT in the RPC function body.</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td><strong>Bill PDF freezes mobile 3-5s</strong></td>
+    <td>Performance</td>
+    <td><code>html2canvas</code> at <code>scale: 2</code> blocks the main thread on mobile devices for 3-5 seconds during PDF generation.</td>
+    <td>Move PDF generation to a Supabase Edge Function (server-side). Use Puppeteer or a headless renderer.</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td><strong>Monthly report unbounded fetch</strong></td>
+    <td>Performance</td>
+    <td><code>reportsService.ts</code> lines 60-180 fetch ALL bills, purchases, and expenses for a month with no pagination or limits.</td>
+    <td>Create server-side aggregation RPCs that return pre-computed totals instead of raw rows.</td>
+  </tr>
+</tbody>
+</table></div>
+
+<!-- ── Medium ── -->
+<h2><span class="badge b-pri">Medium</span> Severity</h2>
+
+<div class="tw"><table>
+<thead><tr><th>#</th><th>Issue</th><th>Area</th><th>Details</th><th>Recommended Fix</th></tr></thead>
+<tbody>
+  <tr>
+    <td>8</td>
+    <td><strong>GST display mismatch</strong></td>
+    <td>Billing</td>
+    <td>ProductSelector (Step 1) uses a flat 18% GST rate. ReviewStep (Step 3) uses the per-item <code>gst_rate</code>. Totals can differ between steps.</td>
+    <td>Use <code>product.gst_rate</code> consistently in both steps.</td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td><strong>No round-off field on bills</strong></td>
+    <td>Billing</td>
+    <td>Indian dealers commonly round totals to the nearest rupee. No <code>round_off</code> column exists.</td>
+    <td>Add <code>round_off NUMERIC(10,2) DEFAULT 0</code> to bills table. Include in bill creation and display.</td>
+  </tr>
+  <tr>
+    <td>10</td>
+    <td><strong>Staff permissions client-side only</strong></td>
+    <td>Security</td>
+    <td>Staff JSONB permissions control sidebar visibility and UI gates, but RLS policies grant full data access to any authenticated staff member.</td>
+    <td>Add permission checks inside RPCs: verify <code>staff.permissions</code> JSONB contains required permission before executing.</td>
+  </tr>
+  <tr>
+    <td>11</td>
+    <td><strong><code>getDuesSummary</code> fetches 10,000 rows</strong></td>
+    <td>Performance</td>
+    <td><code>dashboardService.ts:185</code> pulls up to 10,000 farmer rows to compute dues summary on the client.</td>
+    <td>Create a server-side aggregation RPC that returns sum/count directly.</td>
+  </tr>
+  <tr>
+    <td>12</td>
+    <td><strong>Dashboard 15+ queries on cold load</strong></td>
+    <td>Performance</td>
+    <td>Dashboard fires 15+ parallel queries on mount. Each is small but the combined round-trip overhead is significant on slow connections.</td>
+    <td>Create a single <code>get_dashboard_summary</code> RPC that returns all KPIs in one call.</td>
+  </tr>
+  <tr>
+    <td>13</td>
+    <td><strong>No admin login rate limiting</strong></td>
+    <td>Security</td>
+    <td>Admin authentication has no brute-force protection. Staff PIN auth has a rate-limit trigger, but admin login does not.</td>
+    <td>Add a rate limit check similar to the staff PIN <code>enforce_rate_limit</code> trigger.</td>
+  </tr>
+  <tr>
+    <td>14</td>
+    <td><strong>CORS wildcard on WhatsApp edge function</strong></td>
+    <td>Security</td>
+    <td>WhatsApp edge function returns <code>Access-Control-Allow-Origin: *</code>. Any origin can call the function.</td>
+    <td>Restrict to the app's domain(s) only.</td>
+  </tr>
+  <tr>
+    <td>15</td>
+    <td><strong>35+ queries use <code>select('*')</code></strong></td>
+    <td>Performance</td>
+    <td>Over 35 Supabase queries fetch all columns. Wastes bandwidth, especially on tables with large text/JSON columns.</td>
+    <td>Specify only the columns needed in each query.</td>
+  </tr>
+</tbody>
+</table></div>
+
+<!-- ── Low ── -->
+<h2><span class="badge b-muted">Low</span> Severity</h2>
+
+<div class="tw"><table>
+<thead><tr><th>#</th><th>Issue</th><th>Area</th><th>Details</th><th>Recommended Fix</th></tr></thead>
+<tbody>
+  <tr>
+    <td>16</td>
+    <td><strong>No dark mode</strong></td>
+    <td>UI</td>
+    <td><code>color-scheme: light</code> is hardcoded. No dark theme tokens defined.</td>
+    <td>Define dark-mode CSS custom properties. Add toggle in settings.</td>
+  </tr>
+  <tr>
+    <td>17</td>
+    <td><strong>No tablet layout</strong></td>
+    <td>UI</td>
+    <td>768-1024px viewport gets the mobile layout. Wastes screen space on tablets.</td>
+    <td>Add a tablet breakpoint with adapted grid layouts.</td>
+  </tr>
+  <tr>
+    <td>18</td>
+    <td><strong>Legacy unused components</strong></td>
+    <td>Code</td>
+    <td><code>TopBar.tsx</code>, <code>DesktopNav.tsx</code>, <code>shareUtils.ts</code> are unused but still in the codebase.</td>
+    <td>Delete the dead files.</td>
+  </tr>
+  <tr>
+    <td>19</td>
+    <td><strong>Duplicate PlanGate component</strong></td>
+    <td>Code</td>
+    <td>Two separate PlanGate component files exist in the project.</td>
+    <td>Consolidate into one and update all imports.</td>
+  </tr>
+  <tr>
+    <td>20</td>
+    <td><strong>Missing <code>loading="lazy"</code> on images</strong></td>
+    <td>Performance</td>
+    <td>Most <code>&lt;img&gt;</code> tags lack lazy loading. Only <code>FarmerAvatar</code> has it.</td>
+    <td>Add <code>loading="lazy"</code> to all below-the-fold images.</td>
+  </tr>
+  <tr>
+    <td>21</td>
+    <td><strong>Cashbook no pagination</strong></td>
+    <td>Performance</td>
+    <td>Cashbook page fetches all entries without pagination. Slow for dealers with months of data.</td>
+    <td>Add cursor-based pagination to the cashbook query.</td>
+  </tr>
+</tbody>
+</table></div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

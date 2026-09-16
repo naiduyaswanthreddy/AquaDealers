@@ -1,0 +1,176 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Security — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/security.html">
+<meta name="description" content="AquaDealers security overview — authentication methods, Row Level Security, known security issues ranked by severity, and remediation recommendations.">
+<meta property="og:title" content="Security — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers security overview — authentication methods, Row Level Security, known security issues ranked by severity, and remediation recommendations.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Security — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers security overview — authentication methods, Row Level Security, known security issues ranked by severity, and remediation recommendations.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Security</span>
+</div>
+<div class="page">
+
+<h1>Security</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span></span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>Security overview covering authentication, authorization, Row Level Security, and known vulnerabilities.</p>
+
+<!-- ───────────── AUTHENTICATION ───────────── -->
+<h2>Authentication</h2>
+
+<h3>Dealer Authentication</h3>
+<div class="card">
+  <ul>
+    <li><strong>Provider:</strong> Supabase Auth (email + password)</li>
+    <li><strong>Session:</strong> JWT-based, managed by Supabase client SDK</li>
+    <li><strong>Token refresh:</strong> Automatic via Supabase SDK</li>
+    <li><strong>Password requirements:</strong> Supabase default (minimum 6 characters)</li>
+  </ul>
+</div>
+
+<h3>Staff Authentication</h3>
+<div class="card">
+  <ul>
+    <li><strong>Method:</strong> PIN-based entry (4&ndash;6 digit PIN)</li>
+    <li><strong>Storage:</strong> bcrypt-hashed PINs in database</li>
+    <li><strong>Session:</strong> SHA-256 session tokens</li>
+    <li><strong>Rate limiting:</strong> Yes &mdash; prevents brute-force PIN guessing</li>
+  </ul>
+</div>
+
+<h3>Admin Authentication</h3>
+<div class="card">
+  <ul>
+    <li><strong>Method:</strong> Username + password</li>
+    <li><strong>Storage:</strong> bcrypt-hashed passwords</li>
+    <li><strong>Session:</strong> SHA-256 session tokens</li>
+    <li><strong>Rate limiting:</strong> <span class="badge b-err">None</span> &mdash; see Known Issues below</li>
+  </ul>
+</div>
+
+<!-- ───────────── RLS ───────────── -->
+<h2>Row Level Security (RLS)</h2>
+
+<p>RLS is enabled on <strong>22+ tables</strong> in Supabase PostgreSQL. All dealer-facing tables enforce tenant isolation.</p>
+
+<h3>Policy Patterns</h3>
+<div class="tw"><table>
+  <tr><th>Pattern</th><th>Usage</th><th>Applied To</th></tr>
+  <tr><td><code>dealer_id = auth.uid()</code></td><td>Dealer sees only their own data</td><td>Bills, farmers, inventory, payments, expenses, etc.</td></tr>
+  <tr><td><code>staff_dealer_id()</code></td><td>Staff sees their dealer's data</td><td>Same tables, via a helper function that resolves staff &rarr; dealer</td></tr>
+  <tr><td><code>SECURITY DEFINER</code></td><td>RPCs that bypass RLS</td><td>Admin RPCs, cross-tenant operations, aggregation queries</td></tr>
+</table></div>
+
+<div class="callout callout-info"><code>SECURITY DEFINER</code> functions run with the permissions of the function owner (typically <code>postgres</code>), bypassing RLS. This is intentional for admin operations but must be carefully audited.</div>
+
+<!-- ───────────── KNOWN ISSUES ───────────── -->
+<h2>Known Security Issues</h2>
+
+<p>10 known security issues ranked by severity. Each includes a description, impact, and recommended fix.</p>
+
+<!-- Issue 1 -->
+<div class="finding">
+  <p><span class="badge b-err">Critical</span> <strong>1. Service Role Key Committed to Repository</strong></p>
+  <p>The Supabase service role key is present in <code>scripts/migrate/.env.migration</code> and was committed to the git repository. This key has full database access, bypassing all RLS policies. <strong>Update:</strong> <code>.env.migration</code> is now listed in <code>.gitignore</code> (line 43), so new commits no longer include it. However, the key remains in git history and is still exposed to anyone who can clone the repo.</p>
+  <p><strong>Impact:</strong> Anyone with repo access can read/write/delete all data in the production database by checking out a historical commit.</p>
+  <p><strong>Recommendation:</strong> Rotate the service role key immediately. Scrub git history with <code>git filter-branch</code> or BFG Repo-Cleaner to remove the key from all prior commits. Use environment variables or a secrets manager for deployment scripts.</p>
+</div>
+
+<!-- Issue 2 -->
+<div class="finding">
+  <p><span class="badge b-err">Critical</span> <strong>2. farmer_return_credit_applications Table Missing RLS</strong></p>
+  <p>The <code>farmer_return_credit_applications</code> table has no RLS policies enabled. Any authenticated user can read and write all rows regardless of dealer.</p>
+  <p><strong>Impact:</strong> Cross-tenant data exposure. A dealer can see and modify another dealer's return credit applications.</p>
+  <p><strong>Recommendation:</strong> Enable RLS on the table and add the standard <code>dealer_id = auth.uid()</code> policy for SELECT, INSERT, UPDATE, and DELETE.</p>
+</div>
+
+<!-- Issue 3 -->
+<div class="finding">
+  <p><span class="badge b-err">High</span> <strong>3. Admin RPCs Callable by Anon Role</strong></p>
+  <p>Functions prefixed with <code>admin_*</code> (e.g., <code>admin_get_dealer_profile</code>, <code>admin_resolve_ticket</code>) are callable by the <code>anon</code> Supabase role. No authentication is required.</p>
+  <p><strong>Impact:</strong> Unauthenticated users can access admin functionality, view dealer profiles, resolve support tickets, and potentially modify data.</p>
+  <p><strong>Recommendation:</strong> Revoke <code>EXECUTE</code> permission on all <code>admin_*</code> functions from the <code>anon</code> role. Add role checks inside each function as defense-in-depth.</p>
+</div>
+
+<!-- Issue 4 -->
+<div class="finding">
+  <p><span class="badge b-err">High</span> <strong>4. Storage Buckets Publicly Readable</strong></p>
+  <p>The <code>farmer-profiles</code> and <code>product-images</code> storage buckets are configured with public read access. Anyone with the URL can access these files.</p>
+  <p><strong>Impact:</strong> Farmer profile photos and product images are exposed without authentication. Enumerable if bucket listing is enabled.</p>
+  <p><strong>Recommendation:</strong> Make buckets private. Serve images through authenticated URLs or signed URLs with expiry. If public access is intentional, document it and ensure no sensitive data is stored in these buckets.</p>
+</div>
+
+<!-- Issue 5 -->
+<div class="finding">
+  <p><span class="badge b-err">High</span> <strong>5. pin_hash Leaked in Admin API Response</strong></p>
+  <p>The <code>admin_get_dealer_profile</code> RPC returns the <code>pin_hash</code> field in its response. Even though it's bcrypt-hashed, exposing password hashes is a security anti-pattern.</p>
+  <p><strong>Impact:</strong> Offline brute-force attacks against staff PINs. PINs are short (4&ndash;6 digits), making them feasible to crack even with bcrypt.</p>
+  <p><strong>Recommendation:</strong> Exclude <code>pin_hash</code> from the RPC response. Never return password/PIN hashes to any client.</p>
+</div>
+
+<!-- Issue 6 -->
+<div class="finding">
+  <p><span class="badge b-warn">Medium</span> <strong>6. Staff Permissions Enforced Client-Side Only</strong></p>
+  <p>Staff permission checks (e.g., "can create bills", "can view reports") were originally enforced only in the React frontend. <strong>Update:</strong> The <code>staff_has_permission()</code> helper is now used in RLS policies for <strong>cashbook</strong> and <strong>expenses</strong>, enforcing those permissions server-side. Other modules (bills, reports, inventory, etc.) still rely on client-side checks only.</p>
+  <p><strong>Impact:</strong> For cashbook and expenses, API-level bypass is no longer possible. For all other modules, a staff member who knows the API can still bypass UI restrictions and perform any action their dealer account can perform.</p>
+  <p><strong>Recommendation:</strong> Extend <code>staff_has_permission()</code> RLS enforcement to the remaining modules (bills, reports, inventory, farmers, etc.).</p>
+</div>
+
+<!-- Issue 7 -->
+<div class="finding">
+  <p><span class="badge b-warn">Medium</span> <strong>7. No Admin Login Rate Limiting</strong></p>
+  <p>The admin login endpoint has no rate limiting or account lockout. Unlike staff PIN entry (which is rate-limited), admin passwords can be brute-forced without restriction.</p>
+  <p><strong>Impact:</strong> Brute-force attacks against admin accounts.</p>
+  <p><strong>Recommendation:</strong> Add rate limiting (e.g., 5 attempts per minute) and temporary account lockout after repeated failures.</p>
+</div>
+
+<!-- Issue 8 -->
+<div class="finding">
+  <p><span class="badge b-warn">Medium</span> <strong>8. CORS Wildcard on WhatsApp Edge Function</strong></p>
+  <p>The <code>send-bill-whatsapp</code> edge function sets <code>Access-Control-Allow-Origin: *</code>, allowing any website to call it.</p>
+  <p><strong>Impact:</strong> Third-party websites could trigger WhatsApp messages on behalf of dealers if they obtain a valid auth token.</p>
+  <p><strong>Recommendation:</strong> Restrict CORS to the application's domain(s) only.</p>
+</div>
+
+<!-- Issue 9 -->
+<div class="finding">
+  <p><span class="badge b-pri">Low</span> <strong>9. No CSP Headers Configured</strong></p>
+  <p>The application does not set Content-Security-Policy headers. This increases exposure to XSS attacks.</p>
+  <p><strong>Impact:</strong> If an XSS vulnerability is found, there's no CSP to limit the damage.</p>
+  <p><strong>Recommendation:</strong> Configure CSP headers in the hosting platform (Vercel/Netlify headers config) with a policy that restricts script sources, frame ancestors, and form actions.</p>
+</div>
+
+<!-- Issue 10 -->
+<div class="finding">
+  <p><span class="badge b-pri">Low</span> <strong>10. No Audit Log for Permission Changes</strong></p>
+  <p>Audit logging exists for some operations (e.g., subscription changes, bill edits) but does <strong>not</strong> cover staff permission changes, role assignments, or admin setting modifications. These security-relevant operations have no audit trail.</p>
+  <p><strong>Impact:</strong> Cannot investigate who changed staff permissions or role assignments, or when, if a security incident occurs.</p>
+  <p><strong>Recommendation:</strong> Extend the existing audit log to record staff permission changes, role assignments, and admin actions with timestamps and actor IDs.</p>
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

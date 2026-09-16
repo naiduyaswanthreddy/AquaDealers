@@ -1,0 +1,161 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Desktop UX — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/desktop-ux.html">
+<meta name="description" content="Desktop UX in AquaDealers — sidebar layout, 2-step billing flow, keyboard shortcuts, wide-screen optimizations, and desktop-only features.">
+<meta property="og:title" content="Desktop UX — AquaDealers Docs">
+<meta property="og:description" content="Desktop UX in AquaDealers — sidebar layout, 2-step billing flow, keyboard shortcuts, wide-screen optimizations, and desktop-only features.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Desktop UX — AquaDealers Docs">
+<meta name="twitter:description" content="Desktop UX in AquaDealers — sidebar layout, 2-step billing flow, keyboard shortcuts, wide-screen optimizations, and desktop-only features.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Desktop UX</span>
+</div>
+<div class="page">
+
+  <h1>Desktop UX</h1>
+  <div class="page-meta">
+    <span>Last updated Sep 2026</span>
+    <span>1024px+ breakpoint &middot; Power user features</span>
+  </div>
+
+  <!-- Layout -->
+  <h2>Layout</h2>
+  <p>The desktop interface replaces the mobile bottom nav with a fixed left sidebar and uses the additional screen width for split-pane layouts and richer data tables.</p>
+
+  <div class="card">
+    <h4>Desktop Layout Structure</h4>
+    <ul>
+      <li><strong>Fixed left sidebar</strong> &mdash; 240px wide, always visible.</li>
+      <li><strong>Sidebar collapse</strong> &mdash; On the billing page the sidebar collapses to 76px (icons only) to maximize workspace for the catalog + cart layout.</li>
+      <li><strong>No top bar</strong> &mdash; Navigation is handled entirely by the sidebar; there is no persistent top navigation bar on desktop.</li>
+      <li><strong>Content area</strong> &mdash; Fills the remaining viewport width. Max-width is constrained per page for readability.</li>
+      <li><strong>Universal search</strong> &mdash; <code>Ctrl+K</code> opens a search modal overlay from anywhere in the app.</li>
+    </ul>
+  </div>
+
+  <!-- Sidebar -->
+  <h2>Sidebar</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>#</th><th>Item</th><th>Icon</th><th>Route</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Dashboard</td><td>LayoutDashboard</td><td><code>/</code></td></tr>
+        <tr><td>2</td><td>Farmers</td><td>Users</td><td><code>/farmers</code></td></tr>
+        <tr><td>3</td><td>New Bill</td><td>PlusCircle</td><td><code>/billing</code></td></tr>
+        <tr><td>4</td><td>Bills</td><td>FileText</td><td><code>/bills</code></td></tr>
+        <tr><td>5</td><td>Stock</td><td>Package</td><td><code>/inventory</code></td></tr>
+        <tr><td>6</td><td>Purchases</td><td>ShoppingCart</td><td><code>/purchases</code></td></tr>
+        <tr><td>7</td><td>Suppliers</td><td>Truck</td><td><code>/suppliers</code></td></tr>
+        <tr><td>8</td><td>Expenses</td><td>Wallet</td><td><code>/expenses</code></td></tr>
+        <tr><td>9</td><td>Daily Book</td><td>BookOpen</td><td><code>/cashbook</code></td></tr>
+        <tr><td>10</td><td>Reports</td><td>BarChart3</td><td><code>/reports</code></td></tr>
+        <tr><td>11</td><td>Settings</td><td>Settings</td><td><code>/settings</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Sidebar Features</h4>
+  <ul>
+    <li><strong>Active item</strong> &mdash; Blue left border highlight + blue text on the current route.</li>
+    <li><strong>Collapse animation</strong> &mdash; On the billing page the sidebar animates from 240px to 76px, showing only icons to give the billing workspace more room.</li>
+    <li><strong>Shop name + branch selector</strong> &mdash; Displayed at the top of the sidebar.</li>
+    <li><strong>Staff badge</strong> &mdash; A <span class="badge b-acc">Staff</span> badge is shown when operating in staff mode.</li>
+  </ul>
+
+  <!-- Billing Flow -->
+  <h2>Billing Flow &mdash; Desktop</h2>
+  <p>Desktop billing condenses the mobile 3-step wizard into a 2-step flow, taking advantage of the wider viewport.</p>
+
+  <div class="flow-step">
+    <div class="flow-num">1</div>
+    <div>
+      <h4>Catalog + Cart</h4>
+      <p>Split layout. The <strong>left pane</strong> shows the product catalog with Feed/Medicine tabs, a search bar, and a grid/list toggle. The <strong>right pane</strong> shows the cart with inline payment controls.</p>
+      <p><code>Ctrl+K</code> or <code>/</code> focuses the product search. Click a product in the catalog to add it to the cart. Quantity and price are editable inline. Payment type and amount fields sit below the cart items.</p>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-num">2</div>
+    <div>
+      <h4>Review + Sign</h4>
+      <p>Full bill review with all line items, totals, and GST breakdown. A larger signature canvas (desktop-sized) captures the farmer's signature. The <strong>Create</strong> button confirms the bill, followed by an option to send via WhatsApp.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <p>Desktop billing uses a <strong>2-step flow</strong> vs. mobile's 3-step wizard. The wider screen allows catalog browsing and cart management simultaneously, eliminating the need for a separate payment step.</p>
+  </div>
+
+  <!-- Keyboard Shortcuts -->
+  <h2>Keyboard Shortcuts</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Shortcut</th><th>Action</th><th>Context</th></tr></thead>
+      <tbody>
+        <tr><td><code>Ctrl+K</code></td><td>Open universal search modal</td><td>Global</td></tr>
+        <tr><td><code>/</code></td><td>Focus product search</td><td>Billing page</td></tr>
+        <tr><td><code>Escape</code></td><td>Close modal / dialog</td><td>Any open modal</td></tr>
+        <tr><td><code>Tab</code></td><td>Navigate form fields</td><td>Forms</td></tr>
+        <tr><td><code>Enter</code></td><td>Submit focused form / confirm dialog</td><td>Forms / modals</td></tr>
+        <tr><td><code>Ctrl+K</code> on billing</td><td>Focus product search (same as <code>/</code>)</td><td>Billing page</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Wide-Screen Optimizations -->
+  <h2>Wide-Screen Optimizations</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Page</th><th>Layout</th><th>Details</th></tr></thead>
+      <tbody>
+        <tr><td>Dashboard</td><td>12-column grid (8/4 split)</td><td>Main stats + chart on the left, quick actions on the right.</td></tr>
+        <tr><td>Bill Detail</td><td>Side-by-side</td><td>Bill info on the left, payment history on the right.</td></tr>
+        <tr><td>Farmer Ledger</td><td>Wide table</td><td>More columns visible with less horizontal scrolling.</td></tr>
+        <tr><td>Farmer Detail</td><td>Split view</td><td>Farmer info card on the left, ledger table on the right.</td></tr>
+        <tr><td>Reports</td><td>Full-width charts</td><td>Profit charts and ageing charts use the full content width.</td></tr>
+        <tr><td>Settings</td><td>Centered narrow</td><td>Max-width 640px for form readability.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Desktop-Only Features -->
+  <h2>Desktop-Only Features</h2>
+  <ul>
+    <li><strong>Universal search modal</strong> (<code>Ctrl+K</code>) &mdash; searches across farmers, products, and bills.</li>
+    <li><strong>Grid/list toggle</strong> on the product catalog.</li>
+    <li><strong>Sidebar collapse</strong> on the billing page for maximum workspace.</li>
+    <li><strong>Multi-column dashboard</strong> layout with stat cards and charts side-by-side.</li>
+    <li><strong>Wider table views</strong> with more visible columns, reducing horizontal scroll.</li>
+    <li><strong>Keyboard shortcut navigation</strong> for power users.</li>
+  </ul>
+
+  <!-- Print Support -->
+  <h2>Print Support</h2>
+  <ul>
+    <li><strong>Bill print</strong> &mdash; Optimized <code>@media print</code> stylesheet hides navigation and chrome, formats the bill for A4/Letter output.</li>
+    <li><strong>Farmer statement</strong> &mdash; Print-friendly layout generated via <code>html2canvas</code> &rarr; PDF export.</li>
+    <li><strong>Reports</strong> &mdash; Basic print support with navigation elements hidden via print media query.</li>
+  </ul>
+
+  <div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

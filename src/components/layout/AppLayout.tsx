@@ -178,29 +178,34 @@ export const AppLayout: React.FC = () => {
   // so the register metaphor stays unbroken.
   const isBookRoute = pathname === '/book' || pathname.startsWith('/book/');
   const isNoPaddingRoute = pathname.startsWith('/bills/new') || pathname.startsWith('/estimates/new') || isBookRoute;
+  // Only the billing/estimate wizards manage their own internal scroll panes —
+  // they get a viewport-locked shell. Book pages render plain content with no
+  // such inner scroller, so locking them the same way clips content instead
+  // of scrolling it on shorter (laptop) screens.
+  const isFixedHeightRoute = pathname.startsWith('/bills/new') || pathname.startsWith('/estimates/new');
 
   return (
     <div className={cn(
       "min-h-dvh bg-transparent text-text-primary overflow-x-clip lg:flex",
-      isNoPaddingRoute && "lg:h-dvh lg:overflow-hidden"
+      isFixedHeightRoute && "lg:h-dvh lg:overflow-hidden"
     )}>
       {!isFullScreenRoute && <DesktopSidebar />}
 
-      <div className={cn("flex-1 flex flex-col min-w-0", isNoPaddingRoute && "lg:min-h-0")}>
+      <div className={cn("flex-1 flex flex-col min-w-0", isFixedHeightRoute && "lg:min-h-0")}>
         {isExpired && (
           <div className="bg-red-600 text-white p-3 text-center text-sm font-semibold sticky top-0 z-[100] shadow-md flex justify-center items-center gap-2">
-            <span className="animate-pulse">⚠️</span> 
+            <span className="animate-pulse">⚠️</span>
             Your subscription has expired. The app is in Read-Only mode. Please contact Admin/Sales to renew.
           </div>
         )}
 <ImpersonationBanner />
-        
+
         <main className={cn(
           "mx-auto w-full flex-1",
           isFullScreenRoute || isNoPaddingRoute
             ? "p-0 max-w-none"
             : "content-safe-bottom max-w-[var(--page-max-width)] px-[var(--page-gutter)] pt-0 pb-6 lg:max-w-[var(--page-max-width-desktop)] lg:pt-6 lg:px-8",
-          isNoPaddingRoute && "lg:min-h-0 lg:overflow-hidden lg:flex lg:flex-col"
+          isFixedHeightRoute && "lg:min-h-0 lg:overflow-hidden lg:flex lg:flex-col"
         )}>
           <React.Suspense fallback={
             <div className="flex h-full min-h-[50vh] w-full items-center justify-center p-8">

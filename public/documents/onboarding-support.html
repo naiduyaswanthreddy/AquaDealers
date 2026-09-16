@@ -1,0 +1,192 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onboarding &amp; Support — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/onboarding-support.html">
+<meta name="description" content="Onboarding and support in AquaDealers — 4-step onboarding wizard with validation, progress tracking, and support ticket system.">
+<meta property="og:title" content="Onboarding &amp; Support — AquaDealers Docs">
+<meta property="og:description" content="Onboarding and support in AquaDealers — 4-step onboarding wizard with validation, progress tracking, and support ticket system.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Onboarding &amp; Support — AquaDealers Docs">
+<meta name="twitter:description" content="Onboarding and support in AquaDealers — 4-step onboarding wizard with validation, progress tracking, and support ticket system.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Onboarding &amp; Support</span>
+</div>
+<div class="page">
+
+<h1>Onboarding &amp; Support</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span></span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>The onboarding wizard guides new dealers through initial setup. The support system allows dealers to submit tickets and admins to manage them.</p>
+
+<!-- ───────────── ONBOARDING ───────────── -->
+<h2>Onboarding Wizard</h2>
+
+<div class="card">
+  <h4>Overview</h4>
+  <ul>
+    <li><strong>Route:</strong> <code>/onboarding</code></li>
+    <li><strong>Trigger:</strong> Shown immediately after registration (post-signup redirect)</li>
+    <li><strong>Steps:</strong> 4 sequential steps</li>
+    <li><strong>Progress tracking:</strong> <code>onboarding_progress</code> table in database</li>
+    <li><strong>Completion:</strong> Redirects to dashboard when all 4 steps are done</li>
+  </ul>
+</div>
+
+<!-- Step 1 -->
+<h3>Step 1: Shop Details</h3>
+
+<div class="card">
+  <p>Collects the dealer's business information. All validation uses Zod schemas.</p>
+
+  <div class="tw"><table>
+    <tr><th>Field</th><th>Required</th><th>Validation</th></tr>
+    <tr><td><strong>Shop Name</strong></td><td>Yes</td><td>Minimum 3 characters</td></tr>
+    <tr><td><strong>Owner Name</strong></td><td>Yes</td><td>Minimum 2 characters</td></tr>
+    <tr><td><strong>Address</strong></td><td>Yes</td><td>Minimum 5 characters</td></tr>
+    <tr><td><strong>GSTIN</strong></td><td>No</td><td>Regex: <code>/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/</code></td></tr>
+    <tr><td><strong>Drug License No.</strong></td><td>No</td><td>Free text (no format validation)</td></tr>
+  </table></div>
+
+  <h4>GSTIN Format Breakdown</h4>
+  <pre>22AAAAA0000A1Z5
+││     │    │││└─ Check digit (alphanumeric)
+││     │    ││└── Always "Z"
+││     │    │└─── Alphanumeric
+││     │    └──── Alpha
+││     └─────────  4 digits
+│└───────────────  5 uppercase letters (PAN)
+└────────────────  2-digit state code</pre>
+
+  <h4>Save Action</h4>
+  <ul>
+    <li>Calls <code>updateDealerProfile</code> to save shop details</li>
+    <li>Calls <code>completeStep('shop_details')</code> to mark step complete</li>
+  </ul>
+</div>
+
+<!-- Step 2 -->
+<h3>Step 2: Language Selection</h3>
+
+<div class="card">
+  <p>Allows the dealer to choose their preferred language. Uses <code>i18next</code> for internationalization.</p>
+  <ul>
+    <li>Language switch is applied immediately via <code>i18next.changeLanguage()</code></li>
+    <li>Selection persisted to dealer profile</li>
+    <li>All UI text updates in real-time on selection</li>
+  </ul>
+</div>
+
+<!-- Step 3 -->
+<h3>Step 3: Product Catalog</h3>
+
+<div class="card">
+  <p>The dealer selects initial products from the global catalog or adds custom products.</p>
+
+  <h4>Two Methods</h4>
+  <div class="grid-2">
+    <div>
+      <strong>Select from Global Catalog</strong>
+      <p>Browse and select products from the AquaDealers master product database. Pre-populated with common agricultural products.</p>
+    </div>
+    <div>
+      <strong>Add Custom Products</strong>
+      <p>Create products not in the global catalog. Enter name, category, unit, and pricing.</p>
+    </div>
+  </div>
+
+  <h4>What Happens</h4>
+  <ul>
+    <li>Selected products are added to the dealer's product list</li>
+    <li>Inventory rows are initialized (stock = 0) for each selected product</li>
+    <li>The dealer can add more products later from the Products page</li>
+  </ul>
+</div>
+
+<!-- Step 4 -->
+<h3>Step 4: Add First Farmer</h3>
+
+<div class="card">
+  <p>Creates the dealer's first customer (farmer) record.</p>
+
+  <div class="tw"><table>
+    <tr><th>Field</th><th>Required</th><th>Notes</th></tr>
+    <tr><td><strong>Name</strong></td><td>Yes</td><td>Farmer's full name</td></tr>
+    <tr><td><strong>Phone</strong></td><td>Yes</td><td>10-digit Indian mobile number (used for WhatsApp)</td></tr>
+  </table></div>
+
+  <p>After this step, the dealer has a complete minimal setup: shop profile, language, products, and at least one customer.</p>
+</div>
+
+<!-- Progress -->
+<h3>Progress Tracking</h3>
+
+<div class="card">
+  <h4>Database: <code>onboarding_progress</code> table</h4>
+  <p>Each step's completion is tracked individually. The dealer can leave and resume onboarding &mdash; completed steps are skipped on return.</p>
+
+  <div class="tw"><table>
+    <tr><th>Step Key</th><th>Completed When</th></tr>
+    <tr><td><code>shop_details</code></td><td>Profile saved successfully</td></tr>
+    <tr><td><code>language</code></td><td>Language selected</td></tr>
+    <tr><td><code>catalog</code></td><td>At least one product selected or added</td></tr>
+    <tr><td><code>first_farmer</code></td><td>First farmer created</td></tr>
+  </table></div>
+
+  <p>When all 4 steps are complete, the dealer is redirected to the dashboard. The onboarding route becomes inaccessible (redirects to dashboard if visited again).</p>
+</div>
+
+<!-- ───────────── SUPPORT SYSTEM ───────────── -->
+<h2>Support System</h2>
+
+<h3>Architecture</h3>
+
+<div class="tw"><table>
+  <tr><th>Component</th><th>Details</th></tr>
+  <tr><td><strong>Database tables</strong></td><td><code>support_tickets</code> + <code>ticket_messages</code></td></tr>
+  <tr><td><strong>Dealer interface</strong></td><td>In-app support form (create ticket, view replies)</td></tr>
+  <tr><td><strong>Admin interface</strong></td><td><code>/admin/support</code> &mdash; ticket list, detail view, reply, resolve</td></tr>
+  <tr><td><strong>Resolution RPC</strong></td><td><code>admin_resolve_ticket</code></td></tr>
+</table></div>
+
+<h3>Ticket Lifecycle</h3>
+
+<div class="flow-step"><span class="flow-num">1</span><div><strong>Dealer creates ticket</strong> &mdash; provides subject and description. Status: <code>open</code></div></div>
+<div class="flow-step"><span class="flow-num">2</span><div><strong>Admin sees ticket</strong> in <code>/admin/support</code> dashboard. Can change status to <code>in_progress</code></div></div>
+<div class="flow-step"><span class="flow-num">3</span><div><strong>Admin replies</strong> &mdash; message added to <code>ticket_messages</code>. Dealer sees reply in-app</div></div>
+<div class="flow-step"><span class="flow-num">4</span><div><strong>Admin resolves</strong> via <code>admin_resolve_ticket</code> RPC. Status: <code>resolved</code></div></div>
+
+<h3>Ticket Statuses</h3>
+
+<div class="tw"><table>
+  <tr><th>Status</th><th>Meaning</th><th>Who Sets It</th></tr>
+  <tr><td><span class="badge b-pri">open</span></td><td>New ticket, awaiting admin response</td><td>Automatic on creation</td></tr>
+  <tr><td><span class="badge b-acc">in_progress</span></td><td>Admin is investigating</td><td>Admin</td></tr>
+  <tr><td><span class="badge b-ok">resolved</span></td><td>Issue resolved</td><td>Admin (via RPC)</td></tr>
+</table></div>
+
+<h3>Priority Levels</h3>
+<p>Tickets can be assigned priority levels by the admin to help triage the support queue. Priority is informational and does not trigger any automated behavior (no SLAs, no auto-escalation).</p>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

@@ -19,6 +19,8 @@ export function useCreateBillReturn() {
       qc.invalidateQueries({ queryKey: ['bills'] });
       qc.invalidateQueries({ queryKey: ['farmer'] });
       qc.invalidateQueries({ queryKey: ['farmers'] });
+      qc.invalidateQueries({ queryKey: ['farmer-items'] });
+      qc.invalidateQueries({ queryKey: ['farmer-item-bills'] });
       qc.invalidateQueries({ queryKey: ['inventory'] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
       qc.invalidateQueries({ queryKey: ['financials'] });
@@ -36,7 +38,7 @@ export function useCreateFarmerReturn() {
   return useMutation({
     mutationFn: createFarmerReturn,
     onSuccess: () => {
-      for (const key of [['bill-returns-list'], ['bills'], ['farmers'], ['farmer'], ['inventory'], ['dashboard'], ['financials'], ['transactions'], ['daily-book']]) {
+      for (const key of [['bill-returns-list'], ['bills'], ['farmers'], ['farmer'], ['farmer-items'], ['farmer-item-bills'], ['inventory'], ['dashboard'], ['financials'], ['transactions'], ['daily-book']]) {
         qc.invalidateQueries({ queryKey: key });
       }
     },
@@ -49,7 +51,7 @@ export function useReplaceFarmerReturn() {
   return useMutation({
     mutationFn: replaceFarmerReturn,
     onSuccess: () => {
-      for (const key of [['bill-returns-list'], ['bill-returns'], ['bills'], ['farmers'], ['farmer'], ['inventory'], ['dashboard'], ['financials'], ['transactions'], ['daily-book']]) {
+      for (const key of [['bill-returns-list'], ['bill-returns'], ['bills'], ['farmers'], ['farmer'], ['farmer-items'], ['farmer-item-bills'], ['inventory'], ['dashboard'], ['financials'], ['transactions'], ['daily-book']]) {
         qc.invalidateQueries({ queryKey: key });
       }
     },

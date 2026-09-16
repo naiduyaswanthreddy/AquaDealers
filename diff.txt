@@ -1,0 +1,185 @@
+﻿diff --git "a/d:\\AquaDealer\\old\\NewPurchasePage.tsx" "b/d:\\AquaDealer\\src\\features\\suppliers\\pages\\NewPurchasePage.tsx"
+index f23f1fe..97b10ca 100644
+--- "a/d:\\AquaDealer\\old\\NewPurchasePage.tsx"
++++ "b/d:\\AquaDealer\\src\\features\\suppliers\\pages\\NewPurchasePage.tsx"
+@@ -1,7 +1,7 @@
+ import React, { useState, useMemo } from 'react';
+ import { useTranslation } from 'react-i18next';
+ import { useNavigate, useSearchParams } from 'react-router-dom';
+-import { useForm, useFieldArray, Controller } from 'react-hook-form';
++import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
+ import { ArrowDownLeft, ArrowUpRight, PackagePlus, Plus, Trash2, TrendingUp } from 'lucide-react';
+ import { useRecordPurchase, useRecordPayment, useSuppliers, useRecordSupplierCharge } from '../hooks/useSuppliers';
+ import { useInventory, useProducts } from '@/features/inventory/hooks/useInventory';
+@@ -14,6 +14,7 @@ import Input from '@/components/ui/Input';
+ import Button from '@/components/ui/Button';
+ import { DatePicker } from '@/components/ui/DatePicker';
+ import { Modal, SearchableSelect } from '@/components/ui';
++import { PurchasePreviewModal } from '../components/PurchasePreviewModal';
+ import { toast } from 'sonner';
+ import { AddProductModal } from '@/features/inventory/components/AddProductModal';
+ import { EditProductModal } from '@/features/inventory/components/EditProductModal';
+@@ -69,6 +70,10 @@ const NewPurchasePage: React.FC = () => {
+     rateDifference: number;
+   }[]>([]);
+   
++  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
++  const [previewData, setPreviewData] = useState<PurchaseForm | null>(null);
++  const [isSubmitting, setIsSubmitting] = useState(false);
++  
+   const { register, handleSubmit, watch, control, setValue, formState: { errors } } = useForm<PurchaseForm>({
+     defaultValues: {
+       supplier_id: supplierIdParam || '',
+@@ -101,8 +106,10 @@ const NewPurchasePage: React.FC = () => {
+     name: "items"
+   });
+ 
+-  const watchItems = watch('items');
++  const watchItems = useWatch({ control, name: 'items' }) || [];
+   const watchIsPaid = watch('is_paid');
++  const watchAmountPaid = watch('amount_paid');
++  const watchAdditionalCharges = watch('additional_charges');
+ 
+   const calculateItemGst = (costPrice: number, quantity: number, gstRate: number) => {
+     return (costPrice * quantity * gstRate) / 100;
+@@ -239,14 +246,21 @@ const NewPurchasePage: React.FC = () => {
+     setValue(`items.${index}.selling_price`, newSellingPrice);
+   };
+ 
+-  const onSubmit = async (data: PurchaseForm) => {
+-    if (!user?.id) return;
++  const onSubmitPreview = (data: PurchaseForm) => {
+     if (data.items.length === 0) {
+       toast.error('Please add at least one item');
+       return;
+     }
++    setPreviewData(data);
++    setIsPreviewOpen(true);
++  };
++
++  const handleConfirmPurchase = async () => {
++    if (!previewData || !user?.id) return;
++    const data = previewData;
+ 
+     try {
++      setIsSubmitting(true);
+       let totalBillAmount = 0;
+       const adjustmentPrompts: typeof rateAdjustmentPrompts = [];
+ 
+@@ -323,6 +337,9 @@ const NewPurchasePage: React.FC = () => {
+       }
+     } catch (error: any) {
+       toast.error(error.message || t('common.error'));
++    } finally {
++      setIsSubmitting(false);
++      setIsPreviewOpen(false);
+     }
+   };
+ 
+@@ -338,33 +355,37 @@ const NewPurchasePage: React.FC = () => {
+       profit += itemProfit;
+     });
+     
+-    // We add additional charges to the overall total to display it clearly,
+-    // though the purchase items will only reflect their respective subtotals and gst.
+-    const addCharges = Number(watch('additional_charges')) || 0;
++    const addCharges = Number(watchAdditionalCharges) || 0;
++    const amountPaid = Number(watchAmountPaid) || 0;
++    const isPaid = watchIsPaid;
++    const total = subtotal + gst + addCharges;
++    const balance = isPaid ? 0 : Math.max(0, total - amountPaid);
+     
+-    return { subtotal, gst, profit, addCharges, total: subtotal + gst + addCharges };
+-  }, [watchItems, watch('additional_charges')]);
++    return { subtotal, gst, profit, addCharges, amountPaid, total, balance, isPaid };
++  }, [watchItems, watchAdditionalCharges, watchAmountPaid, watchIsPaid]);
+ 
+   return (
+     <PageShell width="wide">
+       <PageHeader title="New Purchase Bill" onBack={() => navigate(-1)} />
+ 
+-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
++      <form onSubmit={handleSubmit(onSubmitPreview)} className="space-y-6">
+         <SectionCard title="Invoice Details">
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+-            <div>
+-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('suppliers.supplier')}</label>
+-              <select
+-                {...register('supplier_id', { required: t('common.required') })}
+-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all"
+-              >
+-                <option value="">{t('suppliers.selectSupplier')}</option>
+-                {suppliers?.map(s => (
+-                  <option key={s.id} value={s.id}>{s.name} {s.company ? `(${s.company})` : ''}</option>
+-                ))}
+-              </select>
+-              {errors.supplier_id && <p className="text-red-500 text-xs mt-1">{errors.supplier_id.message}</p>}
+-            </div>
++            <Controller
++              control={control}
++              name="supplier_id"
++              rules={{ required: t('common.required') }}
++              render={({ field }) => (
++                <SearchableSelect
++                  label={t('suppliers.supplier')}
++                  placeholder={t('suppliers.selectSupplier')}
++                  options={suppliers?.map(s => ({ value: s.id, label: `${s.name} ${s.company ? `(${s.company})` : ''}` })) || []}
++                  value={field.value}
++                  onChange={field.onChange}
++                  error={errors.supplier_id?.message as string}
++                />
++              )}
++            />
+ 
+             <Input
+               label={t('suppliers.invoiceNumber', 'Invoice Number')}
+@@ -728,9 +749,19 @@ const NewPurchasePage: React.FC = () => {
+                     {formatCurrency(totals.profit)}
+                   </span>
+                 </div>
+-                <div className="pt-3 border-t border-gray-200 flex justify-between items-center text-lg font-black text-gray-900">
++                <div className="pt-3 border-t border-gray-200 flex justify-between items-center text-base font-bold text-gray-900">
+                   <span>Total Amount</span>
+-                  <span className="text-blue-600">{formatCurrency(totals.total)}</span>
++                  <span className="text-gray-900">{formatCurrency(totals.total)}</span>
++                </div>
++                <div className="flex justify-between items-center text-gray-600 text-sm">
++                  <span>Amount Paid</span>
++                  <span className="font-medium text-emerald-600">
++                    -{formatCurrency(totals.isPaid ? totals.total : totals.amountPaid)}
++                  </span>
++                </div>
++                <div className="pt-2 border-t border-gray-100 flex justify-between items-center text-lg font-black text-blue-700">
++                  <span>Balance Due</span>
++                  <span>{formatCurrency(totals.balance)}</span>
+                 </div>
+               </div>
+             </div>
+@@ -747,9 +778,8 @@ const NewPurchasePage: React.FC = () => {
+             </Button>
+             <Button
+               type="submit"
+-              loading={isPending}
+             >
+-              {t('common.save', 'Save Purchase Bill')}
++              Review Purchase
+             </Button>
+           </div>
+         </SectionCard>
+@@ -823,6 +853,16 @@ const NewPurchasePage: React.FC = () => {
+           </div>
+         </div>
+       </Modal>
++
++      <PurchasePreviewModal
++        isOpen={isPreviewOpen}
++        onClose={() => setIsPreviewOpen(false)}
++        onConfirm={handleConfirmPurchase}
++        isSubmitting={isSubmitting}
++        data={previewData}
++        supplierName={suppliers?.find(s => s.id === previewData?.supplier_id)?.name}
++        productNames={products?.reduce((acc, p) => ({ ...acc, [p.id]: p.name }), {}) || {}}
++      />
+     </PageShell>
+   );
+ };

@@ -1,0 +1,203 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Changelog — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/changelog.html">
+<meta name="description" content="AquaDealers changelog — version history from foundation through v3.0.0, organized by month with feature details.">
+<meta property="og:title" content="Changelog — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers changelog — version history from foundation through v3.0.0, organized by month with feature details.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Changelog — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers changelog — version history from foundation through v3.0.0, organized by month with feature details.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Changelog</span>
+</div>
+<div class="page">
+
+<h1>Changelog</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Current</span> Version 3.0.0</span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>Version history compiled from git log. Most recent changes first.</p>
+
+<!-- ── v3.0.0 ── -->
+<h2>Version 3.0.0 <span class="badge b-pri">Current</span></h2>
+
+<!-- Sep 2026 -->
+<h3>September 2026</h3>
+
+<div class="card">
+<h4>Bug Fixes</h4>
+<ul>
+  <li>Fixed a farmer's <strong>Items tab</strong> (and its per-item bill drilldown) never reflecting returns &mdash; <code>get_farmer_items_v1</code>/<code>get_farmer_item_bills_v1</code> summed <code>bill_items</code> directly with no idea <code>bill_return_items</code>/<code>bill_return_allocations</code> existed, so purchased quantity/value stayed stuck at pre-return numbers forever (stock, balances, and statements were never affected &mdash; only this one summary). Also fixed a related cache gap where creating, editing, or undoing a return never invalidated the Items tab's query keys. See <a href="/documents/feature-specifications.html#returns">Returns</a>.</li>
+  <li>Fixed <code>apply_settlement_discount_v1</code> writing to <code>bill_audit_logs</code> columns (<code>action</code>, <code>old_value</code>, <code>new_value</code>) that were never part of the table &mdash; every settlement discount attempt failed with <code>column "action" of relation "bill_audit_logs" does not exist</code> since the feature shipped (2026-07-25). Now inserts into the table's real columns (<code>user_id</code>, <code>changes_jsonb</code>), same shape <code>edit_bill_v1</code> already used.</li>
+  <li>Fixed the Stock &amp; Purchase list and Billing screen showing different prices for the same product. Both now read the price of the FIFO lot that's actually next up for sale (see <a href="/documents/inventory-logic.html#which-price-wins">Which Price Actually Gets Charged?</a>), instead of the list reading a separate, easily-stale <code>inventory.selling_price</code> default.</li>
+  <li>Fixed the "Edit" price modal (<code>EditInventoryModal</code>) only ever updating <code>inventory.selling_price</code> and never the active stock lot &mdash; a dealer could edit and save a price with no error, yet Billing kept charging the old, untouched lot price. The modal now updates <code>selling_price</code>/<code>mrp</code>/<code>medicine_discount_percentage</code> on both in one save (deliberately excluding <code>cost_price</code> &mdash; see <a href="/documents/inventory-logic.html#which-price-wins">Which Price Actually Gets Charged?</a>).</li>
+  <li>Fixed the same modal's MRP field drifting a little further from the true value on every edit (e.g. &#8377;2790.75 &rarr; &#8377;2790.09) &mdash; it was reverse-calculating MRP from Selling Price &divide; Discount% on every open instead of using the real stored MRP, compounded by <code>InventoryDetailPage</code> never actually passing the real MRP into the modal at all.</li>
+  <li>Fixed Daily Book pages (and subpages) not scrolling on laptop-height screens &mdash; the app shell was locking to a fixed viewport height meant only for the billing/estimate wizards.</li>
+  <li>Added the standard back button to four pages that were missing it (Dues, Estimates, Staff, Billing Templates), for consistency with every other page.</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>New Bill — Desktop UX</h4>
+<ul>
+  <li>The desktop payment panel (<code>ProductSelector</code>, right column of <code>/bills/new</code>) is now a collapsible <strong>Payment Details</strong> card &mdash; starts closed, expands into Payment Method / Amount Received / Settlement Discount on the left and a read-only <strong>Bill Summary</strong> breakdown on the right.</li>
+  <li>The action button reads <strong>"Payment"</strong> while the card is closed (clicking only opens it) and becomes <strong>"Review &amp; Sign"</strong> once it's open, however it was opened.</li>
+  <li>Product catalog grid is now responsive &mdash; 2 columns below 1300px wide, 3 columns at 1300px and up &mdash; instead of always forcing 3 cramped columns on moderate desktop widths.</li>
+  <li>Removed a stray replay-on-remount animation from the "In Cart" badge that could re-trigger on unrelated re-renders.</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>Estimates</h4>
+<ul>
+  <li>Estimate bills feature &mdash; <code>is_estimate</code> flag on bills, separate estimate list view</li>
+  <li>No stock deduction, no payment recording, no ledger impact for estimates</li>
+  <li>Convert estimate to bill workflow</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>WhatsApp Improvements</h4>
+<ul>
+  <li>WhatsApp quota system with monthly limits and addon plans</li>
+  <li>Bill shop-name resolution for WhatsApp API messages via new RPC</li>
+  <li>CORS fixes for edge functions (<code>x-client-info</code> header allowlist, wildcard fallback)</li>
+</ul>
+</div>
+
+<!-- Aug 2026 -->
+<h3>August 2026</h3>
+
+<div class="card">
+<h4>WhatsApp Status Tracking</h4>
+<ul>
+  <li>WhatsApp message status tracking: sending &rarr; sent / failed</li>
+  <li>Failure-reason column for debugging failed deliveries</li>
+  <li>Bill list WhatsApp status column with visual indicators</li>
+  <li>Shared <code>useWhatsAppStatus</code> hook for polling</li>
+</ul>
+</div>
+
+<!-- Jul 2026 -->
+<h3>July 2026</h3>
+
+<div class="card">
+<h4>Returns &amp; Transfers</h4>
+<ul>
+  <li>Bill returns system &mdash; partial and full returns with stock reversal</li>
+  <li>Return credit balance tracking per farmer</li>
+  <li>Stock transfers between branches with FIFO lot preservation</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>Transaction System</h4>
+<ul>
+  <li>Transaction events table for universal audit trail</li>
+  <li>Universal undo with 48-hour window</li>
+  <li>Farmer due reconciliation triggers (automatic recalculation on any change)</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>Security</h4>
+<ul>
+  <li>Staff PIN bcrypt hashing (replacing plaintext)</li>
+  <li>Staff admin session security improvements &mdash; deploy coupling fix</li>
+  <li>Security fixes batch 1 &mdash; multiple RLS and permission corrections</li>
+  <li>Rate-limit trigger for staff PIN attempts</li>
+</ul>
+</div>
+
+<!-- Jun 2026 -->
+<h3>June 2026</h3>
+
+<div class="card">
+<h4>Pricing &amp; Billing</h4>
+<ul>
+  <li>FIFO lot pricing and rate adjustments</li>
+  <li>Per-farmer per-product discount rates (rate memory)</li>
+  <li>Bill editing with full audit trail</li>
+  <li>Rate adjustment page for historical price changes</li>
+  <li>Supplier charges tracking</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>Inventory</h4>
+<ul>
+  <li>Expiry processing automation</li>
+  <li>Low stock alert thresholds</li>
+</ul>
+</div>
+
+<!-- ── Foundation ── -->
+<h2>Earlier Releases <span class="badge b-muted">Foundation</span></h2>
+<p>Core platform built from initial release through May 2026.</p>
+
+<h3>Core Platform</h3>
+<div class="card">
+<h4>Schema &amp; Data Layer</h4>
+<ul>
+  <li>Core schema: dealers, farmers, products, inventory, bills, payments</li>
+  <li>Billing system with <code>create_bill_v2</code> RPC (FIFO lot consumption, payment allocation, ledger updates)</li>
+  <li>Row Level Security on all core tables</li>
+  <li>48+ database tables with triggers and views</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>Frontend Application</h4>
+<ul>
+  <li>React 18 + TypeScript + Vite</li>
+  <li>Dashboard with KPI widgets (revenue, dues, collections, stock value)</li>
+  <li>React Query + IndexedDB persistence for offline support</li>
+  <li>PWA with service worker for installability</li>
+  <li>Code splitting with React.lazy for all route-level pages</li>
+  <li>Responsive layout split at <code>lg:</code> (1024px) &mdash; separate mobile and desktop flows</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>Admin &amp; Operations</h4>
+<ul>
+  <li>Admin portal with dealer management and impersonation</li>
+  <li>Staff access with PIN login and JSONB permissions</li>
+  <li>Offline sync with <code>client_ref</code> UUID idempotency</li>
+  <li>4-step onboarding wizard</li>
+</ul>
+</div>
+
+<div class="card">
+<h4>Integrations &amp; Tooling</h4>
+<ul>
+  <li>PostHog analytics + Sentry error tracking</li>
+  <li>i18next internationalization (English + Telugu)</li>
+  <li>Landing page and SEO pages</li>
+  <li>Public farmer statement sharing via unique links</li>
+</ul>
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

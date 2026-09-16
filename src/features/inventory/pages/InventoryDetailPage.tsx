@@ -578,8 +578,25 @@ const InventoryDetailPage: React.FC = () => {
              </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-100">
-             <div className="flex flex-col gap-1 items-center justify-center text-center">
+          <div className="grid grid-cols-4 lg:grid-cols-6 gap-2 pt-4 border-t border-slate-100">
+             {/* Selling/Cost duplicate the header's price badges, which PageHeader hides
+                 above the lg breakpoint (its description slot is mobile-only) — without
+                 these, desktop has no price display for this product at all. */}
+             <div className="hidden lg:flex flex-col gap-1 items-center justify-center text-center">
+                <div className="flex items-center gap-1.5">
+                   <ArrowUpCircle className="w-3.5 h-3.5 text-slate-400" />
+                   <span className="text-[10px] font-medium text-slate-500">Selling</span>
+                </div>
+                <span className="text-sm font-bold text-slate-800">₹{inventory.selling_price?.toLocaleString() ?? '—'}</span>
+             </div>
+             <div className="hidden lg:flex flex-col gap-1 items-center justify-center text-center border-l border-slate-100">
+                <div className="flex items-center gap-1.5">
+                   <ArrowDownCircle className="w-3.5 h-3.5 text-slate-400" />
+                   <span className="text-[10px] font-medium text-slate-500">Cost</span>
+                </div>
+                <span className="text-sm font-bold text-slate-800">₹{inventory.cost_price?.toLocaleString() ?? '—'}</span>
+             </div>
+             <div className="flex flex-col gap-1 items-center justify-center text-center lg:border-l lg:border-slate-100">
                 <div className="flex items-center gap-1.5">
                    <CircleDollarSign className="w-3.5 h-3.5 text-slate-400" />
                    <span className="text-[10px] font-medium text-slate-500">Stock Value</span>
@@ -1321,11 +1338,13 @@ const InventoryDetailPage: React.FC = () => {
         inventoryId={inventory.id}
         productId={inventory.product_id}
         productType={inventory.product.type}
+        lots={data?.lots}
         initialData={{
           selling_price: inventory.selling_price,
           cost_price: inventory.cost_price,
           min_stock_alert: inventory.min_stock_alert,
           medicine_discount_percentage: inventory.medicine_discount_percentage,
+          mrp: inventory.mrp,
           product_name: inventory.product.name,
           company: inventory.product.company,
           image_url: inventory.image_url,

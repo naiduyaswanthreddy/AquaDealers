@@ -1,0 +1,227 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Testing — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/testing.html">
+<meta name="description" content="Testing in AquaDealers — 11 Vitest unit test files, 5 Playwright E2E specs, configuration, and test running instructions.">
+<meta property="og:title" content="Testing — AquaDealers Docs">
+<meta property="og:description" content="Testing in AquaDealers — 11 Vitest unit test files, 5 Playwright E2E specs, configuration, and test running instructions.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Testing — AquaDealers Docs">
+<meta name="twitter:description" content="Testing in AquaDealers — 11 Vitest unit test files, 5 Playwright E2E specs, configuration, and test running instructions.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Testing</span>
+</div>
+<div class="page">
+
+<h1>Testing</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span></span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>AquaDealers has two test layers: unit tests via Vitest and end-to-end tests via Playwright.</p>
+
+<!-- ───────────── UNIT TESTS ───────────── -->
+<h2>Unit Tests (Vitest)</h2>
+
+<h3>Configuration</h3>
+<div class="card">
+  <ul>
+    <li><strong>Config file:</strong> <code>vitest.config.ts</code></li>
+    <li><strong>Environment:</strong> jsdom</li>
+    <li><strong>Libraries:</strong> <code>@testing-library/react</code>, <code>jest-dom</code></li>
+    <li><strong>Run command:</strong> <code>npm test</code></li>
+  </ul>
+</div>
+
+<h3>Test Files (11)</h3>
+
+<div class="tw"><table>
+  <tr><th>File</th><th>Coverage Area</th><th>Description</th></tr>
+  <tr>
+    <td><code>useCheckout.test.ts</code></td>
+    <td>Checkout flow</td>
+    <td>Tests the full checkout hook: payload building, bill creation, payment allocation, and post-checkout side effects (WhatsApp send, cache invalidation).</td>
+  </tr>
+  <tr>
+    <td><code>cartStore.test.ts</code></td>
+    <td>Cart state</td>
+    <td>Tests the Zustand cart store: add/remove items, quantity updates, price calculations, discount application, cart clearing.</td>
+  </tr>
+  <tr>
+    <td><code>PaymentStep.test.tsx</code></td>
+    <td>Payment UI</td>
+    <td>Tests the PaymentStep component rendering: payment mode selection, amount input, split payment handling, validation states.</td>
+  </tr>
+  <tr>
+    <td><code>DuesFarmerRow.test.tsx</code></td>
+    <td>Dues display</td>
+    <td>Tests the farmer row component in the dues list: amount formatting, ageing bucket display, overdue highlighting.</td>
+  </tr>
+  <tr>
+    <td><code>financialService.test.ts</code></td>
+    <td>Financial calculations</td>
+    <td>Tests financial service functions: revenue calculation, expense aggregation, profit computation, balance calculations.</td>
+  </tr>
+  <tr>
+    <td><code>inventoryService.test.ts</code></td>
+    <td>Inventory queries</td>
+    <td>Tests inventory service: stock level queries, lot lookups, low stock detection, valuation calculations.</td>
+  </tr>
+  <tr>
+    <td><code>farmerService.test.ts</code></td>
+    <td>Farmer operations</td>
+    <td>Tests farmer CRUD: creation, updates, search, balance queries, statement generation.</td>
+  </tr>
+  <tr>
+    <td><code>reportBuilders.test.ts</code></td>
+    <td>Report generation</td>
+    <td>Tests report builder functions: data aggregation, CSV formatting, date range filtering, summary calculations.</td>
+  </tr>
+  <tr>
+    <td><code>dashboardCardUtils.test.ts</code></td>
+    <td>Dashboard metrics</td>
+    <td>Tests dashboard utility functions: metric formatting, percentage calculations, trend indicators, card data shaping.</td>
+  </tr>
+  <tr>
+    <td><code>supabase.test.ts</code></td>
+    <td>Client config</td>
+    <td>Tests Supabase client initialization: URL configuration, key loading, auth persistence settings.</td>
+  </tr>
+  <tr>
+    <td><code>utils.test.ts</code></td>
+    <td>Utility functions</td>
+    <td>Tests shared utilities: phone normalization, currency formatting, date helpers, string manipulation.</td>
+  </tr>
+</table></div>
+
+<!-- ───────────── E2E TESTS ───────────── -->
+<h2>E2E Tests (Playwright)</h2>
+
+<h3>Configuration</h3>
+<div class="card">
+  <ul>
+    <li><strong>Config file:</strong> <code>playwright.config.ts</code></li>
+    <li><strong>Browser:</strong> Chromium only</li>
+    <li><strong>Credentials:</strong> Test dealer account via <code>.env.e2e</code> file</li>
+    <li><strong>Run command:</strong> <code>npm run test:e2e</code></li>
+  </ul>
+</div>
+
+<h3>Test Specs (5)</h3>
+
+<div class="card">
+  <h4>1. billing.spec.ts &mdash; Full Bill Creation</h4>
+  <p>End-to-end bill creation flow:</p>
+  <ul>
+    <li>Log in as test dealer</li>
+    <li>Navigate to New Bill</li>
+    <li>Select a farmer</li>
+    <li>Add products to cart</li>
+    <li>Set quantities and review totals</li>
+    <li>Choose payment method</li>
+    <li>Complete checkout</li>
+    <li>Verify bill appears in bill list</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>2. farmer-payment.spec.ts &mdash; Payment Collection</h4>
+  <p>Payment recording flow:</p>
+  <ul>
+    <li>Log in as test dealer</li>
+    <li>Navigate to a farmer with outstanding balance</li>
+    <li>Record a payment (cash or digital)</li>
+    <li>Verify balance updates</li>
+    <li>Verify payment appears in farmer ledger</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>3. stock-purchase.spec.ts &mdash; Stock Purchase</h4>
+  <p>Inventory purchase flow:</p>
+  <ul>
+    <li>Log in as test dealer</li>
+    <li>Navigate to Stock Purchase</li>
+    <li>Select supplier and products</li>
+    <li>Enter quantities, prices, and batch details</li>
+    <li>Complete purchase</li>
+    <li>Verify stock levels update</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>4. auth.spec.ts &mdash; Authentication Flows</h4>
+  <p>Authentication flow tests:</p>
+  <ul>
+    <li>Redirect unauthenticated users to login</li>
+    <li>Admin login page rendering</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>5. screenshot.spec.ts &mdash; Login/Register Screenshots</h4>
+  <p>Utility spec that captures screenshots of the login and register pages for visual reference.</p>
+</div>
+
+<h3>Support Files</h3>
+<div class="card">
+  <ul>
+    <li><code>tests/e2e/auth.setup.ts</code> &mdash; Authentication setup (logs in before tests)</li>
+    <li><code>tests/e2e/fixtures.ts</code> &mdash; Shared test fixtures</li>
+    <li><code>tests/e2e/helpers/db.ts</code> &mdash; Database helper for test setup/teardown</li>
+  </ul>
+</div>
+
+<!-- ───────────── RUNNING TESTS ───────────── -->
+<h2>Running Tests</h2>
+
+<h3>Commands</h3>
+<pre>
+# Unit tests (Vitest)
+npm test
+
+# Unit tests in watch mode
+npm test -- --watch
+
+# E2E tests (Playwright)
+npm run test:e2e
+
+# E2E tests with UI mode
+npx playwright test --ui
+
+# E2E tests for a specific spec
+npx playwright test billing.spec.ts
+</pre>
+
+<h3>E2E Prerequisites</h3>
+<div class="callout callout-warn">
+<strong>Before running E2E tests:</strong>
+<ul>
+  <li>Create a <code>.env.e2e</code> file with test dealer credentials</li>
+  <li>Ensure the dev server is running (<code>npm run dev</code>)</li>
+  <li>Install Playwright browsers: <code>npx playwright install chromium</code></li>
+  <li>The test dealer account must have existing data (farmers, products, stock) for the tests to pass</li>
+</ul>
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

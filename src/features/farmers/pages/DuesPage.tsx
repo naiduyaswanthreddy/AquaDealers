@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, CalendarClock, Users } from 'lucide-react';
+import { CalendarClock, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import { Button, EmptyState, SearchBar, Skeleton } from '@/components/ui';
@@ -126,11 +126,9 @@ export const DuesPage: React.FC = () => {
       <PageHeader
         title={t('dashboard.outstandingDues', 'Outstanding Dues')}
         description={t('farmers.duesDescription', 'Monitor and manage pending payments from farmers.')}
+        onBack={() => navigate(-1)}
         action={
           <div className="flex gap-2">
-            <Button onClick={() => navigate(-1)} variant="secondary" leftIcon={<ArrowLeft className="h-4.5 w-4.5" />}>
-              {t('common.back', 'Back')}
-            </Button>
             <Button
               onClick={handleDownloadReport}
               variant="outline"

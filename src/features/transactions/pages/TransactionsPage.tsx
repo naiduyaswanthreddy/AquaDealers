@@ -26,7 +26,7 @@ const typeLabels: Record<TransactionType, string> = {
 };
 
 const invalidationKeys = [
-  'bills', 'bill', 'inventory', 'farmer', 'farmers', 'supplier', 'suppliers',
+  'bills', 'bill', 'inventory', 'farmer', 'farmers', 'farmer-items', 'farmer-item-bills', 'supplier', 'suppliers',
   'cashbook', 'cash-book', 'daily-book', 'dashboard', 'reports', 'financial', 'transactions',
 ];
 const PAGE_SIZE = 20;

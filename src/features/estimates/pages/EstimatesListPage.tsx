@@ -42,6 +42,7 @@ const EstimatesListPage: React.FC = () => {
       <PageHeader
         title="Estimates"
         description="Price quotes for your farmers"
+        onBack={() => navigate('/more')}
         action={
           <Button
             variant="primary"

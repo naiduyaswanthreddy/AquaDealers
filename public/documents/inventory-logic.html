@@ -1,0 +1,356 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inventory Logic — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/inventory-logic.html">
+<meta name="description" content="AquaDealers inventory logic — three-level stock system with FIFO lot consumption, expiry management, auto-fanout triggers, stock guards, and rate adjustments.">
+<meta property="og:title" content="Inventory Logic — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers inventory logic — three-level stock system with FIFO lot consumption, expiry management, auto-fanout triggers, stock guards, and rate adjustments.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Inventory Logic — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers inventory logic — three-level stock system with FIFO lot consumption, expiry management, auto-fanout triggers, stock guards, and rate adjustments.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Inventory Logic</span>
+</div>
+<div class="page">
+
+<h1>Inventory Logic</h1>
+<p class="page-meta">
+  <span>Stock system, FIFO lots, guards, expiry, adjustments, and alerts</span>
+</p>
+
+<!-- ─── THREE-LEVEL STOCK SYSTEM ─── -->
+<h2 id="stock-system">Three-Level Stock System</h2>
+
+<p>AquaDealers uses a three-tiered inventory architecture. Each level serves a distinct purpose &mdash; from the master stock count down to the immutable audit trail.</p>
+
+<!-- Level 1: inventory -->
+<h3 id="level-inventory">Level 1: <code>inventory</code> &mdash; Master Stock Level</h3>
+
+<div class="card">
+  <h4>Purpose</h4>
+  <p>One row per (dealer, branch, product) combination. This is the <strong>source of truth</strong> for current stock quantity. Its price fields are only a <strong>fallback default</strong> &mdash; see the pricing callout below the lots table for what actually gets charged once stock exists.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>UUID</td><td>Primary key</td></tr>
+        <tr><td><code>dealer_id</code></td><td>UUID</td><td>Owning dealer</td></tr>
+        <tr><td><code>branch_id</code></td><td>UUID</td><td>Branch location</td></tr>
+        <tr><td><code>product_id</code></td><td>UUID</td><td>Product reference</td></tr>
+        <tr><td><code>quantity_in_stock</code></td><td>numeric</td><td>Current available quantity</td></tr>
+        <tr><td><code>cost_price</code></td><td>numeric</td><td>Latest cost price (from most recent purchase)</td></tr>
+        <tr><td><code>selling_price</code></td><td>numeric</td><td>Default selling rate for feed products</td></tr>
+        <tr><td><code>mrp</code></td><td>numeric</td><td>Maximum retail price (medicines)</td></tr>
+        <tr><td><code>medicine_discount_percentage</code></td><td>numeric</td><td>Default discount % for medicine products</td></tr>
+        <tr><td><code>min_stock_alert</code></td><td>numeric</td><td>Low-stock alert threshold</td></tr>
+        <tr><td><code>track_expiry</code></td><td>boolean</td><td>Whether expiry tracking is enabled (typically true for medicines)</td></tr>
+        <tr><td><code>expiry_date</code></td><td>date</td><td>Legacy expiry field (lot-level expiry preferred)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-info">
+    <strong>Unique constraint:</strong> <code>(dealer_id, branch_id, product_id)</code> &mdash; ensures exactly one inventory row per product per branch per dealer. Duplicate rows are prevented at the database level.
+  </div>
+</div>
+
+<!-- Level 2: inventory_lots -->
+<h3 id="level-lots">Level 2: <code>inventory_lots</code> &mdash; FIFO Lot Tracking</h3>
+
+<div class="card">
+  <h4>Purpose</h4>
+  <p>Each stock purchase creates one lot. Lots are consumed in FIFO order (earliest expiry first, then earliest received). This enables accurate COGS calculation and expiry management.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>UUID</td><td>Primary key</td></tr>
+        <tr><td><code>inventory_id</code></td><td>UUID</td><td>FK to inventory table</td></tr>
+        <tr><td><code>stock_purchase_id</code></td><td>UUID</td><td>FK to the purchase that created this lot</td></tr>
+        <tr><td><code>batch_number</code></td><td>text</td><td>Manufacturer batch/lot number</td></tr>
+        <tr><td><code>expiry_date</code></td><td>date</td><td>Lot expiry date (null for non-expiry-tracked items)</td></tr>
+        <tr><td><code>quantity_received</code></td><td>numeric</td><td>Original quantity when the lot was created</td></tr>
+        <tr><td><code>remaining_quantity</code></td><td>numeric</td><td>Current remaining quantity (decreases as lots are consumed)</td></tr>
+        <tr><td><code>cost_price</code></td><td>numeric</td><td>Cost price at time of purchase (for COGS)</td></tr>
+        <tr><td><code>selling_price</code></td><td>numeric</td><td>Selling price at time of purchase</td></tr>
+        <tr><td><code>mrp</code></td><td>numeric</td><td>MRP at time of purchase</td></tr>
+        <tr><td><code>received_at</code></td><td>timestamptz</td><td>When the lot was received</td></tr>
+        <tr><td><code>is_expired</code></td><td>boolean</td><td>Whether the lot has been marked as expired</td></tr>
+        <tr><td><code>expired_at</code></td><td>timestamptz</td><td>When the lot was marked expired</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>Consumption order:</strong> <code>expiry_date ASC, received_at ASC</code> &mdash; earliest expiry first, then earliest received.</p>
+</div>
+
+<h3 id="which-price-wins">Which Price Actually Gets Charged?</h3>
+
+<div class="callout callout-warn">
+  <strong>Two price fields, one bill.</strong> Both <code>inventory</code> (Level 1) and <code>inventory_lots</code> (Level 2) carry their own <code>selling_price</code>/<code>mrp</code>/<code>medicine_discount_percentage</code>. They are <strong>not the same value read twice</strong> &mdash; they can drift apart, and for any product with active stock, <strong>the lot wins</strong>:
+  <ul>
+    <li>Billing (<code>ProductSelector</code>) and the Stock &amp; Purchase list both price a product using its <strong>next-to-sell FIFO lot</strong> (<code>getLotsWithStock</code> / <code>getNextSellingLot</code> in <code>src/features/inventory/utils/pricing.ts</code>) &mdash; the same lot <code>consume_inventory_lots</code> will actually deduct from on the next sale.</li>
+    <li>The <code>inventory</code> row's price fields are used only as a <strong>fallback</strong>, for a product that has never had a stock purchase (no lots yet) or whose lots are all fully consumed.</li>
+  </ul>
+  <strong>Editing the price:</strong> the "Edit" button on a product (<code>EditInventoryModal</code>) writes <code>selling_price</code>, <code>mrp</code>, and <code>medicine_discount_percentage</code> to <em>both</em> the <code>inventory</code> row and the current FIFO lot in one save, so the number you type takes effect immediately. Before this was wired up (fixed 2026-09-15), the modal only touched the <code>inventory</code> row &mdash; a dealer could edit and save a price with no visible error, yet Billing and the Stock list kept charging the untouched lot's older price. If you build a new tool that changes a product's price, remember to update the active lot too, not just the <code>inventory</code> row, or you'll reintroduce this class of bug.
+  <ul>
+    <li><strong>Exception: <code>cost_price</code> is never pushed to the lot from this modal.</strong> The <code>inventory</code> row's cost_price is "latest purchase cost" (a rough, current default); a lot's cost_price is that specific batch's real historical cost for COGS, and the two can legitimately differ &mdash; a dealer correcting today's selling price shouldn't silently overwrite an older batch's true cost. Only the per-lot editor on the <a href="/documents/page-specifications.html#inventory-detail">Inventory Detail</a> "Lots" tab should change a lot's cost_price.</li>
+  </ul>
+</div>
+
+<div class="callout callout-info">
+  <strong>Separate gotcha: don't re-derive a value you already have.</strong> <code>EditInventoryModal</code> also had a floating-point drift bug (fixed 2026-09-15, same day): its form was reverse-calculating MRP from <code>selling_price &divide; (1 &minus; discount%)</code> on <em>every</em> open, even when the real <code>mrp</code> was already known and passed in &mdash; and separately, <code>InventoryDetailPage</code> was never passing <code>mrp</code> into the modal at all, so this lossy reverse-calculation ran on every single open. Combined with the lot-sync above, each open-edit-save cycle rounded MRP a little differently and wrote that rounded value back, so it visibly crept (e.g. 2790.75 &rarr; 2790.09) over a few edits even when the dealer only touched Selling Price. Fix: always prefer a known stored value; only derive one when it's genuinely missing.
+</div>
+
+<!-- Level 3: inventory_movements -->
+<h3 id="level-movements">Level 3: <code>inventory_movements</code> &mdash; Immutable Audit Trail</h3>
+
+<div class="card">
+  <h4>Purpose</h4>
+  <p>Every stock change &mdash; regardless of source &mdash; creates an immutable movement record. This is the complete audit trail for all inventory changes.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>UUID</td><td>Primary key</td></tr>
+        <tr><td><code>inventory_id</code></td><td>UUID</td><td>FK to inventory table</td></tr>
+        <tr><td><code>product_id</code></td><td>UUID</td><td>Product reference (denormalized for queries)</td></tr>
+        <tr><td><code>lot_id</code></td><td>UUID</td><td>FK to inventory_lots (if lot-level operation)</td></tr>
+        <tr><td><code>reference_type</code></td><td>text</td><td>Type of operation that caused the movement</td></tr>
+        <tr><td><code>reference_id</code></td><td>UUID</td><td>ID of the originating record</td></tr>
+        <tr><td><code>quantity_change</code></td><td>numeric</td><td>Signed quantity change (+increase, &minus;decrease)</td></tr>
+        <tr><td><code>notes</code></td><td>text</td><td>Optional description</td></tr>
+        <tr><td><code>created_at</code></td><td>timestamptz</td><td>Timestamp of the movement</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Reference Types</h4>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>reference_type</th><th>Direction</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>bill</code></td><td><span class="badge b-err">&minus; decrease</span></td><td>Stock sold to a farmer</td></tr>
+        <tr><td><code>purchase</code></td><td><span class="badge b-ok">+ increase</span></td><td>Stock received from a supplier</td></tr>
+        <tr><td><code>bill_cancellation</code></td><td><span class="badge b-ok">+ increase</span></td><td>Stock returned from a cancelled bill</td></tr>
+        <tr><td><code>bill_edit</code></td><td><span class="badge b-warn">&plusmn; either</span></td><td>Stock adjustment from editing a bill&rsquo;s quantities</td></tr>
+        <tr><td><code>manual_adjustment</code></td><td><span class="badge b-warn">&plusmn; either</span></td><td>Manual stock correction by dealer</td></tr>
+        <tr><td><code>bill_return</code></td><td><span class="badge b-ok">+ increase</span></td><td>Stock returned by farmer</td></tr>
+        <tr><td><code>transfer_out</code></td><td><span class="badge b-err">&minus; decrease</span></td><td>Stock transferred to another branch</td></tr>
+        <tr><td><code>transfer_in</code></td><td><span class="badge b-ok">+ increase</span></td><td>Stock received from another branch</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── FIFO LOT CONSUMPTION ─── -->
+<h2 id="fifo">FIFO Lot Consumption</h2>
+
+<div class="card">
+  <h4>How Lots Are Consumed During Billing</h4>
+  <ol>
+    <li>Bill is created via <code>create_bill_v2</code> RPC</li>
+    <li>For each bill item, <code>consume_inventory_lots</code> is called</li>
+    <li>Lots are fetched ordered by <code>expiry_date ASC, received_at ASC</code></li>
+    <li>Lots are deducted one by one until the requested quantity is fulfilled</li>
+    <li>Each lot deduction creates a <code>bill_item_lot_allocations</code> record (lot_id, allocated_quantity)</li>
+    <li>Each lot deduction creates an <code>inventory_movements</code> record</li>
+    <li>The parent <code>inventory.quantity_in_stock</code> is decremented</li>
+  </ol>
+</div>
+
+<h3>Bill Item Lot Allocations</h3>
+<p>The <code>bill_item_lot_allocations</code> table records exactly which lots were consumed for each bill item. This is critical for:</p>
+<ul>
+  <li><strong>COGS accuracy:</strong> Profit reports use the actual lot cost_price, not the average</li>
+  <li><strong>Bill cancellation:</strong> Lots can be restored precisely when a bill is cancelled</li>
+  <li><strong>Audit:</strong> Full traceability from bill item back to purchase lot</li>
+</ul>
+
+<h3>FIFO Preview</h3>
+<div class="callout callout-info">
+  The <code>preview_fifo_bill_lines</code> function provides a <strong>read-only preview</strong> of which lots would be consumed before the bill is actually saved. This lets the dealer see the cost basis and lot details before committing.
+</div>
+
+<!-- ─── STOCK GUARDS ─── -->
+<h2 id="stock-guards">Stock Guards</h2>
+
+<p>Multiple layers of protection prevent inventory from going negative or being corrupted by concurrent operations.</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h4>Negative Stock Prevention <span class="badge b-err">Hard Block</span></h4>
+    <p><code>create_bill_v2</code> raises an <strong>"Insufficient stock"</strong> error if <code>quantity_in_stock &lt; requested quantity</code>. The bill is not created.</p>
+  </div>
+  <div class="card">
+    <h4>Adjustment Guard <span class="badge b-err">Hard Block</span></h4>
+    <p><code>adjust_inventory_stock_v1</code> checks that the resulting quantity (<code>new_qty</code>) won't be negative. Rejects the adjustment if <code>new_qty &lt; 0</code>.</p>
+  </div>
+</div>
+
+<div class="card">
+  <h4>Row-Level Locking <span class="badge b-warn">Concurrency</span></h4>
+  <p>During bill creation, the inventory row is locked with <code>FOR UPDATE</code>. This prevents race conditions where two simultaneous bills could both read the same stock level and both succeed, resulting in negative stock.</p>
+  <details>
+    <summary>How row locking works</summary>
+    <div class="detail-body">
+      <p>PostgreSQL's <code>SELECT ... FOR UPDATE</code> acquires a row-level exclusive lock. If two transactions try to lock the same inventory row simultaneously, the second one waits until the first commits or rolls back. This serializes concurrent stock deductions for the same product and guarantees the stock check is atomic with the deduction.</p>
+    </div>
+  </details>
+</div>
+
+<!-- ─── AUTO-FANOUT TRIGGERS ─── -->
+<h2 id="auto-fanout">Auto-Fanout Triggers</h2>
+
+<p>When new products or branches are created, inventory rows are automatically scaffolded so that every branch always has an inventory entry for every product.</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h4><code>trg_fanout_product_to_branches</code></h4>
+    <p><strong>Fires on:</strong> New product created</p>
+    <p><strong>Action:</strong> Creates empty inventory rows (quantity = 0) in <strong>all active branches</strong> for the new product.</p>
+  </div>
+  <div class="card">
+    <h4><code>trg_fanout_branch_to_products</code></h4>
+    <p><strong>Fires on:</strong> New branch created</p>
+    <p><strong>Action:</strong> Creates empty inventory rows (quantity = 0) for <strong>all existing products</strong> in the new branch.</p>
+  </div>
+</div>
+
+<div class="callout callout-info">
+  These triggers ensure the inventory matrix is always complete. Dealers never need to manually "add" a product to a branch &mdash; it's there as soon as the product or branch is created, ready for stock to be added via purchases.
+</div>
+
+<!-- ─── EXPIRY MANAGEMENT ─── -->
+<h2 id="expiry">Expiry Management</h2>
+
+<div class="card">
+  <h4>How Expiry Tracking Works</h4>
+  <ul>
+    <li>Products with <code>track_expiry = true</code> (typically medicines) have expiry dates on their inventory lots</li>
+    <li>Expiry is tracked at the <strong>lot level</strong>, not the inventory level</li>
+    <li>Each lot has its own <code>expiry_date</code> from the manufacturer</li>
+  </ul>
+</div>
+
+<h3>Expiry Processing</h3>
+<div class="tw">
+  <table>
+    <thead>
+      <tr><th>RPC</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>process_expired_inventory_lots</code></td><td>Batch job to scan and flag expired lots</td></tr>
+      <tr><td><code>mark_lot_as_expired</code></td><td>Marks a specific lot as expired (sets <code>is_expired = true</code>, <code>expired_at = now()</code>)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout callout-warn">
+  <strong>Expired lots are skipped during FIFO consumption.</strong> When <code>consume_inventory_lots</code> fetches lots for deduction, it filters out lots where <code>is_expired = true</code>. This prevents selling expired medicines to farmers.
+</div>
+
+<h3>Dashboard Expiry Widgets</h3>
+<p>The dashboard shows medicines approaching expiry in configurable windows:</p>
+<ul>
+  <li><span class="badge b-err">30 days</span> Expiring within 30 days &mdash; urgent</li>
+  <li><span class="badge b-warn">60 days</span> Expiring within 60 days &mdash; warning</li>
+  <li><span class="badge b-ok">90 days</span> Expiring within 90 days &mdash; plan ahead</li>
+</ul>
+
+<!-- ─── STOCK ADJUSTMENTS ─── -->
+<h2 id="adjustments">Stock Adjustments</h2>
+
+<div class="card">
+  <h4><code>adjust_inventory_stock_v1</code> RPC</h4>
+  <p>Allows dealers to manually correct stock quantities outside of normal purchase/sale flows.</p>
+
+  <h4>Adjustment Types</h4>
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Type</th><th>Direction</th><th>Use Case</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Increase</td><td><span class="badge b-ok">+ stock</span></td><td>Found damaged items intact, physical count correction (more than system)</td></tr>
+        <tr><td>Decrease</td><td><span class="badge b-err">&minus; stock</span></td><td>Damaged goods, lost items, expired stock, physical count correction (less than system)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ul>
+    <li>Creates an <code>inventory_movement</code> with <code>reference_type = 'manual_adjustment'</code></li>
+    <li>Updates <code>inventory.quantity_in_stock</code> directly</li>
+    <li>Guard: rejects if resulting quantity would be negative</li>
+  </ul>
+</div>
+
+<!-- ─── RATE ADJUSTMENTS ─── -->
+<h2 id="rate-adjustment">Rate Adjustments</h2>
+
+<div class="card">
+  <h4>Retroactive Rate-Difference Billing <span class="badge b-pri">Route: /inventory/rate-adjustment</span></h4>
+  <p>This tool does <strong>not</strong> change a product's stored price &mdash; that already happens on the product's Edit screen (see <a href="/documents/inventory-logic.html#which-price-wins">Which Price Actually Gets Charged?</a>). It's for <strong>one product at a time</strong>, and its only job is to retroactively charge farmers who already bought that product on credit the difference between the old and new rate:</p>
+  <ul>
+    <li>Dealer enters a per-unit rate difference (often pre-filled after raising a price in Edit Inventory &mdash; that modal offers to jump here)</li>
+    <li>Lists farmers who bought the product on credit, with their quantity and average old rate</li>
+    <li>Dealer selects which farmers to adjust, then confirms</li>
+    <li>For each selected farmer, creates a new <code>type: 'adjustment'</code> bill for <code>quantity &times; rate difference</code> &mdash; this is a real bill line item, tracked like any other, not a silent balance edit</li>
+  </ul>
+</div>
+
+<details>
+  <summary>Rate change impact on existing bills</summary>
+  <div class="detail-body">
+    <p>A price change made in Edit Inventory only affects <strong>future bills</strong> &mdash; existing bills keep the rate they were created with. This tool is how a dealer chooses to also collect the difference for bills already issued on credit; it's optional and per-farmer, not automatic. The per-farmer rate memory (<code>upsertFarmerProductDiscount</code>) will still hold the old rate until that farmer's next bill overwrites it with the new one.</p>
+  </div>
+</details>
+
+<!-- ─── LOW STOCK ALERTS ─── -->
+<h2 id="low-stock">Low Stock Alerts</h2>
+
+<div class="card">
+  <h4>How Low Stock Alerts Work</h4>
+  <ul>
+    <li>Each inventory row has a configurable <code>min_stock_alert</code> threshold</li>
+    <li>Dashboard widget shows all items where <code>quantity_in_stock &le; min_stock_alert</code></li>
+    <li>Threshold is <strong>per-product, per-branch</strong> (set on the inventory row)</li>
+    <li>Setting <code>min_stock_alert = 0</code> effectively disables the alert for that product</li>
+  </ul>
+</div>
+
+<div class="callout callout-info">
+  Low stock alerts are <strong>passive</strong> &mdash; they appear on the dashboard as a list of items below threshold. There are no push notifications or automatic reorder functionality. Dealers check the dashboard to see what needs restocking.
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

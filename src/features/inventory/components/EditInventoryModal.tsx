@@ -4,12 +4,14 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
-import { useUpdateInventory, useUpdateProduct } from '../hooks/useInventory';
+import { useUpdateInventory, useUpdateInventoryLotPricing, useUpdateProduct } from '../hooks/useInventory';
 import { toast } from 'sonner';
 import { ArrowDownLeft, ArrowUpRight, Camera, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { compressImage, deleteOldImage } from '@/lib/imageUtils';
 import { PlanGate } from '@/components/auth/PlanGate';
+import { pickNextSellingLot } from '../utils/pricing';
+import type { InventoryLot } from '@/types/database';
 
 interface EditInventoryForm {
   selling_price: number;
@@ -28,6 +30,7 @@ interface EditInventoryModalProps {
   inventoryId: string;
   productId?: string;
   productType?: string;
+  lots?: InventoryLot[];
   initialData: {
     selling_price: number | null;
     cost_price: number | null;
@@ -41,17 +44,19 @@ interface EditInventoryModalProps {
 }
 
 export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({ 
-  isOpen, 
-  onClose, 
+  isOpen,
+  onClose,
   inventoryId,
   productId,
-  initialData 
+  lots,
+  initialData
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { mutateAsync: updateInventory, isPending: isUpdatingInventory } = useUpdateInventory();
+  const { mutateAsync: updateLotPricing, isPending: isUpdatingLot } = useUpdateInventoryLotPricing();
   const { mutateAsync: updateProduct, isPending: isUpdatingProduct } = useUpdateProduct();
-  const isPending = isUpdatingInventory || isUpdatingProduct;
+  const isPending = isUpdatingInventory || isUpdatingLot || isUpdatingProduct;
 
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(initialData.image_url || null);
@@ -79,12 +84,18 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
     }
   };
 
-  // Reverse-calculate MRP from selling_price and discount if MRP is not provided
+  // MRP is the stored value whenever we have one — only reverse-calculate it
+  // from selling_price/discount as a last resort. Re-deriving it on every
+  // open (even when the real MRP is known) rounds it a little differently
+  // each time, and that drift compounds on every save.
+  const resolveMrp = (mrp: number | null | undefined, sellingPrice: number, discount: number) =>
+    mrp || (discount > 0 && discount < 100
+      ? Number((sellingPrice / (1 - discount / 100)).toFixed(2))
+      : sellingPrice);
+
   const initialDiscount = initialData.medicine_discount_percentage || 0;
   const initialSellingPrice = initialData.selling_price || 0;
-  const initialMrp = initialData.mrp || (initialDiscount > 0 && initialDiscount < 100
-    ? Number((initialSellingPrice / (1 - initialDiscount / 100)).toFixed(2))
-    : initialSellingPrice);
+  const initialMrp = resolveMrp(initialData.mrp, initialSellingPrice, initialDiscount);
 
   const calculateCostPercentage = (mrp?: number, costPrice?: number | null) => {
     const numericMrp = Number(mrp) || 0;
@@ -122,9 +133,7 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
     if (isOpen) {
       const disc = initialData.medicine_discount_percentage || 0;
       const sp = initialData.selling_price || 0;
-      const mrp = disc > 0 && disc < 100
-        ? Number((sp / (1 - disc / 100)).toFixed(2))
-        : sp;
+      const mrp = resolveMrp(initialData.mrp, sp, disc);
       reset({
         selling_price: sp,
         cost_price: initialData.cost_price || 0,
@@ -183,6 +192,30 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
           ...(uploadedImageUrl !== undefined ? { image_url: uploadedImageUrl } : {}),
         },
       });
+
+      // Billing and the stock list both charge/display the price of the FIFO
+      // lot that's next up for sale, not this item-level default — so an edit
+      // here has to reach that lot too, or the new price never actually takes
+      // effect until that lot sells out. Only the retail-facing fields travel
+      // to the lot — cost_price is that batch's real historical cost for COGS
+      // (it can legitimately differ from this item's "latest purchase" cost
+      // shown here), and only the dedicated per-lot editor should touch it.
+      const targetLot = pickNextSellingLot(lots || []);
+      if (targetLot) {
+        const sellingPrice = Number(data.selling_price) || 0;
+        const discount = Number.isFinite(Number(data.medicine_discount_percentage))
+          ? Number(data.medicine_discount_percentage)
+          : 0;
+        await updateLotPricing({
+          lotId: targetLot.id,
+          updates: {
+            selling_price: sellingPrice,
+            medicine_discount_percentage: discount,
+            final_unit_price: Number((sellingPrice * (1 - discount / 100)).toFixed(2)),
+            mrp: toNullableNumber(data.mrp),
+          },
+        });
+      }
 
       if (productId && (
         (data.product_name && data.product_name !== initialData.product_name) ||

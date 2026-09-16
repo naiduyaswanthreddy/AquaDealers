@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { ChevronRight, Package2, Pill, Plus, Minus, User, Wheat, Pencil, Trash2, Info, SlidersHorizontal, Search, MoreVertical, Receipt } from 'lucide-react';
+import { ChevronDown, ChevronRight, Package2, Pill, Plus, Minus, User, Wheat, Pencil, Trash2, Info, SlidersHorizontal, Search, MoreVertical, Receipt } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Modal, Button, SearchBar, Input, DatePicker } from '@/components/ui';
@@ -17,19 +17,7 @@ import { useFarmers, useFarmerProductDiscounts } from '@/features/farmers/hooks/
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { Banknote, QrCode, CreditCard } from 'lucide-react';
-
-const getLotsWithStock = (item: InventoryItem) => {
-  return (item.inventory_lots || []).filter((lot: any) => lot.remaining_quantity > 0)
-    .sort((a: any, b: any) => {
-      // FIFO: sort by expiry first if available, else by selected purchase date.
-      if (a.expiry_date && b.expiry_date) {
-        return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
-      }
-      const aPurchaseDate = a.stock_purchases?.purchase_date || a.received_at;
-      const bPurchaseDate = b.stock_purchases?.purchase_date || b.received_at;
-      return new Date(aPurchaseDate).getTime() - new Date(bPurchaseDate).getTime();
-    });
-};
+import { getLotsWithStock } from '@/features/inventory/utils/pricing';
 
 const getBadgeForLot = (lot: any, allLots: any[]) => {
   if (!allLots || allLots.length < 2) return null;
@@ -270,6 +258,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
   const [sheetType, setSheetType] = useState<ProductTypeFilter | null>(null);
   const [desktopTab, setDesktopTab] = useState<ProductTypeFilter>('feed');
   const [farmerActionMode, setFarmerActionMode] = useState<'payment' | 'return' | null>(null);
+  const [isPaymentCardOpen, setIsPaymentCardOpen] = useState(false);
+  const paymentCardRef = useRef<HTMLDivElement>(null);
 
   const { data: farmerDiscounts = [] } = useFarmerProductDiscounts(farmerId || '');
   const selectedFarmer = useMemo(() => farmers?.find(f => f.id === farmerId), [farmers, farmerId]);
@@ -434,6 +424,15 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
   const balanceDue = Math.max(0, effectiveTotal - amountPaid);
   const totalDue = (selectedFarmer?.total_due || 0) + balanceDue;
 
+  const handleDesktopReview = () => {
+    if (!isPaymentCardOpen) {
+      setIsPaymentCardOpen(true);
+      paymentCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    onNext();
+  };
+
   const typeCounts = useMemo(() => {
     const feed = inventory.filter((item) => normalizeType(item.product.type) === 'feed').length;
     const medicine = inventory.filter((item) => normalizeType(item.product.type) === 'medicine').length;
@@ -444,6 +443,15 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
     checkItemsScroll();
     if (items.length === 0) setConfirmClear(false);
   }, [items]);
+
+  // Opening/closing the payment details curtain resizes the items list itself
+  // (it shares the same column) — re-check after the 300ms curtain transition
+  // settles, or "more items below" can go stale until the next manual scroll.
+  useEffect(() => {
+    checkItemsScroll();
+    const t = setTimeout(checkItemsScroll, 320);
+    return () => clearTimeout(t);
+  }, [isPaymentCardOpen]);
 
   const filterInventory = (type: ProductTypeFilter) =>
     inventory.filter((item) => {
@@ -705,7 +713,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
 
           <div className="mt-0">
             {cartQty > 0 ? (
-              <div key={cartQty} className="flex items-center bg-blue-50 border border-blue-100 rounded-xl overflow-hidden h-9 lg:h-8 w-full animate-pop-in" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center bg-blue-50 border border-blue-100 rounded-xl overflow-hidden h-9 lg:h-8 w-full" onClick={(e) => e.stopPropagation()}>
                 <span className="text-xs font-bold text-blue-700 flex-1 text-center">In Cart ({cartQty})</span>
               </div>
             ) : (
@@ -752,7 +760,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
         );
       }
       return (
-        <div className={isDesktop && viewMode === 'grid' ? "grid grid-cols-3 gap-3 pb-24 md:pb-0" : "space-y-2 pb-24 md:pb-0"}>
+        <div className={isDesktop && viewMode === 'grid' ? "grid grid-cols-2 min-[1300px]:grid-cols-3 gap-3 pb-24 md:pb-0" : "space-y-2 pb-24 md:pb-0"}>
           {displayedInventory.map((item) => {
             if (isDesktop) {
               if (viewMode === 'grid') {
@@ -787,7 +795,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
                       </div>
                    </div>
                    {cartQty > 0 ? (
-                     <div key={cartQty} className="px-4 py-2 text-sm font-bold text-blue-700 border rounded-lg bg-blue-50 border-blue-100 animate-pop-in">
+                     <div className="px-4 py-2 text-sm font-bold text-blue-700 border rounded-lg bg-blue-50 border-blue-100">
                         In Cart ({cartQty})
                      </div>
                    ) : (
@@ -1214,98 +1222,165 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
                  </div>
                </div>
 
-               {/* Desktop and Mobile Payment Fields (Zero-Step POS) */}
-               <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 space-y-2.5">
-                 <div>
-                   <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Payment Method</label>
-                   <div className="grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1">
-                     <button onClick={() => setPaymentType('cash')} className={`flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-xs font-bold transition-all ${paymentType === 'cash' ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-100' : 'text-slate-500 hover:text-slate-700'}`}>
-                       <Banknote className="w-3.5 h-3.5" /> Cash
-                     </button>
-                     <button onClick={() => setPaymentType('upi')} className={`flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-xs font-bold transition-all ${paymentType === 'upi' ? 'bg-white text-blue-700 shadow-sm ring-1 ring-blue-100' : 'text-slate-500 hover:text-slate-700'}`}>
-                       <QrCode className="w-3.5 h-3.5" /> UPI
-                     </button>
-                     <button onClick={() => setPaymentType('other')} className={`flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-xs font-bold transition-all ${paymentType === 'other' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100' : 'text-slate-500 hover:text-slate-700'}`}>
-                       <CreditCard className="w-3.5 h-3.5" /> Bank
-                     </button>
-                     <button onClick={() => setPaymentType('credit')} className={`flex flex-col items-center justify-center gap-0.5 rounded-lg py-1.5 text-xs font-bold transition-all ${paymentType === 'credit' ? 'bg-white text-rose-700 shadow-sm ring-1 ring-rose-100' : 'text-slate-500 hover:text-slate-700'}`}>
-                       <Receipt className="w-3.5 h-3.5" /> Credit
-                     </button>
+               {/* Desktop and Mobile Payment Details (Zero-Step POS) — collapsible: starts
+                   closed, opens on click or when Payment is pressed before it's been seen. */}
+               <div ref={paymentCardRef} className="rounded-xl border border-primary/25 bg-white overflow-hidden shadow-sm">
+                 <button
+                   type="button"
+                   onClick={() => setIsPaymentCardOpen((open) => !open)}
+                   className="w-full flex items-center justify-between px-2.5 py-2 bg-primary/10"
+                 >
+                   <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-slate-800">
+                     <Receipt className="w-3.5 h-3.5 text-primary" />
+                     Payment Details
+                   </span>
+                   <div className="flex items-center gap-2">
+                     {!isPaymentCardOpen && (
+                       <span className="flex items-center gap-1 text-[11px] font-bold text-slate-600">
+                         {amountPaid > 0 && <span className="text-emerald-600">{formatCurrency(amountPaid)} paid ·</span>}
+                         <span className={`font-black ${balanceDue > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatCurrency(balanceDue)} due</span>
+                       </span>
+                     )}
+                     <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary">
+                       <ChevronDown className={`w-3.5 h-3.5 text-white transition-transform duration-300 ${isPaymentCardOpen ? 'rotate-180' : ''}`} />
+                     </span>
                    </div>
-                 </div>
+                 </button>
 
-                 <div className={`grid gap-2.5 ${paymentType === 'credit' ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                   <div>
-                     <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Amount Received</label>
-                     <Input
-                       type="number"
-                       value={amountPaid || ''}
-                       onChange={(e) => setAmountPaid(Math.min(Number(e.target.value) || 0, effectiveTotal))}
-                       placeholder="0"
-                       leftIcon={<span className="text-sm font-black text-slate-400">₹</span>}
-                       className="min-h-9 border-slate-200 bg-white text-right text-base font-black text-slate-800 shadow-sm focus:border-emerald-400 focus:ring-emerald-200"
-                     />
-                   </div>
-                   {paymentType !== 'credit' && (
-                     <div>
-                       <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Settlement Disc.</label>
-                       <Input
-                         type="number"
-                         min={0}
-                         max={totals.finalTotal}
-                         value={settlementDiscountAmount || ''}
-                         onChange={(e) => {
-                           const v = Math.min(Math.max(0, Number(e.target.value) || 0), totals.finalTotal);
-                           setSettlementDiscount(v);
-                           setAmountPaid(Math.min(amountPaid, Math.max(0, totals.finalTotal - v)));
-                         }}
-                         placeholder="0"
-                         leftIcon={<span className="text-sm font-black text-slate-400">₹</span>}
-                         className="min-h-9 border-slate-200 bg-white text-right text-base font-black text-slate-800 shadow-sm focus:border-emerald-400 focus:ring-emerald-200"
-                       />
+                 <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isPaymentCardOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                   <div className="overflow-hidden">
+                     <div className="px-2.5 pb-2.5 pt-2 border-t border-slate-200/70 grid grid-cols-2 gap-3">
+                       {/* LEFT: editable payment controls */}
+                       <div className="space-y-2">
+                         <div>
+                           <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Payment Method</label>
+                           <div className="grid grid-cols-4 gap-1 rounded-lg bg-slate-100 p-1">
+                             <button onClick={() => setPaymentType('cash')} className={`flex flex-col items-center justify-center gap-0.5 rounded-md py-1 text-[11px] font-bold transition-all ${paymentType === 'cash' ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-100' : 'text-slate-500 hover:text-slate-700'}`}>
+                               <Banknote className="w-3 h-3" /> Cash
+                             </button>
+                             <button onClick={() => setPaymentType('upi')} className={`flex flex-col items-center justify-center gap-0.5 rounded-md py-1 text-[11px] font-bold transition-all ${paymentType === 'upi' ? 'bg-white text-blue-700 shadow-sm ring-1 ring-blue-100' : 'text-slate-500 hover:text-slate-700'}`}>
+                               <QrCode className="w-3 h-3" /> UPI
+                             </button>
+                             <button onClick={() => setPaymentType('other')} className={`flex flex-col items-center justify-center gap-0.5 rounded-md py-1 text-[11px] font-bold transition-all ${paymentType === 'other' ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100' : 'text-slate-500 hover:text-slate-700'}`}>
+                               <CreditCard className="w-3 h-3" /> Bank
+                             </button>
+                             <button onClick={() => setPaymentType('credit')} className={`flex flex-col items-center justify-center gap-0.5 rounded-md py-1 text-[11px] font-bold transition-all ${paymentType === 'credit' ? 'bg-white text-rose-700 shadow-sm ring-1 ring-rose-100' : 'text-slate-500 hover:text-slate-700'}`}>
+                               <Receipt className="w-3 h-3" /> Credit
+                             </button>
+                           </div>
+                         </div>
+
+                         <div className={`grid gap-2 ${paymentType === 'credit' ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                           <div>
+                             <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Amount Received</label>
+                             <div className="relative">
+                               <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">₹</span>
+                               <input
+                                 type="number"
+                                 value={amountPaid || ''}
+                                 onChange={(e) => setAmountPaid(Math.min(Number(e.target.value) || 0, effectiveTotal))}
+                                 placeholder="0"
+                                 className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-6 pr-2.5 text-right text-sm font-black text-slate-800 shadow-sm focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                               />
+                             </div>
+                           </div>
+                           {paymentType !== 'credit' && (
+                             <div>
+                               <label className="mb-1 block text-[10px] font-black uppercase tracking-wider text-slate-500">Settlement Disc.</label>
+                               <div className="relative">
+                                 <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">₹</span>
+                                 <input
+                                   type="number"
+                                   min={0}
+                                   max={totals.finalTotal}
+                                   value={settlementDiscountAmount || ''}
+                                   onChange={(e) => {
+                                     const v = Math.min(Math.max(0, Number(e.target.value) || 0), totals.finalTotal);
+                                     setSettlementDiscount(v);
+                                     setAmountPaid(Math.min(amountPaid, Math.max(0, totals.finalTotal - v)));
+                                   }}
+                                   placeholder="0"
+                                   className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-6 pr-2.5 text-right text-sm font-black text-slate-800 shadow-sm focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                 />
+                               </div>
+                             </div>
+                           )}
+                         </div>
+
+                         {paymentType === 'upi' && (
+                           <Input label="UPI Reference" value={upiRef} onChange={(e) => setUpiRef(e.target.value)} placeholder="Transaction ID (optional)" />
+                         )}
+                         {paymentType === 'other' && (
+                           <Input label="Cheque / Transfer Ref" value={chequeNumber} onChange={(e) => setChequeNumber(e.target.value)} placeholder="Cheque or Ref number" />
+                         )}
+                       </div>
+
+                       {/* RIGHT: read-only bill summary */}
+                       <div className="self-start">
+                         <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 px-0.5">Bill Summary</div>
+                         <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 flex flex-col gap-1">
+                         <div className="flex items-center justify-between text-xs">
+                           <span className="text-slate-500 font-semibold">Subtotal</span>
+                           <span className="font-bold text-slate-700 tabular-nums">{formatCurrency(totals.subtotal)}</span>
+                         </div>
+                         {totals.discount > 0 && (
+                           <div className="flex items-center justify-between text-xs">
+                             <span className="text-slate-500 font-semibold">Item Discount</span>
+                             <span className="font-bold text-emerald-600 tabular-nums">-{formatCurrency(totals.discount)}</span>
+                           </div>
+                         )}
+                         {totals.tax > 0 && (
+                           <div className="flex items-center justify-between text-xs">
+                             <span className="text-slate-500 font-semibold">GST</span>
+                             <span className="font-bold text-slate-700 tabular-nums">{formatCurrency(totals.tax)}</span>
+                           </div>
+                         )}
+                         {settlementDiscountAmount > 0 && (
+                           <div className="flex items-center justify-between text-xs">
+                             <span className="text-slate-500 font-semibold">Settlement Discount</span>
+                             <span className="font-bold text-emerald-600 tabular-nums">-{formatCurrency(settlementDiscountAmount)}</span>
+                           </div>
+                         )}
+                         <div className="flex items-center justify-between pt-1.5 mt-0.5 border-t border-slate-200 text-sm">
+                           <span className="font-black text-slate-800">Total Amount</span>
+                           <span className="font-black text-primary tabular-nums">{formatCurrency(effectiveTotal)}</span>
+                         </div>
+                         <div className="flex items-center justify-between text-xs">
+                           <span className="text-slate-500 font-semibold">Paid Amount</span>
+                           <span className="font-bold text-emerald-600 tabular-nums">{formatCurrency(amountPaid)}</span>
+                         </div>
+                         <div className={`flex items-center justify-between rounded-md px-2 py-1 mt-0.5 ${balanceDue > 0 ? 'bg-rose-50' : 'bg-emerald-50'}`}>
+                           <span className={`text-xs font-black ${balanceDue > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>Balance Due</span>
+                           <span className={`text-sm font-black tabular-nums ${balanceDue > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatCurrency(balanceDue)}</span>
+                         </div>
+                         </div>
+                       </div>
                      </div>
-                   )}
-                 </div>
-
-                 {paymentType === 'upi' && (
-                   <Input label="UPI Reference" value={upiRef} onChange={(e) => setUpiRef(e.target.value)} placeholder="Transaction ID (optional)" />
-                 )}
-                 {paymentType === 'other' && (
-                   <Input label="Cheque / Transfer Ref" value={chequeNumber} onChange={(e) => setChequeNumber(e.target.value)} placeholder="Cheque or Ref number" />
-                 )}
-
-                 <div className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5">
-                   <div className="flex-1">
-                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Balance Due</div>
-                     <div className={`text-sm font-black tabular-nums ${balanceDue > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatCurrency(balanceDue)}</div>
                    </div>
-                   {settlementDiscountAmount > 0 && (
-                     <div className="flex-1 border-l border-slate-100 pl-2.5">
-                       <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Effective Total</div>
-                       <div className="text-sm font-black tabular-nums text-emerald-600">{formatCurrency(effectiveTotal)}</div>
-                     </div>
-                   )}
                  </div>
                </div>
-               
-               <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-[#0a46c2] text-white border border-blue-600/50 rounded-xl px-4 py-2.5 flex flex-col gap-2 shadow-lg">
+
+               <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-[#0a46c2] text-white border border-blue-600/50 rounded-xl px-4 py-2 flex flex-col gap-2 shadow-lg">
                  {/* Mesh Gradient Pattern (Premium Effect) */}
                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1)_0%,transparent_50%),radial-gradient(circle_at_70%_80%,rgba(0,255,255,0.1)_0%,transparent_50%)] mix-blend-overlay" />
                  <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-cyan-400/20 rounded-full blur-2xl -ml-10 -mb-10 pointer-events-none" />
-                 
-                 <div className="relative z-10 flex justify-between items-end">
-                   <div>
-                     <div className="text-blue-100/80 text-xs font-bold mb-1 tracking-wide uppercase">{settlementDiscountAmount > 0 ? 'Effective Total' : 'Total Amount'}</div>
-                     <div className="flex items-baseline gap-2">
-                       {settlementDiscountAmount > 0 && (
-                         <span className="text-base font-bold text-blue-300 line-through tabular-nums">{formatCurrency(totals.finalTotal)}</span>
-                       )}
-                       <span className="text-2xl font-black text-white tracking-tight drop-shadow-sm">{formatCurrency(effectiveTotal)}</span>
+
+                 <div className="relative z-10 flex justify-between items-center">
+                   <div className="flex items-center gap-3">
+                     <div>
+                       <div className="text-blue-100/80 text-[10px] font-bold tracking-wide uppercase">{settlementDiscountAmount > 0 ? 'Effective Total' : 'Total Amount'}</div>
+                       <div className="flex items-baseline gap-2">
+                         {settlementDiscountAmount > 0 && (
+                           <span className="text-sm font-bold text-blue-300 line-through tabular-nums">{formatCurrency(totals.finalTotal)}</span>
+                         )}
+                         <span className="text-xl font-black text-white tracking-tight drop-shadow-sm">{formatCurrency(effectiveTotal)}</span>
+                       </div>
                      </div>
-                     <div className="text-blue-100 text-xs font-bold mt-0.5 opacity-90">{totals.count} Items • {totals.count} Bags</div>
+                     <div className="h-8 w-px bg-white/20" />
+                     <div className="text-blue-100 text-xs font-bold opacity-90">{totals.count} Items • {totals.count} Bags</div>
                    </div>
-                   
+
                    {/* Mobile Button: Continue to Payment */}
                    <button onClick={onNext} disabled={items.length === 0} className="lg:hidden group relative overflow-hidden bg-white text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-black px-5 py-2 shadow-[0_4px_15px_rgba(0,0,0,0.1)] rounded-lg text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] hover:shadow-[0_8px_20px_rgba(255,255,255,0.2)] shrink-0 h-[38px]">
                      <div className="absolute inset-0 -translate-x-[150%] bg-gradient-to-r from-transparent via-blue-600/10 to-transparent skew-x-[-20deg] transition-all duration-700 ease-in-out group-hover:translate-x-[150%]" />
@@ -1316,11 +1391,15 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
                    </button>
 
                    {/* Desktop Button: Review & Sign */}
-                   <button onClick={onNext} disabled={items.length === 0} className="hidden lg:flex group relative overflow-hidden bg-white text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-black px-5 py-2 shadow-[0_4px_15px_rgba(0,0,0,0.1)] rounded-lg text-sm items-center justify-center gap-2 transition-all hover:scale-[1.02] hover:shadow-[0_8px_20px_rgba(255,255,255,0.2)] shrink-0 h-[38px]">
+                   <button onClick={handleDesktopReview} disabled={items.length === 0} className="hidden lg:flex group relative overflow-hidden bg-white text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-black px-5 py-2 shadow-[0_4px_15px_rgba(0,0,0,0.1)] rounded-lg text-sm items-center justify-center gap-2 transition-all hover:scale-[1.02] hover:shadow-[0_8px_20px_rgba(255,255,255,0.2)] shrink-0 h-[38px]">
                      <div className="absolute inset-0 -translate-x-[150%] bg-gradient-to-r from-transparent via-blue-600/10 to-transparent skew-x-[-20deg] transition-all duration-700 ease-in-out group-hover:translate-x-[150%]" />
                      <span className="relative z-10 flex items-center gap-2">
-                       Review & Sign
-                       <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" strokeWidth={3} />
+                       {isPaymentCardOpen ? 'Review & Sign' : 'Payment'}
+                       {isPaymentCardOpen ? (
+                         <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" strokeWidth={3} />
+                       ) : (
+                         <Receipt className="w-4 h-4" />
+                       )}
                      </span>
                    </button>
                  </div>

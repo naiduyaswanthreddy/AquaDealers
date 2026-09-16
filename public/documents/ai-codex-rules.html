@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI / Codex Rules — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/ai-codex-rules.html">
+<meta name="description" content="AI and Codex rules for AquaDealers — 11 pre-change checks, prohibited actions, architecture reference, and key file inventory for AI-assisted development.">
+<meta property="og:title" content="AI / Codex Rules — AquaDealers Docs">
+<meta property="og:description" content="AI and Codex rules for AquaDealers — 11 pre-change checks, prohibited actions, architecture reference, and key file inventory for AI-assisted development.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="AI / Codex Rules — AquaDealers Docs">
+<meta name="twitter:description" content="AI and Codex rules for AquaDealers — 11 pre-change checks, prohibited actions, architecture reference, and key file inventory for AI-assisted development.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">AI / Codex Rules</span>
+</div>
+<div class="page">
+
+<h1>AI / Codex Rules</h1>
+<div class="page-meta">
+  <span><span class="badge b-err">Mandatory</span> Read before making any changes</span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<p>Development rules and guidelines for AI assistants working on the AquaDealers codebase. Following these rules prevents regressions, duplicated code, and broken business logic.</p>
+
+<!-- ── Before Changing Anything ── -->
+<h2>Before Changing Anything</h2>
+
+<div class="callout callout-warn">Complete all 11 checks before writing any code. Skipping these is the #1 cause of regressions.</div>
+
+<div class="flow-step"><div class="flow-num">1</div><div><strong>Inspect existing architecture.</strong> Read <code>App.tsx</code> for routes. Check the feature directory structure under <code>src/features/</code>. Understand where the change belongs.</div></div>
+
+<div class="flow-step"><div class="flow-num">2</div><div><strong>Find existing implementation.</strong> Grep before writing new code. The codebase has 27 modals, 33 forms, and extensive utilities. Whatever you need probably exists already.</div></div>
+
+<div class="flow-step"><div class="flow-num">3</div><div><strong>Reuse existing components.</strong> Check <code>src/components/ui/</code> (23 components). <code>Button</code> has 9 variants, <code>Card</code> has 5, <code>Modal</code> has focus trap + portal. Don't create new UI primitives.</div></div>
+
+<div class="flow-step"><div class="flow-num">4</div><div><strong>Check related workflows.</strong> A bill change affects: inventory (FIFO lots), <code>farmer.total_due</code> (triggers), <code>cash_book</code>, <code>payment_allocations</code>, <code>transaction_events</code>. Map the full impact before editing.</div></div>
+
+<div class="flow-step"><div class="flow-num">5</div><div><strong>Check mobile AND desktop.</strong> Layout split at <code>lg:</code> (1024px). Billing has separate mobile (3-step wizard) and desktop (2-step side-by-side) flows. Test both.</div></div>
+
+<div class="flow-step"><div class="flow-num">6</div><div><strong>Check permissions.</strong> <code>FeatureGate</code> gates features by subscription plan. Staff permissions are JSONB-based. Both may need updating for new features.</div></div>
+
+<div class="flow-step"><div class="flow-num">7</div><div><strong>Check database impact.</strong> Core writes go through RPCs (<code>create_bill_v2</code>, <code>process_return</code>, etc.). Never bypass RPCs with direct inserts &mdash; they skip validation, triggers, and audit trails.</div></div>
+
+<div class="flow-step"><div class="flow-num">8</div><div><strong>Check business rules.</strong> Financial calculations must match RPC logic exactly. GST is per-item (not flat). Farmer due is trigger-recalculated. Don't duplicate calculation logic.</div></div>
+
+<div class="flow-step"><div class="flow-num">9</div><div><strong>Check edge cases.</strong> Cancellation: same-day + unpaid only. Stock: never goes negative. Walk-in: full payment required. Credit limit: warning, not block.</div></div>
+
+<div class="flow-step"><div class="flow-num">10</div><div><strong>Test the implementation.</strong> Run <code>npm test</code> (Vitest unit tests) and <code>npm run test:e2e</code> (Playwright). Test at both mobile and desktop viewports.</div></div>
+
+<div class="flow-step"><div class="flow-num">11</div><div><strong>Update documentation</strong> when behavior changes. Keep docs pages in <code>public/documents/</code> current.</div></div>
+
+<!-- ── Never Do ── -->
+<h2>Never Do</h2>
+
+<div class="callout callout-err">Hard rules. No exceptions.</div>
+
+<ul>
+  <li><strong>Duplicate functionality.</strong> Check the 27 modals and 33 forms first. Search for existing hooks, utils, and service functions before creating new ones.</li>
+  <li><strong>Invent requirements.</strong> Build what was asked for, nothing more. No speculative features, no "while I'm here" additions.</li>
+  <li><strong>Remove existing features</strong> without explicit approval from the product owner.</li>
+  <li><strong>Change financial logic casually.</strong> Billing, payment allocation, FIFO consumption, and GST calculation are critical paths. Any change requires understanding the full RPC chain.</li>
+  <li><strong>Update a product's price by writing only <code>inventory.selling_price</code>/<code>mrp</code>.</strong> Once a product has stock, Billing and the Stock list both price it from the FIFO lot (<code>getNextSellingLot</code> in <code>src/features/inventory/utils/pricing.ts</code>), not the <code>inventory</code> row. Any price-editing code must update the active lot too (see <a href="/documents/inventory-logic.html#which-price-wins">inventory-logic.html</a>) or the edit will silently not take effect for existing stock — this exact bug shipped and went unnoticed until 2026-09-15.</li>
+  <li><strong>Expose secrets.</strong> Note: <code>SUPABASE_ANON_KEY</code> in <code>supabase.ts</code> is intentionally public (it's a publishable key). The <code>service_role</code> key must never appear in client code.</li>
+  <li><strong>Bypass authorization.</strong> Always use <code>supabase.rpc()</code> for writes. Direct table inserts/updates skip validation, triggers, and audit logging.</li>
+  <li><strong>Create inconsistent UI patterns.</strong> Use the design system: design tokens for colors, <code>sonner</code> for toasts, <code>Modal</code> for dialogs, <code>Button</code> variants for actions. No one-off styled components.</li>
+  <li><strong>Add dependencies without justification.</strong> Check if the functionality exists in the stdlib, platform, or already-installed packages first.</li>
+</ul>
+
+<!-- ── Architecture Reference ── -->
+<h2>Architecture Reference</h2>
+
+<h3>Directory Structure</h3>
+<pre>src/
+├── admin/          # Admin portal (separate layout, own routes)
+├── components/
+│   ├── layout/     # AppLayout, Sidebar, BottomNav, PageShell
+│   ├── ui/         # 23 shared UI components
+│   └── auth/       # ProtectedRoute, FeatureGate, PlanGate
+├── features/       # Feature modules (one directory per domain)
+│   └── [feature]/
+│       ├── pages/      # Route-level components (React.lazy loaded)
+│       ├── components/ # Feature-specific UI
+│       ├── hooks/      # Feature-specific React hooks
+│       ├── services/   # Supabase queries and RPC calls
+│       └── utils/      # PDF generators, formatters, helpers
+├── hooks/          # Shared hooks (useAuth, useBranch, etc.)
+├── lib/            # Shared utilities (supabase, telemetry, PDF, WhatsApp)
+├── stores/         # Zustand stores (auth, cart, subscription, branch, staff)
+└── types/          # TypeScript type definitions</pre>
+
+<h3>Key Files</h3>
+
+<div class="tw"><table>
+<thead><tr><th>File</th><th>Lines</th><th>Purpose</th></tr></thead>
+<tbody>
+  <tr><td><code>ProductSelector.tsx</code></td><td>~1600</td><td>Product catalog + cart for billing. The most complex UI component. Handles search, categories, FIFO lot display, farmer-specific pricing, and the collapsible desktop payment/bill-summary panel.</td></tr>
+  <tr><td><code>InventoryDetailPage.tsx</code></td><td>~1444</td><td>Stock detail view with individual lots, movement history, rate adjustments, and expiry tracking.</td></tr>
+  <tr><td><code>NewBillPage.tsx</code></td><td>~800</td><td>Bill creation wizard. Orchestrates mobile 3-step and desktop 2-step flows.</td></tr>
+  <tr><td><code>useCheckout.ts</code></td><td>~300</td><td>Bill save logic. Builds the RPC payload, handles offline queuing, manages optimistic updates.</td></tr>
+  <tr><td><code>billPdfGenerator.ts</code></td><td>~200</td><td>PDF generation using html2canvas + jsPDF. Renders bill HTML to canvas, converts to PDF.</td></tr>
+  <tr><td><code>whatsAppService.ts</code></td><td>~150</td><td>Phone number normalization, wa.me URL generation, API message sending via edge function.</td></tr>
+  <tr><td><code>whatsAppMessages.ts</code></td><td>~300</td><td>10 WhatsApp message templates (bill, payment, reminder, statement, etc.).</td></tr>
+  <tr><td><code>telemetry.ts</code></td><td>~80</td><td>PostHog analytics + Sentry error tracking initialization and configuration.</td></tr>
+  <tr><td><code>queryClient.ts</code></td><td>~50</td><td>React Query configuration: staleTime, gcTime, offline persistence with IndexedDB.</td></tr>
+  <tr><td><code>supabase.ts</code></td><td>~30</td><td>Supabase client initialization with the publishable anon key.</td></tr>
+</tbody>
+</table></div>
+
+<h3>Critical Data Flow</h3>
+
+<div class="card">
+<h4>Bill Creation Flow</h4>
+<p>User selects products &rarr; <code>useCheckout</code> builds payload &rarr; <code>supabase.rpc('create_bill_v2', payload)</code> &rarr; RPC atomically: validates stock, consumes FIFO lots, creates bill + items, allocates payment, updates <code>farmer.total_due</code> via trigger, logs transaction event &rarr; React Query cache invalidated &rarr; PDF generated client-side &rarr; optional WhatsApp notification.</p>
+</div>
+
+<div class="card">
+<h4>Offline Sync Flow</h4>
+<p>Bill created offline with <code>client_ref</code> UUID &rarr; stored in IndexedDB via React Query persistence &rarr; on reconnect, <code>create_bill_v2</code> called with same <code>client_ref</code> &rarr; RPC checks for existing bill with that <code>client_ref</code> &rarr; returns existing if found (idempotent), creates new if not.</p>
+</div>
+
+<div class="card">
+<h4>Product Pricing Flow</h4>
+<p>Dealer edits price in <code>EditInventoryModal</code> &rarr; writes <code>inventory.selling_price</code>/<code>mrp</code>/<code>medicine_discount_percentage</code> (the fallback default) <strong>and</strong> the current FIFO lot's <code>inventory_lots.selling_price</code>/<code>mrp</code>/<code>medicine_discount_percentage</code>/<code>final_unit_price</code> (what actually gets charged) in the same save &rarr; both Billing (<code>ProductSelector</code>) and the Stock list read the FIFO lot's price via <code>getNextSellingLot</code>/<code>getInventoryDisplayPrice</code>, falling back to the <code>inventory</code> row only when a product has no active lot. See <a href="/documents/inventory-logic.html#which-price-wins">Which Price Actually Gets Charged?</a> for the full explanation.</p>
+<p><strong>Deliberately not synced: <code>cost_price</code>.</strong> The item-level value is "latest purchase cost" (a quick-reference default); the lot-level value is that specific batch's real historical cost for COGS, and can legitimately differ from the latest purchase. <code>EditInventoryModal</code> only pushes retail-facing fields to the lot — never cost_price. Only the dedicated per-lot editor on <code>InventoryDetailPage</code> (the "Lots" tab) should change a lot's cost_price, since that's an intentional, batch-specific correction, not a side effect of fixing a selling price.</p>
+</div>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>

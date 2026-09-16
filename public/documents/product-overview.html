@@ -1,0 +1,232 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Product Overview — AquaDealers Docs</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="/favicon.png">
+<link rel="canonical" href="https://aquadealers.in/documents/product-overview.html">
+<meta name="description" content="AquaDealers product overview — vertical SaaS for aqua feed and medicine dealers in India. Billing, inventory, FIFO lot tracking, WhatsApp invoicing, and multi-branch operations.">
+<meta property="og:title" content="Product Overview — AquaDealers Docs">
+<meta property="og:description" content="AquaDealers product overview — vertical SaaS for aqua feed and medicine dealers in India. Billing, inventory, FIFO lot tracking, WhatsApp invoicing, and multi-branch operations.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://aquadealers.in/logo.png">
+<meta property="og:site_name" content="AquaDealers">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Product Overview — AquaDealers Docs">
+<meta name="twitter:description" content="AquaDealers product overview — vertical SaaS for aqua feed and medicine dealers in India. Billing, inventory, FIFO lot tracking, WhatsApp invoicing, and multi-branch operations.">
+</head>
+<body>
+<div class="topbar">
+  <a href="/documents/" class="topbar-logo">
+    <img src="/logo.png" alt="AquaDealers" style="height:28px;width:auto">
+    AquaDealers
+  </a>
+  <span class="topbar-sep">|</span>
+  <a href="/documents/" class="topbar-back">&larr; All Docs</a>
+  <span class="topbar-title">Product Overview</span>
+</div>
+<div class="page">
+
+<h1>Product Overview</h1>
+<div class="page-meta">
+  <span><span class="badge b-ok">Verified</span> Against source code</span>
+  <span>Version 3.0.0</span>
+  <span>Last updated: September 2026</span>
+</div>
+
+<!-- ───────── What AquaDealers Is ───────── -->
+<h2 id="what">What AquaDealers Is</h2>
+<p>AquaDealers is a <strong>vertical SaaS platform purpose-built for aqua feed and medicine dealers in India</strong>. It replaces paper billing books, Excel sheets, and WhatsApp-screenshot accounting with a single web application that handles billing, farmer credit tracking, inventory, and supplier management.</p>
+
+<div class="card">
+  <h4>Technical Foundation</h4>
+  <ul>
+    <li><strong>Frontend:</strong> Vite + React 18 single-page application (SPA), written in TypeScript</li>
+    <li><strong>Backend:</strong> Supabase — PostgreSQL database, Supabase Auth, Edge Functions (Deno), Supabase Storage</li>
+    <li><strong>Delivery:</strong> Progressive Web App (PWA) with offline billing support via Workbox service worker</li>
+    <li><strong>Deployment:</strong> Static SPA deployed to CDN, Supabase manages all backend infrastructure</li>
+  </ul>
+</div>
+
+<p>The entire application runs as a client-side SPA that communicates with Supabase's PostgREST API and custom RPC functions. There is no separate backend server — all business logic lives either in the frontend or in PostgreSQL functions and triggers.</p>
+
+<!-- ───────── Target Users ───────── -->
+<h2 id="users">Target Users</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <h4>Primary: Aquaculture Dealers</h4>
+    <p>Feed and medicine dealers in <strong>Andhra Pradesh and Telangana</strong>, India's largest aquaculture regions. These dealers:</p>
+    <ul>
+      <li>Manage <strong>50 to 500+</strong> farmer accounts</li>
+      <li>Carry <strong>10 to 100+</strong> products (feed bags, medicines, supplements)</li>
+      <li>Track <strong>credit-based sales</strong> — most farmers buy on credit and settle after harvest</li>
+      <li>Create <strong>5 to 20 bills per day</strong></li>
+      <li>Operate from <strong>1 to 3 branches</strong> (shops/godowns)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Secondary: Staff Members</h4>
+    <p>Counter staff and branch managers who create bills and manage day-to-day operations on behalf of the dealer. Staff have:</p>
+    <ul>
+      <li>PIN-based login (no email/password)</li>
+      <li>Branch-scoped access</li>
+      <li>Configurable permissions per module</li>
+      <li>Their own entry URL per shop/branch</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ───────── Problems Solved ───────── -->
+<h2 id="problems">Problems Solved</h2>
+
+<div class="card">
+  <h4>1. Manual Billing</h4>
+  <p>Aqua dealers traditionally write bills in carbon-copy bill books. A single bill takes <strong>2&ndash;3 minutes</strong> to write by hand, with frequent errors in totals and item calculations. AquaDealers reduces this to <strong>under 30 seconds</strong> — select farmer, pick products, enter quantities, done. The system auto-calculates totals, applies discounts, handles GST, and deducts stock in a single atomic transaction.</p>
+</div>
+
+<div class="card">
+  <h4>2. Farmer Dues Tracking</h4>
+  <p>Tracking who owes what is the biggest pain point. Dealers maintain separate notebooks or Excel sheets, and reconciliation errors are common. AquaDealers maintains a <strong>real-time digital ledger</strong> per farmer with:</p>
+  <ul>
+    <li>Automatic due updates via PostgreSQL triggers on every bill, payment, return, and cancellation</li>
+    <li>Ageing buckets (0&ndash;30, 31&ndash;60, 61&ndash;90, 90+ days) for collection prioritization</li>
+    <li>Billed vs. paid reconciliation on farmer statements</li>
+    <li>Settlement discount tracking</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>3. Inventory Management</h4>
+  <p>Dealers lose money to expired stock and have no visibility into what's selling. AquaDealers provides:</p>
+  <ul>
+    <li><strong>FIFO lot tracking</strong> — each purchase creates a lot with quantity, cost, expiry date, and MRP</li>
+    <li><strong>Automatic stock deduction</strong> on billing (oldest lots consumed first)</li>
+    <li><strong>Expiry alerts</strong> — products nearing expiry are flagged</li>
+    <li><strong>Multi-branch inventory</strong> — each branch maintains its own stock with transfer support</li>
+    <li><strong>Movement history</strong> — every stock change (purchase, sale, return, transfer, adjustment) is audited</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>4. WhatsApp Invoicing</h4>
+  <p>Farmers expect bills via WhatsApp. AquaDealers provides two mechanisms:</p>
+  <ul>
+    <li><strong>authkey.io API</strong> — template-based messages for bill notifications, payment receipts, and due reminders. Sends directly without opening WhatsApp.</li>
+    <li><strong>wa.me links</strong> — pre-formatted deep links that open WhatsApp with the message pre-filled, used for statements and other communications.</li>
+  </ul>
+  <p>The WhatsApp addon is a paid feature with per-message quota management.</p>
+</div>
+
+<div class="card">
+  <h4>5. Multi-Branch Operations</h4>
+  <p>Dealers with multiple shops or godowns need unified management. AquaDealers supports:</p>
+  <ul>
+    <li><strong>Unified inventory</strong> across branches with branch-scoped stock levels</li>
+    <li><strong>Stock transfers</strong> between branches preserving FIFO lot data</li>
+    <li><strong>Branch-scoped data</strong> — bills, purchases, and cash book entries are tied to a branch</li>
+    <li><strong>Branch-specific billing templates</strong> and invoice numbering</li>
+    <li><strong>Staff assigned to specific branches</strong> via <code>branch_ids UUID[]</code></li>
+  </ul>
+</div>
+
+<!-- ───────── Core Capabilities ───────── -->
+<h2 id="capabilities">Core Capabilities</h2>
+
+<div class="tw">
+<table>
+  <thead><tr><th>Capability</th><th>Status</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Billing</td><td><span class="badge b-ok">Implemented</span></td><td>Atomic bill creation with stock deduction, payment, farmer due update in single transaction</td></tr>
+    <tr><td>Farmer Management</td><td><span class="badge b-ok">Implemented</span></td><td>Farmer profiles, ledger, statements, product-specific discounts, credit limits</td></tr>
+    <tr><td>Inventory</td><td><span class="badge b-ok">Implemented</span></td><td>FIFO lot tracking, expiry management, movement history, rate adjustments</td></tr>
+    <tr><td>Supplier Management</td><td><span class="badge b-ok">Implemented</span></td><td>Supplier profiles, purchase recording, supplier ledger, payment tracking</td></tr>
+    <tr><td>WhatsApp Integration</td><td><span class="badge b-ok">Implemented</span></td><td>Bill notifications via authkey.io API, wa.me links for statements</td></tr>
+    <tr><td>Offline Billing</td><td><span class="badge b-ok">Implemented</span></td><td>Service worker caches app shell; offline bills sync via <code>client_ref</code> idempotency</td></tr>
+    <tr><td>Multi-Branch</td><td><span class="badge b-ok">Implemented</span></td><td>Branch-scoped inventory, billing, cash book; inter-branch stock transfers</td></tr>
+    <tr><td>Staff Access</td><td><span class="badge b-ok">Implemented</span></td><td>PIN login, branch-scoped, 14-module permission system</td></tr>
+    <tr><td>Daily Book</td><td><span class="badge b-ok">Implemented</span></td><td>Register-style daily view with 9 sub-pages, date navigation, prefetching</td></tr>
+    <tr><td>Estimates</td><td><span class="badge b-ok">Implemented</span></td><td>Quotations using same bill flow but no stock/payment impact; convertible to real bills</td></tr>
+    <tr><td>Returns</td><td><span class="badge b-ok">Implemented</span></td><td>Stock restored to original FIFO lots (LIFO), excess becomes return credit</td></tr>
+    <tr><td>Cashbook</td><td><span class="badge b-ok">Implemented</span></td><td>Daily cash entries, opening/closing balance, linked to bills and payments</td></tr>
+    <tr><td>Reports</td><td><span class="badge b-ok">Implemented</span></td><td>Sales register, profit report, stock report, dues report, monthly finance pack</td></tr>
+    <tr><td>GST Billing</td><td><span class="badge b-ok">Implemented</span></td><td>Configurable GST rates per product, HSN codes, GST breakdown on invoices</td></tr>
+    <tr><td>Bill Editing</td><td><span class="badge b-ok">Implemented</span></td><td>Edit quantities, prices, discounts, dates, payments with full audit trail</td></tr>
+    <tr><td>Bill Cancellation</td><td><span class="badge b-ok">Implemented</span></td><td>Same-day only, unpaid bills only; reverses stock and farmer dues</td></tr>
+    <tr><td>Transaction Undo</td><td><span class="badge b-ok">Implemented</span></td><td>Universal undo via <code>transaction_events</code> table, 48-hour window</td></tr>
+    <tr><td>Stock Transfers</td><td><span class="badge b-ok">Implemented</span></td><td>Inter-branch transfers preserving FIFO lot data and movement audit</td></tr>
+    <tr><td>Rate Adjustments</td><td><span class="badge b-ok">Implemented</span></td><td>Per-lot rate changes with reason tracking and movement audit</td></tr>
+    <tr><td>Farmer Product Discounts</td><td><span class="badge b-ok">Implemented</span></td><td>Per-farmer per-product discount rates, auto-applied during billing</td></tr>
+    <tr><td>Crop Cycle</td><td><span class="badge b-warn">Partial</span></td><td>Basic crop tracking on farmer profile; full cycle management not yet complete</td></tr>
+    <tr><td>Profit per Product</td><td><span class="badge b-warn">Partial</span></td><td>Profit calculation exists in reports; per-product breakdown is approximate</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ───────── Tech Stack ───────── -->
+<h2 id="stack">Tech Stack</h2>
+
+<div class="grid-2">
+  <div class="card">
+    <h4>Core Framework</h4>
+    <ul>
+      <li><strong>React 18</strong> with TypeScript</li>
+      <li><strong>Vite 5</strong> — build tool and dev server</li>
+      <li><strong>React Router v6</strong> — client-side routing</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Backend (Supabase)</h4>
+    <ul>
+      <li><strong>PostgreSQL</strong> — 55+ tables, triggers, RLS policies</li>
+      <li><strong>Supabase Auth</strong> — email/password for dealers</li>
+      <li><strong>Edge Functions</strong> — Deno runtime for WhatsApp API, webhooks</li>
+      <li><strong>Storage</strong> — bill signatures, product images</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Styling</h4>
+    <ul>
+      <li><strong>Tailwind CSS v4</strong> with custom design tokens</li>
+      <li><strong>Framer Motion</strong> — animations and transitions</li>
+      <li><strong>Lucide React</strong> — icon library</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>State & Data</h4>
+    <ul>
+      <li><strong>TanStack React Query</strong> — server state caching and offline support</li>
+      <li><strong>Zustand</strong> — client-side state management</li>
+      <li><strong>react-hook-form + Zod</strong> — form handling and validation</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>PDF & Reporting</h4>
+    <ul>
+      <li><strong>jsPDF</strong> — programmatic PDF generation for reports and statements</li>
+      <li><strong>html2canvas</strong> — DOM to canvas to PNG to PDF for bill invoices</li>
+      <li><strong>Recharts</strong> — chart components for dashboard and reports</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Infrastructure</h4>
+    <ul>
+      <li><strong>vite-plugin-pwa + Workbox</strong> — service worker and offline caching</li>
+      <li><strong>i18next</strong> — internationalization (English + Telugu)</li>
+      <li><strong>PostHog</strong> — product analytics and session replays</li>
+      <li><strong>Sentry</strong> — error monitoring and performance tracking</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ───────── Version ───────── -->
+<h2 id="version">Version</h2>
+<p>Current version: <strong>3.0.0</strong> (as defined in <code>package.json</code>).</p>
+<p>The application is a continuously deployed SPA. Version bumps in <code>package.json</code> mark significant milestones rather than individual releases.</p>
+
+<div class="doc-footer"><p>AquaDealers Documentation &middot; <a href="/documents/">Back to Index</a></p></div>
+</div>
+</body>
+</html>
