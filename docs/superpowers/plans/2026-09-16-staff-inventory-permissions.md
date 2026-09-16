@@ -17,7 +17,8 @@
 - `getStaffFeatureMode(key, permissions, isStaffMode)` and `isStaffFeatureVisible(...)` signatures do not change — every existing call site keeps working unchanged.
 - `StaffFeatureKey`/`StaffAccessMode`/`StaffPermissions` must still be importable from `@/lib/staffAccess` after Task 1 (verified: `MorePage.tsx:32`, `lib/constants.ts:2`, `FeatureGate.tsx:3`, `DesktopSidebar.tsx:21` import `StaffFeatureKey` from that path today).
 - Migration files go in `supabase/migrations/`, named `YYYYMMDDHHMMSS_description.sql`.
-- Test dealer for manual QA: dealer UUID `f90ec65c-28e1-482e-b15f-1595bc6869e2` ("Sri Venkateswara"), branch "Main Shop" (`f27713a0-5fad-4cb8-b6ca-e896fdddd61b`) — safe to create/edit/delete test data here (see project memory `supabase-project-credentials`). Never use the production dealer for QA.
+- Test dealer for manual QA: dealer UUID `f90ec65c-28e1-482e-b15f-1595bc6869e2` ("Sri Venkateswara"), branch "Main Shop" (`f27713a0-5fad-4cb8-b6ca-e896fdddd61b`), staff member "Reddy" (project memory previously had this staff member's name wrong as "Yash" — corrected 2026-09-16, see `supabase-project-credentials` memory) — safe to create/edit/delete test data here. Never use the production dealer for QA.
+- **Post-ship correction (added after this plan's own final review, 2026-09-16):** neither the controller nor any implementer subagent may enter a password or PIN into a login form to authenticate — that's outside both their operating rules. Every task's "manual verification against the test dealer" step below could therefore only be done via `tsc --noEmit` + code reading, never an actual browser session against a real login. This is disclosed per-task below; a genuine human QA pass against the test dealer is still required before this ships. Separately, the DB migration in Task 4 was written and dry-run verified via read-only REST calls, but never applied to production (`supabase db push` requires the user's separate explicit go-ahead) — see the "Deployment" section at the end of this document for the required rollout order.
 - **Test runner note:** `vitest` cannot run on this machine (Node v20.11.1, needs ≥20.12 for a `node:util` export the installed rolldown/vitest requires) — this is a pre-existing environment gap, not something to fix as part of this plan. Write every test file the plan calls for exactly as specified (correct, ready for CI), verify via `npx tsc --noEmit -p tsconfig.json` instead of actually running `vitest`, and rely on the plan's manual QA steps against the test dealer for runtime behavior. Report test files as "written, not executed (vitest blocked in this environment)" rather than claiming a PASS you didn't see.
 
 ---
@@ -33,7 +34,7 @@
 
 Today `src/types/database.ts:92-110` and `src/lib/staffAccess.ts:20-61` define the exact same three types independently ("kept in sync manually"). We're about to add 5 new keys — doing it in only one of the two copies is a latent bug waiting to happen. Collapse to one definition before touching anything else.
 
-- [ ] **Step 1: Point staffAccess.ts at the database.ts types**
+- [x] **Step 1: Point staffAccess.ts at the database.ts types**
 
 In `src/lib/staffAccess.ts`, replace:
 
@@ -71,12 +72,12 @@ export interface StaffPermissions extends Record<StaffFeatureKey, StaffAccessMod
 
 and delete it — it's now covered by the re-export above. Leave everything else in the file (`StaffFeatureDefinition`, `StaffNavDefinition`, `StaffDealerProfileInput`, `STAFF_FEATURES`, `STAFF_DEFAULT_PERMISSIONS`, etc.) exactly where it is.
 
-- [ ] **Step 2: Verify nothing broke**
+- [x] **Step 2: Verify nothing broke**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
 Expected: no errors (every existing importer of `StaffFeatureKey`/`StaffAccessMode`/`StaffPermissions` from `@/lib/staffAccess` — `MorePage.tsx`, `lib/constants.ts`, `FeatureGate.tsx`, `DesktopSidebar.tsx`, and others — still resolves the same type, just from a re-export).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/lib/staffAccess.ts
@@ -98,7 +99,7 @@ git commit -m "refactor(staff): single-source StaffPermissions types to avoid dr
 
 This task only *adds* the keys and their metadata. No component reads them yet, so this cannot change behavior for anyone — it's purely additive data, verified by a unit test on the default-resolution logic.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/lib/staffAccess.test.ts`:
 
@@ -129,14 +130,14 @@ describe('new inventory action permission defaults', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/lib/staffAccess.test.ts`
 Expected: FAIL — TypeScript error, `'inventoryAddStock'` is not assignable to type `StaffFeatureKey` (the keys don't exist yet).
 
 (If `vitest` cannot run in this environment — see the Global Constraints note — instead confirm this step's intent via `npx tsc --noEmit -p tsconfig.json`: it should report the exact same "not assignable to type StaffFeatureKey" errors on this new test file before Step 3 adds the keys.)
 
-- [ ] **Step 3: Add the 5 keys to the type union**
+- [x] **Step 3: Add the 5 keys to the type union**
 
 In `src/types/database.ts`, replace:
 
@@ -183,7 +184,7 @@ export type StaffFeatureKey =
   | 'transactions';
 ```
 
-- [ ] **Step 4: Add `parentKey` to `StaffFeatureDefinition` and a new `STAFF_ACTION_FEATURES` list**
+- [x] **Step 4: Add `parentKey` to `StaffFeatureDefinition` and a new `STAFF_ACTION_FEATURES` list**
 
 In `src/lib/staffAccess.ts`, first extend the icon import list (currently `FileBarChart, GitBranch, History, Home, Package, PiggyBank, Plus, ReceiptText, Settings, ShieldCheck, Users, Users2, Wallet`) to also pull in `Eye, PackagePlus, Pencil, SlidersHorizontal, Trash2`:
 
@@ -285,7 +286,7 @@ export const STAFF_ACTION_FEATURES: StaffFeatureDefinition[] = [
 ];
 ```
 
-- [ ] **Step 5: Add defaults for the 5 new keys**
+- [x] **Step 5: Add defaults for the 5 new keys**
 
 In `src/lib/staffAccess.ts`, `STAFF_DEFAULT_PERMISSIONS` currently reads:
 
@@ -338,19 +339,19 @@ export const STAFF_DEFAULT_PERMISSIONS: StaffPermissions = {
 };
 ```
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 Run: `npx vitest run src/lib/staffAccess.test.ts`
 Expected: PASS (3 tests)
 
 (If `vitest` cannot run in this environment, confirm via `npx tsc --noEmit -p tsconfig.json` instead — it should now be clean — and report the test as written/not executed rather than claiming a PASS.)
 
-- [ ] **Step 7: Run full typecheck**
+- [x] **Step 7: Run full typecheck**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
 Expected: no errors
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/types/database.ts src/lib/staffAccess.ts src/lib/staffAccess.test.ts
@@ -371,7 +372,7 @@ git commit -m "feat(staff): add 5 inventory action-level permission keys (not en
 
 Once this lands, a dealer editing a staff member sees 5 new rows nested under "Inventory" and can toggle them. Because nothing in the rest of the app reads these keys yet (Task 2 only added defaults, Tasks 5-9 haven't wired any gate yet), toggling them has **no effect on staff-side behavior until Task 4's backfill and Tasks 5-9 land** — this task is purely "make the control visible and save-able," which already works today because `setFeatureMode`, `getDefaultFormState`, and `normalizePermissions` are all key-agnostic (verified: `StaffPage.tsx:62-71`, `StaffPage.tsx:195-203`, `staffService.ts:52-54` all spread/merge over `StaffPermissions` generically, no per-key logic to update).
 
-- [ ] **Step 1: Import STAFF_ACTION_FEATURES**
+- [x] **Step 1: Import STAFF_ACTION_FEATURES**
 
 In `src/features/staff/pages/StaffPage.tsx`, change:
 
@@ -392,7 +393,7 @@ import {
 } from '@/lib/staffAccess';
 ```
 
-- [ ] **Step 2: Render each group's children nested under their parent row**
+- [x] **Step 2: Render each group's children nested under their parent row**
 
 Replace the body of `renderPermissionControls` (`StaffPage.tsx:271-323`) — specifically the `{group.keys.map((featureKey) => { ... })}` block — with a version that also renders any `STAFF_ACTION_FEATURES` whose `parentKey` matches the row just rendered:
 
@@ -514,7 +515,7 @@ Run the dev server (`npm run dev`), open `/staff` as the test dealer, click "Add
 2. If Inventory's own toggle is not Visible, the 5 child rows show as greyed out and their buttons don't respond to clicks.
 3. Set Inventory to Visible, then toggle a couple of the new child rows, save the staff member, reopen the edit modal — the toggles you set are still there (proves `setFeatureMode`/`normalizePermissions` round-trip the new keys correctly with no code changes needed there).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/features/staff/pages/StaffPage.tsx
@@ -534,13 +535,20 @@ git commit -m "feat(staff): show inventory action permissions nested under Inven
 
 This is the step that makes "don't break anything" true. Four of the five actions are **currently unconditionally available** to any staff member who can already see Inventory (verified in Task 2's research: no gate at all exists today on Edit Price, View Cost Price, Adjust Stock, or Delete Product) — so backfilling them to `'visible'` for every existing row is not a guess, it's restoring exactly what's true today. The fifth, Add Stock, is currently gated by the `suppliers` key (`InventoryPage.tsx:90`, `App.tsx:317-318`) — so it's backfilled from each row's own current `suppliers` value, not a fixed constant, so a staff member who currently *can't* add stock still can't after this ships, and one who can, still can.
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
+
+**⚠️ Corrected (2026-09-16, after this plan's final review):** the SQL below is the actual final version — a first draft used a single-key `WHERE NOT (permissions ? 'inventoryAddStock')` idempotency guard and a comment implying "frontend deploys first, then this migration." Both were wrong. The comment had the deploy order backwards (see the note right after this code block), and the single-key guard meant a row with *some but not all* of the 5 new keys already present (e.g. from a partial/premature write) would be skipped forever instead of having its missing keys filled in. The version below is what actually shipped, fixed by the final review:
 
 ```sql
--- Backfill the 5 new inventory action permission keys (added in the frontend
--- in a prior deploy — see StaffFeatureKey in src/types/database.ts) onto every
--- existing staff_members row, with values chosen so no existing staff member's
--- effective access changes:
+-- Backfill the 5 new inventory action permission keys (see StaffFeatureKey in
+-- src/types/database.ts) onto every existing staff_members row, with values
+-- chosen so no existing staff member's effective access changes.
+--
+-- Deploy order: this migration MUST be applied BEFORE the frontend that reads
+-- these keys is deployed. If the frontend ships first, any dealer who saves a
+-- staff member via the staff editor in the gap will have normalizePermissions()
+-- stamp STAFF_DEFAULT_PERMISSIONS (hidden for 3 of these 5 keys) onto that row
+-- ahead of this migration, defeating the intended backfill values below.
 --
 -- - inventoryAddStock copies each row's own current `suppliers` value, because
 --   that's the key that has gated Add Stock until now (InventoryPage.tsx:90,
@@ -550,9 +558,15 @@ This is the step that makes "don't break anything" true. Four of the five action
 --   ANY permission gate before this — any staff member who could see Inventory
 --   at all could already do all four unconditionally.
 --
--- Idempotent: only touches rows that don't already have inventoryAddStock, so
--- re-running this migration (or a dealer having already customized the new
--- keys through the UI before this ran) is safe.
+-- Idempotent: only touches rows missing one or more of the 5 new keys, so
+-- re-running this migration (or a dealer having already customized some of the
+-- new keys through the UI before this ran) is safe — a row with a partial set
+-- of the new keys still gets the missing ones filled in. This does NOT fix a
+-- row that already has a WRONG value for one of these keys (e.g. from the
+-- unsafe deploy order above) — the migration can't distinguish a prematurely
+-- stamped default from a dealer's intentional choice, so that still requires
+-- the deploy-runbook step of revoking/expiring staff sessions during rollout
+-- (see this plan's "Deployment" section).
 
 UPDATE public.staff_members
 SET permissions = permissions
@@ -561,14 +575,16 @@ SET permissions = permissions
   || jsonb_build_object('inventoryViewCostPrice', 'visible')
   || jsonb_build_object('inventoryAdjustStock', 'visible')
   || jsonb_build_object('inventoryDeleteProduct', 'visible')
-WHERE NOT (permissions ? 'inventoryAddStock');
+WHERE NOT (permissions ?& array['inventoryAddStock','inventoryEditPrice','inventoryViewCostPrice','inventoryAdjustStock','inventoryDeleteProduct']);
 ```
 
 Save this to `supabase/migrations/20260917000000_backfill_inventory_action_permissions.sql`.
 
-- [ ] **Step 2: Dry-run the exact logic against the test dealer first**
+**Known residual limitation, disclosed rather than fixed:** because the `WHERE` clause was loosened to match *partial* rows (missing any one of the 5 keys) while the `SET` still writes *all 5* values every time, a row that already has some of these keys **intentionally** customized by a dealer but is missing just one would have its customized values overwritten back to these defaults if this migration re-runs against it. This is very unlikely in practice — the app's own write path (`normalizePermissions()`) always writes all 5 keys together, never a subset — and only matters at all if the deploy order above is violated. Not worth a more complex per-key merge for that narrow a case; noted here so it isn't a surprise later.
 
-Before pushing to the whole database, confirm the backfill expression does what's intended against one real row. Using the Supabase REST API with the secret key (see project memory `supabase-project-credentials` for the URL/keys) against the TEST dealer's staff member "Yash":
+- [x] **Step 2: Dry-run the exact logic against the test dealer first**
+
+Before pushing to the whole database, confirm the backfill expression does what's intended against one real row. Using the Supabase REST API with the secret key (see project memory `supabase-project-credentials` for the URL/keys) against the TEST dealer's staff member "Reddy":
 
 ```bash
 curl -s "https://fvcafioxkgbljcjomixs.supabase.co/rest/v1/staff_members?dealer_id=eq.f90ec65c-28e1-482e-b15f-1595bc6869e2&select=id,name,permissions" \
@@ -576,7 +592,7 @@ curl -s "https://fvcafioxkgbljcjomixs.supabase.co/rest/v1/staff_members?dealer_i
   -H "Authorization: Bearer <secret key from memory>"
 ```
 
-Expected: a JSON row for "Yash" whose `permissions` object does NOT yet contain `inventoryAddStock` (confirms the `WHERE` clause will match it) and DOES contain a `suppliers` key with some value — note that value, it's what `inventoryAddStock` should become after the migration.
+Expected: a JSON row for "Reddy" whose `permissions` object does NOT yet contain `inventoryAddStock` (confirms the `WHERE` clause will match it) and DOES contain a `suppliers` key with some value — note that value, it's what `inventoryAddStock` should become after the migration.
 
 - [ ] **Step 3: Apply the migration**
 
@@ -590,7 +606,7 @@ Expected output includes `Applying migration 20260917000000_backfill_inventory_a
 
 Re-run the same `curl` command from Step 2. Expected: the same staff member's `permissions` now includes all 5 new keys, with `inventoryAddStock` exactly equal to whatever `suppliers` was, and the other 4 set to `"visible"`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add supabase/migrations/20260917000000_backfill_inventory_action_permissions.sql
@@ -601,16 +617,22 @@ git commit -m "fix(staff): backfill new inventory action permissions so existing
 
 ### Task 5: Enforce "Add/Receive Stock"
 
+**⚠️ Correction (added after this plan's own final whole-branch review, 2026-09-16):** as originally written, this task only named 2 of the 4 actual places a staff member can trigger "Add Stock" — the button in `InventoryPage.tsx` and the two `App.tsx` routes. It missed `InventoryDetailPage.tsx`'s own separate "Add Stock" button and `SupplierLedgerPage.tsx`'s "New Purchase" button, both of which also navigate to `/purchases/new`. Both stayed reachable-but-dead-ending (visible, but the route behind them was gated) until the final review caught it — each per-task review only ever saw one task's diff, so neither could see that a *different* task's file also needed a gate. The steps below are corrected to include all 4 sites; the original implementation shipped only Steps 1-3 and picked up Steps 4-5 in a follow-up fix commit. If re-running this plan from a fresh checkout, do all 5 steps in this one task — don't split them.
+
 **Files:**
 - Modify: `src/features/inventory/pages/InventoryPage.tsx:90`
 - Modify: `src/App.tsx:317-318`
+- Modify: `src/features/inventory/pages/InventoryDetailPage.tsx` (its own separate Add Stock button — easy to miss since it's a sibling of the Adjust Stock/Edit buttons Tasks 6/8 gate in the same file)
+- Modify: `src/features/suppliers/pages/SupplierLedgerPage.tsx:23` ("New Purchase" button, navigates to `/purchases/new?supplier=...`)
 
 **Interfaces:**
 - Consumes: `getStaffFeatureMode` (unchanged), `'inventoryAddStock'` key (Task 2 + backfilled in Task 4)
 
 This is the only one of the 5 that has a *replaced* gate (was `suppliers`, becomes `inventoryAddStock`) rather than a newly-added one. Because Task 4 backfilled `inventoryAddStock` to match each row's current `suppliers` value, this swap is behavior-neutral for every existing staff member at the moment it ships; going forward the two keys can be set independently.
 
-- [ ] **Step 1: Swap the button-level check**
+**Before starting, re-verify site coverage yourself** rather than trusting this list: `grep -rn "purchases/new" src --include="*.tsx"` and confirm every navigation call site found is covered by one of the steps below.
+
+- [x] **Step 1: Swap the button-level check**
 
 In `src/features/inventory/pages/InventoryPage.tsx:90`, replace:
 
@@ -624,7 +646,7 @@ with:
 const canAddStock = getStaffFeatureMode('inventoryAddStock', currentStaff?.permissions, !!currentStaff) === 'visible';
 ```
 
-- [ ] **Step 2: Swap the route-level gate**
+- [x] **Step 2: Swap the route-level gate**
 
 In `src/App.tsx:317-318`, replace:
 
@@ -642,22 +664,71 @@ with:
 
 Do NOT change `/suppliers` or `/suppliers/:id` (`App.tsx:315-316`) — those stay on the `suppliers` key. They're the separate Suppliers/Purchases module (out of scope for this plan; see the plan's "What's deliberately out of scope here" section).
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Gate InventoryDetailPage.tsx's own Add Stock button**
+
+This file already has (or, if you're doing Tasks 6-9 in order, will have) a block of `getStaffFeatureMode(...)` flags for Edit Price / View Cost / Adjust Stock / Delete Product, all computed together right after `const updateLotPricing = useUpdateInventoryLotPricing();`. Add a fifth flag in that same block:
+
+```ts
+const canAddStock = getStaffFeatureMode('inventoryAddStock', currentStaff?.permissions, !!currentStaff) === 'visible';
+```
+
+Find the "Add Stock" `<Button>` in this file (a sibling of the Adjust Stock and Edit buttons, inside the same `action={ <div className="grid grid-cols-2 gap-3 ..."> }` block — `onClick={() => navigate('/purchases/new')}`) and wrap it:
+
+```tsx
+{canAddStock && (
+  <Button
+    className="bg-white text-[#0052cc] hover:bg-slate-50 font-bold h-12 rounded-xl shadow-[0_4px_14px_0_rgba(0,0,0,0.1)]"
+    fullWidth
+    onClick={() => navigate('/purchases/new')}
+    leftIcon={<PackagePlus className="h-5 w-5" />}
+  >
+    Add Stock
+  </Button>
+)}
+```
+
+- [x] **Step 4: Gate SupplierLedgerPage.tsx's New Purchase button**
+
+In `src/features/suppliers/pages/SupplierLedgerPage.tsx`, find where `currentStaff` is already available (it uses `getStaffFeatureMode('suppliers', ...)` elsewhere on the page for its own Suppliers-gated content) and add:
+
+```ts
+const canNewPurchase = getStaffFeatureMode('inventoryAddStock', currentStaff?.permissions, !!currentStaff) === 'visible';
+```
+
+Wrap the "New Purchase" button (`onClick={() => navigate(\`/purchases/new?supplier=${supplier.id}\`)}`):
+
+```tsx
+{canNewPurchase && <Button
+  variant="outline"
+  onClick={() => navigate(`/purchases/new?supplier=${supplier.id}`)}
+  className="flex-1 sm:flex-none"
+  leftIcon={<Package className="w-5 h-5" />}
+>
+  {t('suppliers.newPurchase', 'New Purchase')}
+</Button>}
+```
+
+- [x] **Step 5: Typecheck**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
 Expected: no errors
 
-- [ ] **Step 4: Manual verification against the test dealer**
+- [x] **Step 6: Re-verify no site was missed**
 
-1. In `/staff`, edit test staff member "Yash": set Inventory → Visible, and the new "Add/Receive Stock" sub-toggle → Hidden. Save.
-2. Log into the staff portal as Yash (staff PIN login), open `/inventory`. Confirm the "Add Stock" button is gone.
-3. Try navigating directly to `/purchases/new` in the browser address bar while still logged in as Yash. Confirm it shows the "You do not have access to purchases" access-restricted page, not the purchase form.
-4. Back in `/staff` as the dealer, set "Add/Receive Stock" → Visible for Yash. Save, reload the staff session, confirm the button reappears and `/purchases/new` now opens the form.
+Run: `grep -rn "getStaffFeatureMode('suppliers'" src` — expected: zero results anywhere that's actually gating access to the Add Stock flow (the `/suppliers` list/ledger pages themselves legitimately keep using `'suppliers'` for their own unrelated content — only a stale Add-Stock-flow gate would be a bug here).
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 7: Manual verification against the test dealer**
+
+1. In `/staff`, edit test staff member "Reddy": set Inventory → Visible, and the new "Add/Receive Stock" sub-toggle → Hidden. Save.
+2. Log into the staff portal as Reddy (staff PIN login), open `/inventory`. Confirm the "Add Stock" button is gone from both the list toolbar and the item detail page.
+3. Open a supplier's ledger page. Confirm "New Purchase" is gone too.
+4. Try navigating directly to `/purchases/new` in the browser address bar while still logged in as Reddy. Confirm it shows the "You do not have access to purchases" access-restricted page, not the purchase form.
+5. Back in `/staff` as the dealer, set "Add/Receive Stock" → Visible for Reddy. Save, reload the staff session, confirm all three buttons reappear and `/purchases/new` now opens the form.
+
+- [x] **Step 8: Commit**
 
 ```bash
-git add src/features/inventory/pages/InventoryPage.tsx src/App.tsx
+git add src/features/inventory/pages/InventoryPage.tsx src/App.tsx src/features/inventory/pages/InventoryDetailPage.tsx src/features/suppliers/pages/SupplierLedgerPage.tsx
 git commit -m "feat(staff): gate Add Stock by its own permission instead of piggybacking on Suppliers"
 ```
 
@@ -673,7 +744,7 @@ git commit -m "feat(staff): gate Add Stock by its own permission instead of pigg
 
 Three trigger points open the same price-editing surface in this file: the mobile pencil icon (line 501), the desktop "Edit" button (line 541), and the per-lot "Edit" link (line 1108, opens the inline "Edit Lot" modal). All three get the same gate.
 
-- [ ] **Step 1: Import the staff permission helpers**
+- [x] **Step 1: Import the staff permission helpers**
 
 Near the top of `src/features/inventory/pages/InventoryDetailPage.tsx`, add to the existing import block:
 
@@ -682,7 +753,7 @@ import { useStaffStore } from '@/stores/staffStore';
 import { getStaffFeatureMode } from '@/lib/staffAccess';
 ```
 
-- [ ] **Step 2: Compute the permission flags once**
+- [x] **Step 2: Compute the permission flags once**
 
 Right after the existing `const updateLotPricing = useUpdateInventoryLotPricing();` line (`InventoryDetailPage.tsx:179`), add:
 
@@ -691,7 +762,7 @@ Right after the existing `const updateLotPricing = useUpdateInventoryLotPricing(
   const canEditPrice = getStaffFeatureMode('inventoryEditPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
 ```
 
-- [ ] **Step 3: Gate the mobile edit icon**
+- [x] **Step 3: Gate the mobile edit icon**
 
 At `InventoryDetailPage.tsx:499-506`, replace:
 
@@ -723,7 +794,7 @@ with:
 
 (This sits inside the `topRightAction={ ... }` prop, so wrapping it in a ternary that can return `null` is enough — no surrounding JSX to worry about.)
 
-- [ ] **Step 4: Gate the desktop Edit button**
+- [x] **Step 4: Gate the desktop Edit button**
 
 At `InventoryDetailPage.tsx:538-545`, replace:
 
@@ -755,7 +826,7 @@ with:
 
 (This one sits directly inside the `action={ <div className="grid grid-cols-2 gap-3 ..."> ... </div> }` JSX block alongside the Adjust Stock and Add Stock buttons, so `{canEditPrice && (...)}` is a normal sibling expression — no extra wrapping needed.)
 
-- [ ] **Step 5: Gate the per-lot edit trigger**
+- [x] **Step 5: Gate the per-lot edit trigger**
 
 At `InventoryDetailPage.tsx:1106-1111`, replace:
 
@@ -780,18 +851,18 @@ with:
 
 (A `disabled` button here rather than removing it entirely, since it sits inline in a lot row and outright removing it would need reflowing the row's layout — disabling communicates the same thing with a much smaller diff.)
 
-- [ ] **Step 6: Typecheck**
+- [x] **Step 6: Typecheck**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
 Expected: no errors
 
 - [ ] **Step 7: Manual verification against the test dealer**
 
-1. In `/staff`, edit Yash: Inventory → Visible, "Edit Selling Price" → Hidden. Save.
-2. As Yash, open any inventory item's detail page. Confirm no edit pencil/button appears (mobile and desktop), and any per-lot "Edit" link under the Lots tab is greyed out and unclickable.
-3. Set "Edit Selling Price" → Visible for Yash. Confirm all three edit entry points reappear/re-enable and opening the modal still saves correctly.
+1. In `/staff`, edit Reddy: Inventory → Visible, "Edit Selling Price" → Hidden. Save.
+2. As Reddy, open any inventory item's detail page. Confirm no edit pencil/button appears (mobile and desktop), and any per-lot "Edit" link under the Lots tab is greyed out and unclickable.
+3. Set "Edit Selling Price" → Visible for Reddy. Confirm all three edit entry points reappear/re-enable and opening the modal still saves correctly.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/features/inventory/pages/InventoryDetailPage.tsx
@@ -810,7 +881,7 @@ git commit -m "feat(staff): gate editing selling price/MRP behind inventoryEditP
 
 Three read-only spots show cost price or a profit figure derived from it: the header badge (line 514-517), the stock-card stat cell (line 592-598), and the "Profit This Month" quick-stat card (line 776-783). All three get hidden outright (not greyed — an unreadable number next to a visible label is worse than no cell at all).
 
-- [ ] **Step 1: Compute the second flag**
+- [x] **Step 1: Compute the second flag**
 
 Right after the `canEditPrice` line added in Task 6 Step 2, add:
 
@@ -818,7 +889,7 @@ Right after the `canEditPrice` line added in Task 6 Step 2, add:
   const canViewCostPrice = getStaffFeatureMode('inventoryViewCostPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
 ```
 
-- [ ] **Step 2: Hide the header Cost badge**
+- [x] **Step 2: Hide the header Cost badge**
 
 At `InventoryDetailPage.tsx:514-517`, replace:
 
@@ -842,37 +913,13 @@ with:
 
 (This sits alongside the "Selling" badge in the same flex row at `InventoryDetailPage.tsx:509-518` — removing one item from a `flex` row reflows cleanly, no layout math needed.)
 
-- [ ] **Step 3: Hide the stock-card Cost stat cell**
+- [x] **Step 3: Hide the stock-card Cost stat cell — CONFIRMED INAPPLICABLE, no code change needed**
 
-At `InventoryDetailPage.tsx:592-598`, replace:
+**Correction (2026-09-16):** this step described a `grid grid-cols-4 lg:grid-cols-6` stock-summary cell with an `ArrowDownCircle` icon that turns out to have **never existed on this branch's actual git history**. It was based on unrelated, uncommitted work-in-progress present in a different checkout when this plan was researched, but never committed to master. Both the implementer and that task's reviewer independently confirmed via `grep` (`>Cost<`, `grid-cols-6`, `ArrowDownCircle` all miss) and `git log --all -S"grid-cols-6" -- src/features/inventory/pages/InventoryDetailPage.tsx` (zero commits ever touched this) that the target code simply isn't there. The stock-summary card at `InventoryDetailPage.tsx:581` is `grid grid-cols-4` with exactly 4 cells (Stock Value, Unit, Discount, Tax/GST) — none show cost.
 
-```tsx
-             <div className="hidden lg:flex flex-col gap-1 items-center justify-center text-center border-l border-slate-100">
-                <div className="flex items-center gap-1.5">
-                   <ArrowDownCircle className="w-3.5 h-3.5 text-slate-400" />
-                   <span className="text-[10px] font-medium text-slate-500">Cost</span>
-                </div>
-                <span className="text-sm font-bold text-slate-800">₹{inventory.cost_price?.toLocaleString() ?? '—'}</span>
-             </div>
-```
+**If re-running this plan on a fresh checkout:** skip this step entirely — there is no code left matching what it describes. This does NOT mean `cost_price` is fully hidden from a staff member without `inventoryViewCostPrice`, though: `grep -n "cost_price" src/features/inventory/pages/InventoryDetailPage.tsx` turns up more than just the two spots Steps 2 and 4 gate — `EditInventoryModal`'s `initialData.cost_price` (line ~1349) and the per-lot editor's `lotDraft.cost_price` input (line ~1449) both still show/allow editing the raw cost price to anyone who can open those modals, i.e. anyone with `inventoryEditPrice: visible`, independent of `inventoryViewCostPrice`. That is a real, already-known gap — see this plan's "What's deliberately out of scope here" section ("Masking cost_price inside EditInventoryModal/the per-lot editor…") — not something Step 3 was ever going to close even if its target code had existed. Re-verify the current `cost_price` call sites yourself before relying on this note, in case a later change added or removed one.
 
-with:
-
-```tsx
-             {canViewCostPrice && (
-               <div className="hidden lg:flex flex-col gap-1 items-center justify-center text-center border-l border-slate-100">
-                  <div className="flex items-center gap-1.5">
-                     <ArrowDownCircle className="w-3.5 h-3.5 text-slate-400" />
-                     <span className="text-[10px] font-medium text-slate-500">Cost</span>
-                  </div>
-                  <span className="text-sm font-bold text-slate-800">₹{inventory.cost_price?.toLocaleString() ?? '—'}</span>
-               </div>
-             )}
-```
-
-(This is one cell inside `grid grid-cols-4 lg:grid-cols-6` at `InventoryDetailPage.tsx:581`. Removing one cell leaves the grid with an empty slot rather than reflowing to fill the gap — acceptable and not worth a dynamic column-count calculation for one staff-only edge case.)
-
-- [ ] **Step 4: Hide the Profit This Month card**
+- [x] **Step 4: Hide the Profit This Month card**
 
 At `InventoryDetailPage.tsx:776-783`, replace:
 
@@ -904,18 +951,18 @@ with:
 
 (This is one card in a horizontally-scrolling `flex` row of independent cards — the "1. Sold This Month" and "3. Total Purchased" cards are unaffected siblings.)
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
 Expected: no errors
 
 - [ ] **Step 6: Manual verification against the test dealer**
 
-1. Edit Yash: Inventory → Visible, "View Cost Price / Margin" → Hidden. Save.
-2. As Yash, open an inventory item's detail page. Confirm: no "Cost" badge in the header, no "Cost" cell in the stock-summary card, no "Profit This Mth" card in the quick-stats row. Selling price, stock value, and the other stats still show normally.
-3. Set "View Cost Price / Margin" → Visible for Yash. Confirm all three reappear with correct values.
+1. Edit Reddy: Inventory → Visible, "View Cost Price / Margin" → Hidden. Save.
+2. As Reddy, open an inventory item's detail page. Confirm: no "Cost" badge in the header, no "Cost" cell in the stock-summary card, no "Profit This Mth" card in the quick-stats row. Selling price, stock value, and the other stats still show normally.
+3. Set "View Cost Price / Margin" → Visible for Reddy. Confirm all three reappear with correct values.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/features/inventory/pages/InventoryDetailPage.tsx
@@ -935,7 +982,7 @@ git commit -m "feat(staff): gate cost price and margin display behind inventoryV
 
 Two separate trigger points: the "Adjust Stock" button on the detail page (line 522-529), and the inline table-row icon button in the desktop inventory list (`InventoryList.tsx:371-381`). The mobile card grid has no adjust-stock quick action today (verified — only the desktop table row has it), so nothing to change there.
 
-- [ ] **Step 1: Compute the flag in InventoryDetailPage.tsx**
+- [x] **Step 1: Compute the flag in InventoryDetailPage.tsx**
 
 Right after the `canViewCostPrice` line added in Task 7 Step 1, add:
 
@@ -943,7 +990,7 @@ Right after the `canViewCostPrice` line added in Task 7 Step 1, add:
   const canAdjustStock = getStaffFeatureMode('inventoryAdjustStock', currentStaff?.permissions, !!currentStaff) === 'visible';
 ```
 
-- [ ] **Step 2: Gate the detail-page Adjust Stock button**
+- [x] **Step 2: Gate the detail-page Adjust Stock button**
 
 At `InventoryDetailPage.tsx:522-529`, replace:
 
@@ -975,7 +1022,7 @@ with:
 
 (Sibling of the Add Stock and Edit buttons inside the same `action={ <div className="grid grid-cols-2 gap-3 ..."> }` block — same pattern as Task 6 Step 4.)
 
-- [ ] **Step 3: Gate the InventoryList.tsx table-row button**
+- [x] **Step 3: Gate the InventoryList.tsx table-row button**
 
 In `src/features/inventory/components/InventoryList.tsx`, add the staff-permission imports near the top:
 
@@ -1033,18 +1080,18 @@ with:
                   </td>
 ```
 
-- [ ] **Step 4: Typecheck**
+- [x] **Step 4: Typecheck**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
 Expected: no errors
 
 - [ ] **Step 5: Manual verification against the test dealer**
 
-1. Edit Yash: Inventory → Visible, "Adjust Stock Manually" → Hidden. Save.
-2. As Yash, open the inventory list (desktop width). Confirm the per-row "Adjust Stock" icon is gone. Open an item's detail page — confirm the "Adjust Stock" button is gone too.
-3. Set "Adjust Stock Manually" → Visible for Yash. Confirm both reappear and opening the modal still works.
+1. Edit Reddy: Inventory → Visible, "Adjust Stock Manually" → Hidden. Save.
+2. As Reddy, open the inventory list (desktop width). Confirm the per-row "Adjust Stock" icon is gone. Open an item's detail page — confirm the "Adjust Stock" button is gone too.
+3. Set "Adjust Stock Manually" → Visible for Reddy. Confirm both reappear and opening the modal still works.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/features/inventory/pages/InventoryDetailPage.tsx src/features/inventory/components/InventoryList.tsx
@@ -1063,7 +1110,7 @@ git commit -m "feat(staff): gate manual stock adjustment behind inventoryAdjustS
 
 Only one trigger point is actually reachable in the app today (`InventoryDetailPage.tsx:1323` — `ManageProductModal.tsx` also has a delete button, but it's confirmed dead code, never imported anywhere in `src/`, so there is nothing to change there).
 
-- [ ] **Step 1: Compute the flag**
+- [x] **Step 1: Compute the flag**
 
 Right after the `canAdjustStock` line added in Task 8 Step 1, add:
 
@@ -1071,7 +1118,7 @@ Right after the `canAdjustStock` line added in Task 8 Step 1, add:
   const canDeleteProduct = getStaffFeatureMode('inventoryDeleteProduct', currentStaff?.permissions, !!currentStaff) === 'visible';
 ```
 
-- [ ] **Step 2: Gate the Delete Product button**
+- [x] **Step 2: Gate the Delete Product button**
 
 At `InventoryDetailPage.tsx:1312-1327`, replace:
 
@@ -1117,7 +1164,7 @@ with (only the `<Button>` is conditional — the warning copy above it stays vis
       </section>
 ```
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Typecheck**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
 Expected: no errors
@@ -1127,11 +1174,11 @@ Expected: no errors
 Use a throwaway product for this one — deletion is real, even if the underlying `delete_product` RPC archives rather than hard-deletes when history exists.
 
 1. In `/inventory`, add a brand-new test product with zero sales/purchase history via "New Product", so it's safe to actually delete.
-2. Edit Yash: Inventory → Visible, "Delete Product" → Hidden. Save.
-3. As Yash, open that test product's detail page, scroll to the danger-zone section at the bottom. Confirm the "Delete Product" button is gone (the warning text can still show).
-4. Set "Delete Product" → Visible for Yash. Confirm the button reappears and deleting the test product still works end-to-end.
+2. Edit Reddy: Inventory → Visible, "Delete Product" → Hidden. Save.
+3. As Reddy, open that test product's detail page, scroll to the danger-zone section at the bottom. Confirm the "Delete Product" button is gone (the warning text can still show).
+4. Set "Delete Product" → Visible for Reddy. Confirm the button reappears and deleting the test product still works end-to-end.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/features/inventory/pages/InventoryDetailPage.tsx
@@ -1139,6 +1186,17 @@ git commit -m "feat(staff): gate product deletion behind inventoryDeleteProduct 
 ```
 
 ---
+
+## Deployment
+
+**Added after this plan's own final whole-branch review, 2026-09-16 — required reading before this ships.**
+
+This rollout has a load-bearing order. The two things below aren't optional polish — skipping either one reopens exactly the "don't break anything" guarantee this whole plan exists to protect.
+
+1. **Apply the migration first, frontend second — never the other way round.** If the frontend that reads the 5 new keys ships before `supabase/migrations/20260917000000_backfill_inventory_action_permissions.sql` is applied, any dealer who saves a staff member via the staff editor in that gap will have `normalizePermissions()` (`src/features/staff/services/staffService.ts:52-53`) stamp `STAFF_DEFAULT_PERMISSIONS` (hidden for 3 of the 5 new keys) onto that row — and the migration's idempotency guard will then treat that row as "already has the keys" and permanently skip it, locking in the wrong values.
+2. **Revoke or expire all active staff sessions as part of the same rollout.** `staffStore` (`src/stores/staffStore.ts`) persists a staff member's `permissions` to `localStorage` at PIN-login time and never refetches them — a dealer changing a staff member's permissions has always required that staff member to log out and back in to see the change (the existing, pre-this-plan behavior). For this specific ship, that means any staff member already logged in when the frontend deploys is holding a permissions object with none of the 5 new keys at all — and the fallback for a missing key is `STAFF_DEFAULT_PERMISSIONS`, which is `'hidden'` for 3 of the 5. Concretely, until that session naturally expires (`staff_sessions.expires_at`, 4 hours from login) or the dealer forces a re-login, an already-logged-in staff member could lose access to Add Stock, viewing cost price/margin, and Delete Product — a real, if bounded and self-healing, violation of "nothing changes for existing staff" for that window. Force it closed instead of waiting it out: revoke/expire `staff_sessions` rows (or an equivalent forced-logout mechanism) as part of this deploy, so every staff member re-authenticates against the now-migrated `permissions`.
+
+Recommended order: apply migration → verify the backfill on a sample of rows (Task 4 Step 4) → revoke all active staff sessions → deploy the frontend.
 
 ## What's deliberately out of scope here
 
