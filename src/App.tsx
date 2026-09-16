@@ -314,8 +314,8 @@ const App: React.FC = () => {
             {/* Suppliers & Purchases */}
             <Route path="/suppliers"              element={<FeatureGate allowed={['suppliers']} title="Suppliers"      description="You do not have access to suppliers."><SupplierListPage /></FeatureGate>} />
             <Route path="/suppliers/:id"          element={<FeatureGate allowed={['suppliers']} title="Supplier Ledger" description="You do not have access to suppliers."><SupplierLedgerPage /></FeatureGate>} />
-            <Route path="/purchases/new"          element={<FeatureGate allowed={['suppliers']} title="New Purchase"   description="You do not have access to purchases."><NewPurchasePage /></FeatureGate>} />
-            <Route path="/purchases/:purchaseId"  element={<FeatureGate allowed={['suppliers']} title="Purchase Detail" description="You do not have access to purchases."><PurchaseDetailPage /></FeatureGate>} />
+            <Route path="/purchases/new"          element={<FeatureGate allowed={['inventoryAddStock']} title="New Purchase"   description="You do not have access to purchases."><NewPurchasePage /></FeatureGate>} />
+            <Route path="/purchases/:purchaseId"  element={<FeatureGate allowed={['inventoryAddStock']} title="Purchase Detail" description="You do not have access to purchases."><PurchaseDetailPage /></FeatureGate>} />
 
             {/* Financials */}
             <Route path="/expenses"  element={<FeatureGate allowed={['expenses']}  title="Expenses"   description="You do not have access to expenses."><ExpensesPage /></FeatureGate>} />

@@ -87,7 +87,7 @@ const InventoryPage: React.FC = () => {
   const { user } = useAuthStore();
   const { activeBranch, isAllBranches } = useBranchStore();
   const currentStaff = useStaffStore((s) => s.currentStaff);
-  const canAddStock = getStaffFeatureMode('suppliers', currentStaff?.permissions, !!currentStaff) === 'visible';
+  const canAddStock = getStaffFeatureMode('inventoryAddStock', currentStaff?.permissions, !!currentStaff) === 'visible';
   const branchId = isAllBranches ? null : activeBranch?.id;
 
   const fetchInventoryPage = React.useCallback(async ({ page, limit }: { page: number; limit: number }) => {
