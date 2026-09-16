@@ -183,6 +183,7 @@ const InventoryDetailPage: React.FC = () => {
   const canEditPrice = getStaffFeatureMode('inventoryEditPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
   const canViewCostPrice = getStaffFeatureMode('inventoryViewCostPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
   const canAdjustStock = getStaffFeatureMode('inventoryAdjustStock', currentStaff?.permissions, !!currentStaff) === 'visible';
+  const canDeleteProduct = getStaffFeatureMode('inventoryDeleteProduct', currentStaff?.permissions, !!currentStaff) === 'visible';
 
   const [isQuickStatsPaused, setIsQuickStatsPaused] = useState(false);
   const quickStatsRef = useRef<HTMLDivElement>(null);
@@ -1320,9 +1321,11 @@ const InventoryDetailPage: React.FC = () => {
               Remove this product from active stock. If sales or purchase history exists, it will be archived to keep records intact.
             </p>
           </div>
-          <Button variant="outline" className="border-rose-200 bg-white text-rose-700 hover:bg-rose-100" onClick={() => setIsDeleteOpen(true)}>
-            Delete Product
-          </Button>
+          {canDeleteProduct && (
+            <Button variant="outline" className="border-rose-200 bg-white text-rose-700 hover:bg-rose-100" onClick={() => setIsDeleteOpen(true)}>
+              Delete Product
+            </Button>
+          )}
         </div>
       </section>
 
