@@ -182,6 +182,7 @@ const InventoryDetailPage: React.FC = () => {
   const currentStaff = useStaffStore((s) => s.currentStaff);
   const canEditPrice = getStaffFeatureMode('inventoryEditPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
   const canViewCostPrice = getStaffFeatureMode('inventoryViewCostPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
+  const canAdjustStock = getStaffFeatureMode('inventoryAdjustStock', currentStaff?.permissions, !!currentStaff) === 'visible';
 
   const [isQuickStatsPaused, setIsQuickStatsPaused] = useState(false);
   const quickStatsRef = useRef<HTMLDivElement>(null);
@@ -528,14 +529,16 @@ const InventoryDetailPage: React.FC = () => {
         }
         action={
           <div className="grid grid-cols-2 gap-3 w-full sm:flex sm:w-auto mt-3 md:mt-0">
-            <Button
-              className="bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30 font-semibold h-12 rounded-xl"
-              fullWidth
-              onClick={() => setIsAdjustOpen(true)}
-              leftIcon={<Boxes className="h-5 w-5 opacity-80" />}
-            >
-              Adjust Stock
-            </Button>
+            {canAdjustStock && (
+              <Button
+                className="bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30 font-semibold h-12 rounded-xl"
+                fullWidth
+                onClick={() => setIsAdjustOpen(true)}
+                leftIcon={<Boxes className="h-5 w-5 opacity-80" />}
+              >
+                Adjust Stock
+              </Button>
+            )}
             <Button
               className="bg-white text-[#0052cc] hover:bg-slate-50 font-bold h-12 rounded-xl shadow-[0_4px_14px_0_rgba(0,0,0,0.1)]"
               fullWidth

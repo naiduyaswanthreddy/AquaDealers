@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { InventoryItem } from '../types';
 import { useFeatureGate } from '@/stores/subscriptionStore';
+import { useStaffStore } from '@/stores/staffStore';
+import { getStaffFeatureMode } from '@/lib/staffAccess';
 import StockAdjustmentModal from './StockAdjustmentModal';
 import { formatQuantity } from '@/lib/utils';
 import {
@@ -21,6 +23,8 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [adjustingItem, setAdjustingItem] = useState<InventoryItem | null>(null);
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const canAdjustStock = getStaffFeatureMode('inventoryAdjustStock', currentStaff?.permissions, !!currentStaff) === 'visible';
 
   const getProductArt = (type?: string | null) => {
     const normalized = (type || '').toLowerCase();
@@ -368,17 +372,19 @@ const InventoryList: React.FC<InventoryListProps> = ({ items }) => {
                   </td>
                   <td className="px-5 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
-                      <button 
-                        type="button"
-                        className="inline-flex p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
-                        title="Adjust Stock"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAdjustingItem(item);
-                        }}
-                      >
-                        <Boxes className="w-5 h-5 opacity-80" />
-                      </button>
+                      {canAdjustStock && (
+                        <button
+                          type="button"
+                          className="inline-flex p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                          title="Adjust Stock"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAdjustingItem(item);
+                          }}
+                        >
+                          <Boxes className="w-5 h-5 opacity-80" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
