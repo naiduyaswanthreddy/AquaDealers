@@ -21,4 +21,11 @@ describe('new inventory action permission defaults', () => {
   it('a dealer (isStaffMode=false) always gets visible regardless of the key', () => {
     expect(getStaffFeatureMode('inventoryViewCostPrice', undefined, false)).toBe('visible');
   });
+
+  it('falls back to STAFF_DEFAULT_PERMISSIONS for a permissions object missing the new keys (e.g. a pre-migration staff record)', () => {
+    const legacyPermissions = { inventory: 'visible', suppliers: 'visible' } as any;
+    expect(getStaffFeatureMode('inventoryAddStock', legacyPermissions, true)).toBe('hidden');
+    expect(getStaffFeatureMode('inventoryViewCostPrice', legacyPermissions, true)).toBe('hidden');
+    expect(getStaffFeatureMode('inventoryDeleteProduct', legacyPermissions, true)).toBe('hidden');
+  });
 });

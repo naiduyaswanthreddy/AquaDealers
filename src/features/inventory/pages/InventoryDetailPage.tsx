@@ -184,6 +184,7 @@ const InventoryDetailPage: React.FC = () => {
   const canViewCostPrice = getStaffFeatureMode('inventoryViewCostPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
   const canAdjustStock = getStaffFeatureMode('inventoryAdjustStock', currentStaff?.permissions, !!currentStaff) === 'visible';
   const canDeleteProduct = getStaffFeatureMode('inventoryDeleteProduct', currentStaff?.permissions, !!currentStaff) === 'visible';
+  const canAddStock = getStaffFeatureMode('inventoryAddStock', currentStaff?.permissions, !!currentStaff) === 'visible';
 
   const [isQuickStatsPaused, setIsQuickStatsPaused] = useState(false);
   const quickStatsRef = useRef<HTMLDivElement>(null);
@@ -540,14 +541,16 @@ const InventoryDetailPage: React.FC = () => {
                 Adjust Stock
               </Button>
             )}
-            <Button
-              className="bg-white text-[#0052cc] hover:bg-slate-50 font-bold h-12 rounded-xl shadow-[0_4px_14px_0_rgba(0,0,0,0.1)]"
-              fullWidth
-              onClick={() => navigate('/purchases/new')}
-              leftIcon={<PackagePlus className="h-5 w-5" />}
-            >
-              Add Stock
-            </Button>
+            {canAddStock && (
+              <Button
+                className="bg-white text-[#0052cc] hover:bg-slate-50 font-bold h-12 rounded-xl shadow-[0_4px_14px_0_rgba(0,0,0,0.1)]"
+                fullWidth
+                onClick={() => navigate('/purchases/new')}
+                leftIcon={<PackagePlus className="h-5 w-5" />}
+              >
+                Add Stock
+              </Button>
+            )}
             {canEditPrice && (
               <Button
                 className="!hidden sm:!flex bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30 font-semibold h-12 rounded-xl"

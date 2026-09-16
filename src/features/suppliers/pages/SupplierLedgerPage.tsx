@@ -20,7 +20,7 @@ const SupplierLedgerPage: React.FC = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const currentStaff = useStaffStore((s) => s.currentStaff);
-  const canNewPurchase = getStaffFeatureMode('suppliers', currentStaff?.permissions, !!currentStaff) === 'visible';
+  const canNewPurchase = getStaffFeatureMode('inventoryAddStock', currentStaff?.permissions, !!currentStaff) === 'visible';
   
   const { data: supplier, isLoading: isLoadingSupplier } = useSupplier(id || '');
   const { data: purchases, isLoading: isLoadingPurchases } = useSupplierPurchases(id || '');
