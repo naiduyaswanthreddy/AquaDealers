@@ -25,6 +25,8 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
   AreaChart, Area,
 } from 'recharts';
+import { useStaffStore } from '@/stores/staffStore';
+import { getStaffFeatureMode } from '@/lib/staffAccess';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const today = () => new Date();
@@ -279,6 +281,8 @@ function ReportGroup({ title, icon: Icon, children }: { title: string; icon: Rea
 // Standalone so it has its own loading state and doesn't block the main page.
 function BusinessSnapshotSection() {
   const { data: snap, isLoading, isError, refetch } = useBusinessSnapshot();
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const canViewCostPrice = getStaffFeatureMode('inventoryViewCostPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
 
   type CardDef = {
     emoji: string;
@@ -289,9 +293,10 @@ function BusinessSnapshotSection() {
     bg: string;           // Tailwind bg color
     border: string;       // Tailwind border color
     highlight?: boolean;  // bigger font
+    costSensitive?: boolean; // derived from cost_price/margin — hidden without inventoryViewCostPrice
   };
 
-  const cards: CardDef[] = snap ? [
+  const allCards: CardDef[] = snap ? [
     {
       emoji: '💰',
       label: 'Total Invested',
@@ -300,6 +305,7 @@ function BusinessSnapshotSection() {
       accent: 'text-blue-700',
       bg: 'bg-blue-50',
       border: 'border-blue-100',
+      costSensitive: true,
     },
     {
       emoji: '📦',
@@ -309,6 +315,7 @@ function BusinessSnapshotSection() {
       accent: 'text-violet-700',
       bg: 'bg-violet-50',
       border: 'border-violet-100',
+      costSensitive: true,
     },
     {
       emoji: '💵',
@@ -355,6 +362,7 @@ function BusinessSnapshotSection() {
       bg: snap.realizedProfit >= 0 ? 'bg-emerald-50' : 'bg-rose-50',
       border: snap.realizedProfit >= 0 ? 'border-emerald-100' : 'border-rose-100',
       highlight: true,
+      costSensitive: true,
     },
     {
       emoji: '🎯',
@@ -364,6 +372,7 @@ function BusinessSnapshotSection() {
       accent: 'text-teal-700',
       bg: 'bg-teal-50',
       border: 'border-teal-100',
+      costSensitive: true,
     },
     {
       emoji: '🏦',
@@ -374,6 +383,7 @@ function BusinessSnapshotSection() {
       bg: 'bg-indigo-50',
       border: 'border-indigo-100',
       highlight: true,
+      costSensitive: true,
     },
     {
       emoji: '⭐',
@@ -384,8 +394,11 @@ function BusinessSnapshotSection() {
       bg: snap.roi >= 15 ? 'bg-emerald-50' : snap.roi >= 5 ? 'bg-amber-50' : 'bg-rose-50',
       border: snap.roi >= 15 ? 'border-emerald-100' : snap.roi >= 5 ? 'border-amber-100' : 'border-rose-100',
       highlight: true,
+      costSensitive: true,
     },
   ] : [];
+
+  const cards = allCards.filter((card) => !card.costSensitive || canViewCostPrice);
 
   if (isLoading) {
     return (

@@ -7,6 +7,8 @@ import { useRecordPurchase, useRecordPayment, useSuppliers, useRecordSupplierCha
 import { useInventory, useProducts } from '@/features/inventory/hooks/useInventory';
 import { useAuthStore } from '@/stores/authStore';
 import { useBranchStore } from '@/stores/branchStore';
+import { useStaffStore } from '@/stores/staffStore';
+import { getStaffFeatureMode } from '@/lib/staffAccess';
 import { PageShell } from '@/components/layout/PageShell';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { SectionCard } from '@/components/layout/SectionCard';
@@ -54,6 +56,8 @@ const NewPurchasePage: React.FC = () => {
 
   const { user } = useAuthStore();
   const { activeBranch } = useBranchStore();
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const canViewCostPrice = getStaffFeatureMode('inventoryViewCostPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
   const { data: suppliers } = useSuppliers();
   const { data: products } = useProducts();
   const { data: inventory = [] } = useInventory();
@@ -669,9 +673,11 @@ const NewPurchasePage: React.FC = () => {
                         {mrp > 0 && (
                           <div className="md:col-span-5 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">
                             Selling price = {formatCurrency(mrp)} - {discount}% = {formatCurrency(sellingPrice)}
-                            <span className={itemProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}>
-                              Profit: {formatCurrency(itemProfit)}
-                            </span>
+                            {canViewCostPrice && (
+                              <span className={itemProfit >= 0 ? 'text-emerald-700' : 'text-red-600'}>
+                                Profit: {formatCurrency(itemProfit)}
+                              </span>
+                            )}
                           </div>
                         )}
                         
@@ -807,12 +813,14 @@ const NewPurchasePage: React.FC = () => {
                     <span className="font-medium text-amber-600">+{formatCurrency(totals.addCharges)}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center text-gray-600">
-                  <span>Profit Amount</span>
-                  <span className={totals.profit >= 0 ? 'font-bold text-emerald-700' : 'font-bold text-red-600'}>
-                    {formatCurrency(totals.profit)}
-                  </span>
-                </div>
+                {canViewCostPrice && (
+                  <div className="flex justify-between items-center text-gray-600">
+                    <span>Profit Amount</span>
+                    <span className={totals.profit >= 0 ? 'font-bold text-emerald-700' : 'font-bold text-red-600'}>
+                      {formatCurrency(totals.profit)}
+                    </span>
+                  </div>
+                )}
                 <div className="pt-3 border-t border-gray-200 flex justify-between items-center text-base font-bold text-gray-900">
                   <span>Total Amount</span>
                   <span className="text-gray-900">{formatCurrency(totals.total)}</span>

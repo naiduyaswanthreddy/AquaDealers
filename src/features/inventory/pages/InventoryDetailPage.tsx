@@ -1448,36 +1448,40 @@ const InventoryDetailPage: React.FC = () => {
               }));
             }}
           />
-          <Input
-            label="Cost Discount % (Dealer Discount %)"
-            type="number"
-            step="0.01"
-            value={lotDraft.cost_percentage}
-            leftIcon={<ArrowDownCircle className="h-4 w-4 text-sky-600" />}
-            onChange={(e) => {
-              const dealerDiscount = e.target.valueAsNumber || 0;
-              setLotDraft((draft) => ({
-                ...draft,
-                cost_percentage: e.target.value,
-                cost_price: String(calculateCostPrice(Number(draft.mrp) || 0, dealerDiscount)),
-              }));
-            }}
-          />
-          <Input
-            label="Cost Price"
-            type="number"
-            step="0.01"
-            value={lotDraft.cost_price}
-            leftIcon={<ArrowDownCircle className="h-4 w-4 text-sky-600" />}
-            onChange={(e) => {
-              const costPrice = e.target.valueAsNumber || 0;
-              setLotDraft((draft) => ({
-                ...draft,
-                cost_price: e.target.value,
-                cost_percentage: String(calculateCostPercentage(Number(draft.mrp) || 0, costPrice)),
-              }));
-            }}
-          />
+          {canViewCostPrice && (
+            <>
+              <Input
+                label="Cost Discount % (Dealer Discount %)"
+                type="number"
+                step="0.01"
+                value={lotDraft.cost_percentage}
+                leftIcon={<ArrowDownCircle className="h-4 w-4 text-sky-600" />}
+                onChange={(e) => {
+                  const dealerDiscount = e.target.valueAsNumber || 0;
+                  setLotDraft((draft) => ({
+                    ...draft,
+                    cost_percentage: e.target.value,
+                    cost_price: String(calculateCostPrice(Number(draft.mrp) || 0, dealerDiscount)),
+                  }));
+                }}
+              />
+              <Input
+                label="Cost Price"
+                type="number"
+                step="0.01"
+                value={lotDraft.cost_price}
+                leftIcon={<ArrowDownCircle className="h-4 w-4 text-sky-600" />}
+                onChange={(e) => {
+                  const costPrice = e.target.valueAsNumber || 0;
+                  setLotDraft((draft) => ({
+                    ...draft,
+                    cost_price: e.target.value,
+                    cost_percentage: String(calculateCostPercentage(Number(draft.mrp) || 0, costPrice)),
+                  }));
+                }}
+              />
+            </>
+          )}
         </div>
       </Modal>
     </PageShell>

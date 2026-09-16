@@ -6,11 +6,15 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Skeleton } from '@/components/ui';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { useStockTransfer } from '../hooks/useTransfers';
+import { useStaffStore } from '@/stores/staffStore';
+import { getStaffFeatureMode } from '@/lib/staffAccess';
 
 export const TransferDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, isLoading } = useStockTransfer(id);
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const canViewCostPrice = getStaffFeatureMode('inventoryViewCostPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
 
   if (isLoading) {
     return (
@@ -71,8 +75,8 @@ export const TransferDetailPage: React.FC = () => {
             <tr>
               <th className="px-3 py-2 text-left">Product</th>
               <th className="px-3 py-2 text-right">Quantity</th>
-              <th className="px-3 py-2 text-right">Cost / unit</th>
-              <th className="px-3 py-2 text-right">Line cost</th>
+              {canViewCostPrice && <th className="px-3 py-2 text-right">Cost / unit</th>}
+              {canViewCostPrice && <th className="px-3 py-2 text-right">Line cost</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -80,10 +84,14 @@ export const TransferDetailPage: React.FC = () => {
               <tr key={it.id}>
                 <td className="px-3 py-2 font-semibold text-slate-800">{it.product_name_snapshot || 'Product'}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{Number(it.quantity)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{it.cost_price != null ? formatCurrency(Number(it.cost_price)) : '—'}</td>
-                <td className="px-3 py-2 text-right tabular-nums font-semibold">
-                  {it.cost_price != null ? formatCurrency(Number(it.cost_price) * Number(it.quantity)) : '—'}
-                </td>
+                {canViewCostPrice && (
+                  <td className="px-3 py-2 text-right tabular-nums">{it.cost_price != null ? formatCurrency(Number(it.cost_price)) : '—'}</td>
+                )}
+                {canViewCostPrice && (
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                    {it.cost_price != null ? formatCurrency(Number(it.cost_price) * Number(it.quantity)) : '—'}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

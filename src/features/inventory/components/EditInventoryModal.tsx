@@ -12,6 +12,8 @@ import { compressImage, deleteOldImage } from '@/lib/imageUtils';
 import { PlanGate } from '@/components/auth/PlanGate';
 import { pickNextSellingLot } from '../utils/pricing';
 import type { InventoryLot } from '@/types/database';
+import { useStaffStore } from '@/stores/staffStore';
+import { getStaffFeatureMode } from '@/lib/staffAccess';
 
 interface EditInventoryForm {
   selling_price: number;
@@ -115,6 +117,9 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
     const numeric = Number(value);
     return Number.isFinite(numeric) ? numeric : null;
   };
+
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const canViewCostPrice = getStaffFeatureMode('inventoryViewCostPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
 
   const { register, handleSubmit, reset, watch, setValue, getValues, formState: { errors } } = useForm<EditInventoryForm>({
     defaultValues: {
@@ -397,35 +402,39 @@ export const EditInventoryModal: React.FC<EditInventoryModalProps> = ({
           error={errors.selling_price?.message}
         />
 
-        <Input
-          label="Cost Discount % (Dealer Discount %)"
-          type="number"
-          step="0.01"
-          leftIcon={<ArrowDownLeft className="h-4 w-4 text-sky-600" />}
-          {...register('cost_percentage', { valueAsNumber: true, min: 0, max: 100 })}
-          onChange={(e) => {
-             const discount = e.target.valueAsNumber || 0;
-             setValue('cost_percentage', discount);
-             const mrp = getValues('mrp') || 0;
-             setValue('cost_price', calculateCostPrice(mrp, discount));
-          }}
-          error={errors.cost_percentage?.message}
-        />
-        
-        <Input
-          label={t('inventory.costPrice', 'Cost Price')}
-          type="number"
-          step="0.01"
-          leftIcon={<ArrowDownLeft className="h-4 w-4 text-sky-600" />}
-          {...register('cost_price', { valueAsNumber: true, min: 0 })}
-          onChange={(event) => {
-            const cp = event.target.valueAsNumber || 0;
-            setValue('cost_price', cp);
-            const mrp = getValues('mrp') || 0;
-            setValue('cost_percentage', calculateCostPercentage(mrp, cp));
-          }}
-          error={errors.cost_price?.message}
-        />
+        {canViewCostPrice && (
+          <>
+            <Input
+              label="Cost Discount % (Dealer Discount %)"
+              type="number"
+              step="0.01"
+              leftIcon={<ArrowDownLeft className="h-4 w-4 text-sky-600" />}
+              {...register('cost_percentage', { valueAsNumber: true, min: 0, max: 100 })}
+              onChange={(e) => {
+                 const discount = e.target.valueAsNumber || 0;
+                 setValue('cost_percentage', discount);
+                 const mrp = getValues('mrp') || 0;
+                 setValue('cost_price', calculateCostPrice(mrp, discount));
+              }}
+              error={errors.cost_percentage?.message}
+            />
+
+            <Input
+              label={t('inventory.costPrice', 'Cost Price')}
+              type="number"
+              step="0.01"
+              leftIcon={<ArrowDownLeft className="h-4 w-4 text-sky-600" />}
+              {...register('cost_price', { valueAsNumber: true, min: 0 })}
+              onChange={(event) => {
+                const cp = event.target.valueAsNumber || 0;
+                setValue('cost_price', cp);
+                const mrp = getValues('mrp') || 0;
+                setValue('cost_percentage', calculateCostPercentage(mrp, cp));
+              }}
+              error={errors.cost_price?.message}
+            />
+          </>
+        )}
         
         <Input
           label={t('inventory.minStockAlert', 'Low Stock Alert Threshold')}

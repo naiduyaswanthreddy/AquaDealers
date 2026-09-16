@@ -320,7 +320,7 @@ const App: React.FC = () => {
             {/* Financials */}
             <Route path="/expenses"  element={<FeatureGate allowed={['expenses']}  title="Expenses"   description="You do not have access to expenses."><ExpensesPage /></FeatureGate>} />
             <Route path="/cashbook"  element={<FeatureGate allowed={['cashbook']}  title="Cash Book"  description="You do not have access to the cashbook."><CashBookPage /></FeatureGate>} />
-            <Route path="/profit-report"  element={<FeatureGate allowed={['dashboard']} title="Profit Report" description="You do not have access to profit reports."><ProfitReportPage /></FeatureGate>} />
+            <Route path="/profit-report"  element={<FeatureGate allowed={['dashboard']} title="Profit Report" description="You do not have access to profit reports."><FeatureGate allowed={['inventoryViewCostPrice']} title="Profit Report" description="You do not have access to cost/profit data."><ProfitReportPage /></FeatureGate></FeatureGate>} />
             <Route path="/sales-register" element={<FeatureGate allowed={['reports']} title="Sales Register" description="You do not have access to reports."><SalesRegisterPage /></FeatureGate>} />
             <Route path="/transactions" element={<FeatureGate allowed={['transactions']} title="Transactions" description="You do not have access to transactions."><TransactionsPage /></FeatureGate>} />
 

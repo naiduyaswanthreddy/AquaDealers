@@ -14,6 +14,8 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Badge, Button, EmptyState, Skeleton } from '@/components/ui';
 import { formatCurrency, formatDate, formatDateTime, formatQuantity } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
+import { useStaffStore } from '@/stores/staffStore';
+import { getStaffFeatureMode } from '@/lib/staffAccess';
 import { purchaseService } from '../services/purchaseService';
 
 const PurchaseDetailPage: React.FC = () => {
@@ -21,6 +23,8 @@ const PurchaseDetailPage: React.FC = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const canViewCostPrice = getStaffFeatureMode('inventoryViewCostPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
 
   const backTo = typeof location.state?.from === 'string' ? location.state.from : '/inventory';
 
@@ -104,12 +108,12 @@ const PurchaseDetailPage: React.FC = () => {
             icon: PackageCheck,
             tone: 'bg-emerald-100 text-emerald-600',
           },
-          {
+          ...(canViewCostPrice ? [{
             label: 'Cost / Unit',
             value: purchase.cost_price_per_unit ? formatCurrency(purchase.cost_price_per_unit) : 'N/A',
             icon: CircleDollarSign,
             tone: 'bg-amber-100 text-amber-600',
-          },
+          }] : []),
           {
             label: 'Total Amount',
             value: purchase.total_amount ? formatCurrency(purchase.total_amount) : 'N/A',
@@ -239,14 +243,16 @@ const PurchaseDetailPage: React.FC = () => {
                     {formatDate(linkedLotPurchaseDate)}
                   </div>
                 </div>
-                <div className="rounded-[20px] bg-white px-3 py-3">
-                  <div className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-400">
-                    Cost Price
+                {canViewCostPrice && (
+                  <div className="rounded-[20px] bg-white px-3 py-3">
+                    <div className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-400">
+                      Cost Price
+                    </div>
+                    <div className="mt-2 text-sm font-bold text-slate-900">
+                      {linkedLot.cost_price ? formatCurrency(linkedLot.cost_price) : 'N/A'}
+                    </div>
                   </div>
-                  <div className="mt-2 text-sm font-bold text-slate-900">
-                    {linkedLot.cost_price ? formatCurrency(linkedLot.cost_price) : 'N/A'}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           ) : (
