@@ -177,7 +177,7 @@ export const useAuthStore = create<AuthState>()(
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
             set({ session, isAuthenticated: true });
-            
+
             // If we already have the user from local storage, stop loading so app opens immediately
             if (get().user) {
               set({ isLoading: false });
@@ -188,6 +188,28 @@ export const useAuthStore = create<AuthState>()(
               set({ isLoading: false });
             });
             return;
+          }
+
+          // staffStore's own persisted state rehydrates asynchronously (its
+          // `persist` middleware reads localStorage via a promise chain), and
+          // this effect can otherwise run first — reading currentStaff as
+          // null even though a valid staff session is about to load a beat
+          // later. That race is what makes a page refresh boot a logged-in
+          // staff member back out: this call always runs, but wins or loses
+          // the race unpredictably, so it "sometimes" drops the session.
+          if (!useStaffStore.persist.hasHydrated()) {
+            await new Promise<void>((resolve) => {
+              const unsubscribe = useStaffStore.persist.onFinishHydration(() => {
+                unsubscribe();
+                resolve();
+              });
+              // onFinishHydration never fires if storage read/parse throws
+              // (corrupted JSON, storage blocked) — don't hang the app forever.
+              setTimeout(() => {
+                unsubscribe();
+                resolve();
+              }, 1000);
+            });
           }
 
           const staffState = useStaffStore.getState();

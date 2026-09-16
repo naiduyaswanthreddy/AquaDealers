@@ -148,7 +148,7 @@ const RouteFallback: React.FC = () => (
 );
 
 const App: React.FC = () => {
-  const { session, user, initialize, isLoading, onboardingComplete } = useAuthStore();
+  const { user, initialize, isLoading, isAuthenticated, onboardingComplete } = useAuthStore();
   const fetchPlanDefinitions = useSubscriptionStore(state => state.fetchPlanDefinitions);
   const currentStaff = useStaffStore((state) => state.currentStaff);
   const { i18n } = useTranslation();
@@ -230,7 +230,7 @@ const App: React.FC = () => {
               ════════════════════════════════════════════════ */}
 
           {/* Public Auth & Landing */}
-          <Route path="/"                element={!session ? <LandingPage /> : <Navigate to="/dashboard" replace />} />
+          <Route path="/"                element={!isAuthenticated ? <LandingPage /> : <Navigate to="/dashboard" replace />} />
           <Route path="/features"        element={<SeoLandingPage pageKey="features" />} />
           <Route path="/pricing"         element={<SeoLandingPage pageKey="pricing" />} />
           <Route path="/contact"         element={<SeoLandingPage pageKey="contact" />} />
@@ -242,9 +242,9 @@ const App: React.FC = () => {
           <Route path="/terms"            element={<TermsOfServicePage />} />
           <Route path="/privacy"          element={<PrivacyPolicyPage />} />
 
-          <Route path="/login"           element={!session ? <LoginPage /> : <Navigate to="/dashboard" replace />} />
-          <Route path="/register"        element={!session ? <RegisterPage /> : <Navigate to="/dashboard" replace />} />
-          <Route path="/forgot-password" element={!session ? <ForgotPasswordPage /> : <Navigate to="/dashboard" replace />} />
+          <Route path="/login"           element={!isAuthenticated ? <LoginPage /> : <Navigate to="/dashboard" replace />} />
+          <Route path="/register"        element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/dashboard" replace />} />
+          <Route path="/forgot-password" element={!isAuthenticated ? <ForgotPasswordPage /> : <Navigate to="/dashboard" replace />} />
 
           {/* Public farmer balance statement (tokenised, read-only, no login) */}
           <Route path="/f/:token" element={<FarmerStatementPage />} />
@@ -254,7 +254,7 @@ const App: React.FC = () => {
 
           {/* Onboarding */}
           <Route path="/onboarding" element={
-            !session ? <Navigate to="/login" replace /> :
+            !isAuthenticated ? <Navigate to="/login" replace /> :
             onboardingComplete ? <Navigate to="/" replace /> :
             <OnboardingPage />
           } />
