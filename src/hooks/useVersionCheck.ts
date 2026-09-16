@@ -17,14 +17,17 @@ export function useVersionCheck() {
 
         const data = await res.json();
         
-        // On first load, just record the current version
+        // `version` is package.json's semver (rarely bumped) — comparing it
+        // means this never noticed an ordinary deploy. `build` is the git
+        // commit count, so it changes on every single build.
+        // On first load, just record the current build.
         if (currentVersionRef.current === null) {
-          currentVersionRef.current = data.version;
+          currentVersionRef.current = data.build;
           return;
         }
 
-        // If version has changed
-        if (data.version !== currentVersionRef.current) {
+        // If the build has changed
+        if (data.build !== currentVersionRef.current) {
           if (data.forceUpdate) {
             console.log('Mandatory update detected. Reloading...');
             window.location.reload();
