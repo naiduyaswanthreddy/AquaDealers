@@ -181,6 +181,7 @@ const InventoryDetailPage: React.FC = () => {
   const updateLotPricing = useUpdateInventoryLotPricing();
   const currentStaff = useStaffStore((s) => s.currentStaff);
   const canEditPrice = getStaffFeatureMode('inventoryEditPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
+  const canViewCostPrice = getStaffFeatureMode('inventoryViewCostPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
 
   const [isQuickStatsPaused, setIsQuickStatsPaused] = useState(false);
   const quickStatsRef = useRef<HTMLDivElement>(null);
@@ -517,10 +518,12 @@ const InventoryDetailPage: React.FC = () => {
               <span className="text-white/70 text-[10px] sm:text-xs uppercase tracking-wider font-bold">Selling</span>
               <span className="text-white font-bold text-sm sm:text-base">₹{inventory.selling_price?.toLocaleString()} <span className="text-[10px] sm:text-xs font-semibold text-white/50 capitalize">/ {inventory.product.unit}</span></span>
             </div>
-            <div className="inline-flex flex-1 sm:flex-none items-center justify-between sm:justify-start gap-2 bg-white/10 px-2.5 sm:px-3.5 py-2 rounded-xl border border-white/10 backdrop-blur-sm whitespace-nowrap">
-              <span className="text-white/70 text-[10px] sm:text-xs uppercase tracking-wider font-bold">Cost</span>
-              <span className="text-white font-bold text-sm sm:text-base">₹{inventory.cost_price?.toLocaleString()} <span className="text-[10px] sm:text-xs font-semibold text-white/50 capitalize">/ {inventory.product.unit}</span></span>
-            </div>
+            {canViewCostPrice && (
+              <div className="inline-flex flex-1 sm:flex-none items-center justify-between sm:justify-start gap-2 bg-white/10 px-2.5 sm:px-3.5 py-2 rounded-xl border border-white/10 backdrop-blur-sm whitespace-nowrap">
+                <span className="text-white/70 text-[10px] sm:text-xs uppercase tracking-wider font-bold">Cost</span>
+                <span className="text-white font-bold text-sm sm:text-base">₹{inventory.cost_price?.toLocaleString()} <span className="text-[10px] sm:text-xs font-semibold text-white/50 capitalize">/ {inventory.product.unit}</span></span>
+              </div>
+            )}
           </div>
         }
         action={
@@ -765,13 +768,15 @@ const InventoryDetailPage: React.FC = () => {
                    <span className="text-[9px] font-bold text-emerald-600 mt-1 leading-tight">units</span>
                 </div>
                 {/* 2. Profit This Month */}
-                <div className="flex-none w-28 bg-[#F4F7FB] border border-[#E5EDF6] rounded-[18px] p-3.5 text-center flex flex-col items-center justify-center shadow-sm">
-                   <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-[11px] mb-2">₹</div>
-                   <span className="text-[10px] font-medium text-slate-500 mb-1 leading-tight">Profit This Mth</span>
-                   <span className="text-sm font-black text-blue-600 leading-none mt-auto">
-                     ₹{(((inventory.selling_price || 0) - (inventory.cost_price || 0)) * (selectedMonthData ? selectedMonthData.sold : 0)).toLocaleString()}
-                   </span>
-                </div>
+                {canViewCostPrice && (
+                  <div className="flex-none w-28 bg-[#F4F7FB] border border-[#E5EDF6] rounded-[18px] p-3.5 text-center flex flex-col items-center justify-center shadow-sm">
+                     <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-[11px] mb-2">₹</div>
+                     <span className="text-[10px] font-medium text-slate-500 mb-1 leading-tight">Profit This Mth</span>
+                     <span className="text-sm font-black text-blue-600 leading-none mt-auto">
+                       ₹{(((inventory.selling_price || 0) - (inventory.cost_price || 0)) * (selectedMonthData ? selectedMonthData.sold : 0)).toLocaleString()}
+                     </span>
+                  </div>
+                )}
                 {/* 3. Total Purchased */}
                 <div className="flex-none w-28 bg-[#FFF6EE] border border-[#FFE8D6] rounded-[18px] p-3.5 text-center flex flex-col items-center justify-center shadow-sm">
                    <TrendingDown className="w-5 h-5 text-[#E36B15] mb-2" />
