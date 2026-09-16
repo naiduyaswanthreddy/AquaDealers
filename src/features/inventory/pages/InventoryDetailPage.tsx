@@ -39,6 +39,8 @@ import StockAdjustmentModal from '../components/StockAdjustmentModal';
 import EditInventoryModal from '../components/EditInventoryModal';
 import { DeleteProductModal } from '../components/DeleteProductModal';
 import { useLoadMoreList } from '@/lib/useLoadMoreList';
+import { useStaffStore } from '@/stores/staffStore';
+import { getStaffFeatureMode } from '@/lib/staffAccess';
 import type { InventoryLot } from '@/types/database';
 import type { InventoryMovementDetail } from '../types';
 
@@ -177,6 +179,8 @@ const InventoryDetailPage: React.FC = () => {
     cost_percentage: '',
   });
   const updateLotPricing = useUpdateInventoryLotPricing();
+  const currentStaff = useStaffStore((s) => s.currentStaff);
+  const canEditPrice = getStaffFeatureMode('inventoryEditPrice', currentStaff?.permissions, !!currentStaff) === 'visible';
 
   const [isQuickStatsPaused, setIsQuickStatsPaused] = useState(false);
   const quickStatsRef = useRef<HTMLDivElement>(null);
@@ -496,14 +500,16 @@ const InventoryDetailPage: React.FC = () => {
         }
         onBack={() => navigate((location.state as { from?: string } | null)?.from || '/inventory')}
         topRightAction={
-          <button
-            type="button"
-            onClick={() => setIsEditInventoryOpen(true)}
-            className="sm:hidden flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white"
-            aria-label="Edit product prices"
-          >
-            <Pencil className="h-[1.1rem] w-[1.1rem]" />
-          </button>
+          canEditPrice ? (
+            <button
+              type="button"
+              onClick={() => setIsEditInventoryOpen(true)}
+              className="sm:hidden flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label="Edit product prices"
+            >
+              <Pencil className="h-[1.1rem] w-[1.1rem]" />
+            </button>
+          ) : null
         }
         description={
           <div className="mt-3 md:mt-1 flex items-center gap-2 sm:gap-3 text-sm font-medium w-full overflow-x-auto hide-scrollbar pb-1">
@@ -535,14 +541,16 @@ const InventoryDetailPage: React.FC = () => {
             >
               Add Stock
             </Button>
-            <Button
-              className="!hidden sm:!flex bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30 font-semibold h-12 rounded-xl"
-              fullWidth
-              onClick={() => setIsEditInventoryOpen(true)}
-              leftIcon={<Pencil className="h-5 w-5 opacity-80" />}
-            >
-              Edit
-            </Button>
+            {canEditPrice && (
+              <Button
+                className="!hidden sm:!flex bg-white/10 text-white border-white/20 hover:bg-white/20 hover:border-white/30 font-semibold h-12 rounded-xl"
+                fullWidth
+                onClick={() => setIsEditInventoryOpen(true)}
+                leftIcon={<Pencil className="h-5 w-5 opacity-80" />}
+              >
+                Edit
+              </Button>
+            )}
           </div>
         }
       />
@@ -1089,7 +1097,8 @@ const InventoryDetailPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => openLotEditor(lot as InventoryLot)}
-                              className="mt-2 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600 transition-colors hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
+                              disabled={!canEditPrice}
+                              className="mt-2 inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600 transition-colors hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               <Pencil className="h-3 w-3" />
                               Edit Lot
