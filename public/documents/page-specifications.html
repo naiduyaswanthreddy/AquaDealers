@@ -137,19 +137,22 @@
 <table>
   <thead><tr><th>Property</th><th>Value</th></tr></thead>
   <tbody>
-    <tr><td>Route</td><td><code>/farmers/:id/ledger</code></td></tr>
-    <tr><td>Access</td><td>Authenticated dealer or staff with <code>farmerList: "visible"</code></td></tr>
-    <tr><td>Data source</td><td>Paginated RPC with infinite scroll</td></tr>
+    <tr><td>Route</td><td><code>/farmers/:id</code> (one page, tabs are client-side state — no sub-routes per tab)</td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>farmerList</code> visible</td></tr>
+    <tr><td>Data source</td><td>Ledger tab: paginated <code>get_farmer_ledger_page</code> RPC with infinite scroll. Bills/Payments tabs: paginated direct table queries.</td></tr>
   </tbody>
 </table>
 </div>
 
 <h3>Tabs</h3>
 <ul>
-  <li><strong>Ledger</strong> — Chronological list of all transactions (bills, payments, returns, adjustments). Infinite scroll with paginated RPC. Each entry shows date, type, amount, running balance.</li>
-  <li><strong>Items</strong> — Products purchased by this farmer with quantities and totals.</li>
-  <li><strong>Discounts</strong> — Per-product discount rates configured for this farmer.</li>
+  <li><strong>Ledger</strong> — Chronological list of all transactions (bills, payments, returns, adjustments). Infinite scroll with paginated RPC. Each entry shows date, type, amount, running balance. Since 2026-09-17: clicking a return entry opens a read-only breakdown of its items and amount (see <a href="/documents/feature-specifications.html#returns">Returns</a>); bill entries navigate to Bill Details; payment entries are not clickable.</li>
+  <li><strong>Items</strong> — Products purchased by this farmer with quantities and totals, net of any returns (see <a href="/documents/feature-specifications.html#returns">Returns</a>).</li>
+  <li><strong>Bills</strong> — Paginated list of this farmer's bills. Since 2026-09-17: any bill with a return against it (either return flow) shows an orange "Return" badge next to its item list.</li>
+  <li><strong>Payments</strong> — Paginated list of payments received from this farmer.</li>
+  <li><strong>Details</strong> (mobile only, folds into the sidebar on desktop) — Contact/farm/financial info, edit access.</li>
 </ul>
+<p>Per-product discount rates (<code>FarmerProductDiscounts</code>) render as a standalone section near the top of the page, not as a tab — gated behind the <code>farmer_product_discounts</code> subscription feature and the dealer's own toggle for it.</p>
 
 <h3>Actions</h3>
 <ul>
@@ -162,8 +165,8 @@
 
 <h3>Layout</h3>
 <ul>
-  <li><strong>Desktop:</strong> Farmer summary card at top (name, phone, outstanding, credit limit). Tabs below with full-width table.</li>
-  <li><strong>Mobile:</strong> Farmer summary as compact header. Tabs as swipeable. Ledger entries as cards instead of table rows.</li>
+  <li><strong>Desktop:</strong> Farmer summary card at top (name, phone, outstanding, credit limit). Tabs below with full-width table; Details folds into a sidebar instead of its own tab.</li>
+  <li><strong>Mobile:</strong> Farmer summary as compact header. Tabs as swipeable. Ledger/Bills/Payments entries as cards instead of table rows.</li>
 </ul>
 
 <!-- ════════════════════════════════════════ -->
@@ -409,13 +412,14 @@
 <table>
   <thead><tr><th>Property</th><th>Value</th></tr></thead>
   <tbody>
-    <tr><td>Route</td><td><code>/bill-history</code></td></tr>
-    <tr><td>Access</td><td>Authenticated dealer or staff with <code>billHistory: "visible"</code></td></tr>
+    <tr><td>Route</td><td><code>/bills</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>billHistory</code> visible</td></tr>
   </tbody>
 </table>
 </div>
 
-<p>Searchable list of all bills. Search by bill number, farmer name. Filter by: date range, status (active, cancelled, edited), payment status (paid, partial, unpaid), branch. Sort by date, amount, farmer name. Pagination with server-side cursor. Each row: bill number, date, farmer, amount, paid, status badges.</p>
+<p>Searchable list of bills for the active branch (or all branches, in "All Branches" mode). Search by bill number or farmer name. Filters: date range, verified status (all/verified/unverified), payment status (all/paid/unpaid). Sort is fixed to newest-first (<code>created_at desc</code>); page size is a 10/25/50 selector with a "Load more" button (offset-based server pagination via <code>billingService.getBills()</code>, not a cursor). A "Show Items" toggle swaps the Type/Payment/Verified/Notification columns for an inline item list per row.</p>
+<p>Each row: bill date, bill number, farmer/customer name (with a branch badge and, since 2026-09-17, an orange <strong>Return</strong> badge if any return — bill-first or farmer-first — touched this bill), type (Estimate/Credit/Cash), payment status, verified status, WhatsApp notification status (if the WhatsApp add-on is on), and total amount. KPI cards above the table (desktop only) show total bills/amount/paid/pending for the selected range vs. the prior period.</p>
 
 <!-- ════════════════════════════════════════ -->
 <h2 id="bill-detail">15. Bill Detail</h2>
@@ -424,20 +428,21 @@
 <table>
   <thead><tr><th>Property</th><th>Value</th></tr></thead>
   <tbody>
-    <tr><td>Route</td><td><code>/billing/:id</code></td></tr>
-    <tr><td>Access</td><td>Authenticated dealer or staff with <code>billHistory: "visible"</code></td></tr>
+    <tr><td>Route</td><td><code>/bills/:id</code></td></tr>
+    <tr><td>Access</td><td>Authenticated dealer or staff with <code>billHistory</code> or <code>newBill</code> visible (there is no separate <code>returns</code> feature key — the Return action and <code>/returns</code> route are both gated by <code>billHistory</code>)</td></tr>
   </tbody>
 </table>
 </div>
 
 <h3>Display</h3>
 <p>Renders the bill using the configured invoice template (TemplateOne through TemplateFive). Shows: bill number, date, farmer details, line items with quantities/rates/amounts, subtotal, discounts, GST breakdown (if applicable), total, payment received, balance due, signature (if captured).</p>
+<p>If the bill has any returns against it (see <a href="/documents/feature-specifications.html#returns">Returns</a>): an orange <strong>"Return Filed · &#8377;X"</strong> badge appears next to the branch badge right under the bill number — click it to jump straight to the returns list further down the page, no scrolling blind. Any line item that was partially or fully returned shows the net remaining quantity with a small "N sold − M returned" note underneath it (summed across both return flows). A <strong>Returns on this bill</strong> card near the bottom of the page lists every return tied to this bill with its own returned items, amount, and date.</p>
 
 <h3>Actions</h3>
 <ul>
-  <li><strong>Edit</strong> — Opens <code>/billing/:id/edit</code>. Requires <code>billEditing</code> feature gate.</li>
+  <li><strong>Edit</strong> — Opens the inline <code>EditBillModal</code>. Gated on the Pro+ plan (<code>dealer.plan === 'pro_plus'</code>) or the <code>custom_templates</code> feature flag.</li>
   <li><strong>Cancel</strong> — Same-day only, unpaid only. Confirmation dialog. Calls <code>cancel_bill_v1</code> RPC.</li>
-  <li><strong>Return</strong> — Opens <code>/billing/:id/return</code>. Requires <code>returns</code> feature gate.</li>
+  <li><strong>Return</strong> — Navigates to <code>/returns</code> pre-filled with this bill's farmer and items (the farmer-first return flow; see <a href="/documents/feature-specifications.html#returns">Returns</a>).</li>
   <li><strong>Share via WhatsApp</strong> — Sends bill notification via authkey.io or opens wa.me link.</li>
   <li><strong>Download PDF</strong> — Renders bill to PDF via html2canvas (DOM &rarr; canvas &rarr; PNG &rarr; PDF).</li>
   <li><strong>Print</strong> — Opens browser print dialog with the invoice template.</li>

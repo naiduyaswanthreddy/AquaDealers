@@ -31,6 +31,9 @@ interface FarmerLedgerListProps {
     isFetchingMore: boolean;
     onLoadMore: () => void;
   };
+  // Opens a read-only breakdown of the return (items, amount, notes) — without
+  // this, a return row was previously not clickable at all.
+  onReturnClick?: (returnId: string) => void;
 }
 
 export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
@@ -39,6 +42,7 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
   backTo,
   headerComponent,
   serverPagination,
+  onReturnClick,
 }) => {
   const navigate = useNavigate();
   const pagedTransactions = useLoadMoreList(transactions, {
@@ -98,13 +102,19 @@ export const FarmerLedgerList: React.FC<FarmerLedgerListProps> = ({
               const subLabel = isPayment ? (tx.paymentMethod || tx.refNumber || 'Payment') : tx.refNumber;
               const isLast = index === txs.length - 1 && groupIndex === groupEntries.length - 1;
 
+              const isClickable = isReturn ? !!onReturnClick : !isPayment;
+
               return (
                 <React.Fragment key={tx.id}>
                   <button
                     type="button"
-                    onClick={isPayment || isReturn ? undefined : () => navigate(`/bills/${tx.id}`, backTo ? { state: { from: backTo } } : undefined)}
+                    onClick={
+                      isReturn ? (onReturnClick ? () => onReturnClick(tx.id) : undefined)
+                      : isPayment ? undefined
+                      : () => navigate(`/bills/${tx.id}`, backTo ? { state: { from: backTo } } : undefined)
+                    }
                     className={`group flex min-h-[80px] w-full items-center justify-between px-4 py-4 text-left transition-all active:scale-[0.99] focus-ring ${
-                      isPayment || isReturn ? 'cursor-default' : 'cursor-pointer hover:bg-slate-50/70'
+                      isClickable ? 'cursor-pointer hover:bg-slate-50/70' : 'cursor-default'
                     }`}
                   >
                     <div className="flex min-w-0 items-center gap-3">

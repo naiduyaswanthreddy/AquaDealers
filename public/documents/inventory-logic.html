@@ -106,6 +106,12 @@
   <p><strong>Consumption order:</strong> <code>expiry_date ASC, received_at ASC</code> &mdash; earliest expiry first, then earliest received.</p>
 </div>
 
+<div class="callout callout-info">
+  <strong>Special case: the <code>CUSTOMER-RETURN</code> lot.</strong> A farmer-first return (<code>create_farmer_return_v1</code> &mdash; see <a href="/documents/feature-specifications.html#returns">Returns</a>) isn't tied to the specific lot(s) the original sale drew from, so it can't restock those lots directly. Instead it puts the returned quantity into a synthetic lot with <code>batch_number = 'CUSTOMER-RETURN'</code>, <strong>one shared lot per product per branch</strong> &mdash; a second farmer-first return for the same product tops up that same lot's <code>quantity_received</code>/<code>remaining_quantity</code> rather than creating another one. It has no <code>stock_purchase_id</code> or <code>expiry_date</code>, and its <code>mrp</code>/<code>selling_price</code>/<code>medicine_discount_percentage</code> are seeded once, at creation, from the product's <code>inventory</code> row.
+  <br><br>
+  <strong>Fixed 2026-09-17:</strong> the migration that added rate-limit bypassing to <code>create_farmer_return_v1</code> (2026-08-17) accidentally rewrote it back to always <code>INSERT</code>ing a brand-new <code>CUSTOMER-RETURN</code> lot, losing the shared-lot reuse above (which <code>undo_transaction_v1</code> still assumed &mdash; it decrements the lot's quantities rather than deleting it). Every farmer-first return on a product with prior returns created a duplicate lot, splitting its stock across several rows, and none of them had <code>mrp</code>/<code>selling_price</code> set &mdash; so Billing's "Select Batch" picker showed the returned stock's quantity split up oddly and its MRP/Selling as &#8377;0. The shared-lot reuse and pricing seed are both restored; existing <code>CUSTOMER-RETURN</code> lots with no price were backfilled from their <code>inventory</code> row (existing duplicate lots from the affected window were left as-is rather than merged, to avoid corrupting their <code>inventory_movements</code>/undo history).
+</div>
+
 <h3 id="which-price-wins">Which Price Actually Gets Charged?</h3>
 
 <div class="callout callout-warn">
@@ -162,7 +168,8 @@
         <tr><td><code>bill_cancellation</code></td><td><span class="badge b-ok">+ increase</span></td><td>Stock returned from a cancelled bill</td></tr>
         <tr><td><code>bill_edit</code></td><td><span class="badge b-warn">&plusmn; either</span></td><td>Stock adjustment from editing a bill&rsquo;s quantities</td></tr>
         <tr><td><code>manual_adjustment</code></td><td><span class="badge b-warn">&plusmn; either</span></td><td>Manual stock correction by dealer</td></tr>
-        <tr><td><code>bill_return</code></td><td><span class="badge b-ok">+ increase</span></td><td>Stock returned by farmer</td></tr>
+        <tr><td><code>bill_return</code></td><td><span class="badge b-ok">+ increase</span></td><td>Stock returned by farmer, bill-first (restocks the original consumed lot)</td></tr>
+        <tr><td><code>farmer_return</code></td><td><span class="badge b-ok">+ increase</span></td><td>Stock returned by farmer, farmer-first (restocks the shared <code>CUSTOMER-RETURN</code> lot &mdash; see above)</td></tr>
         <tr><td><code>transfer_out</code></td><td><span class="badge b-err">&minus; decrease</span></td><td>Stock transferred to another branch</td></tr>
         <tr><td><code>transfer_in</code></td><td><span class="badge b-ok">+ increase</span></td><td>Stock received from another branch</td></tr>
       </tbody>
@@ -177,8 +184,8 @@
   <h4>How Lots Are Consumed During Billing</h4>
   <ol>
     <li>Bill is created via <code>create_bill_v2</code> RPC</li>
-    <li>For each bill item, <code>consume_inventory_lots</code> is called</li>
-    <li>Lots are fetched ordered by <code>expiry_date ASC, received_at ASC</code></li>
+    <li>For each bill item, the FIFO lot loop inside <code>create_bill_v2</code> runs directly (inlined, not a separate <code>consume_inventory_lots</code> call &mdash; that helper exists but isn't used by the current bill-creation path)</li>
+    <li>Lots are fetched ordered by <code>expiry_date ASC (nulls last), received_at ASC, created_at ASC</code></li>
     <li>Lots are deducted one by one until the requested quantity is fulfilled</li>
     <li>Each lot deduction creates a <code>bill_item_lot_allocations</code> record (lot_id, allocated_quantity)</li>
     <li>Each lot deduction creates an <code>inventory_movements</code> record</li>

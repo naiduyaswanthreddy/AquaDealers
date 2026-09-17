@@ -28,7 +28,7 @@ export const billingService = {
 
     let query = supabase
       .from('bills')
-      .select('*, bill_items(product_name_snapshot, quantity)', { count: 'exact' })
+      .select('*, bill_items(product_name_snapshot, quantity), bill_returns(id), bill_return_allocations(id)', { count: 'exact' })
       .eq('dealer_id', dealerId)
       .order('created_at', { ascending: false });
 
@@ -81,7 +81,7 @@ export const billingService = {
     if (error && hasVerifiedFilter && (error.code === '42703' || error.message?.includes('is_verified'))) {
       let fallback = supabase
         .from('bills')
-        .select('*, bill_items(product_name_snapshot, quantity)', { count: 'exact' })
+        .select('*, bill_items(product_name_snapshot, quantity), bill_returns(id), bill_return_allocations(id)', { count: 'exact' })
         .eq('dealer_id', dealerId)
         .order('created_at', { ascending: false });
 
@@ -119,7 +119,7 @@ export const billingService = {
   async getBillDetails(billId: string) {
     const { data, error } = await supabase
       .from('bills')
-      .select('*, bill_items(*, products(unit), bill_return_allocations(quantity)), bill_signatures(*), farmers(*)')
+      .select('*, bill_items(*, products(unit), bill_return_allocations(quantity), bill_return_items(quantity)), bill_signatures(*), farmers(*)')
       .eq('id', billId)
       .single();
 

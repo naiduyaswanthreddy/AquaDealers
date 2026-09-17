@@ -31,6 +31,7 @@ export const generateFarmerStatementPdfBlob = async (
     borderGray: [226, 232, 240], // slate-200
     bgRed: [254, 242, 242], // red-50
     borderRed: [254, 202, 202], // red-200
+    amber: [180, 83, 9], // amber-700 — returns, distinct from green payments / red bills
   };
 
   // Helper for text formatting
@@ -190,7 +191,7 @@ export const generateFarmerStatementPdfBlob = async (
 
   transactions.forEach((tx: any, index: number) => {
     let linesRequired = 2; // basic row
-    if ((tx.type === 'bill' || tx.type === 'adjustment') && tx.items) {
+    if ((tx.type === 'bill' || tx.type === 'adjustment' || tx.type === 'return') && tx.items) {
       linesRequired += tx.items.length;
     }
     if (tx.type === 'payment' && tx.method) {
@@ -226,9 +227,12 @@ export const generateFarmerStatementPdfBlob = async (
     }
     currentX += cols[2].width;
 
-    // PAID (-)
+    // PAID (-) — returns reduce the balance the same way a payment does, so they're
+    // shown in this column too (in amber, to stay visually distinct from a real payment).
     if (tx.type === 'payment') {
        addText(safeCurrency(tx.amount), currentX + cols[3].width, yPos, 9, colors.green, true, 'right');
+    } else if (tx.type === 'return') {
+       addText(safeCurrency(tx.amount), currentX + cols[3].width, yPos, 9, colors.amber, true, 'right');
     } else {
        addText('N/A', currentX + cols[3].width, yPos, 9, colors.grayText, false, 'right');
     }
@@ -240,7 +244,7 @@ export const generateFarmerStatementPdfBlob = async (
     // Details below REF
     let detailY = yPos + 5;
     
-    if ((tx.type === 'bill' || tx.type === 'adjustment') && tx.items && tx.items.length > 0) {
+    if ((tx.type === 'bill' || tx.type === 'adjustment' || tx.type === 'return') && tx.items && tx.items.length > 0) {
        tx.items.forEach((item: any) => {
          addText(item.product_name_snapshot, detailsX, detailY, 8, colors.grayText);
          addText(`(${item.quantity} x ${safeCurrency(item.unit_price).replace('Rs ', '')})`, detailsX + 30, detailY, 8, colors.grayText);

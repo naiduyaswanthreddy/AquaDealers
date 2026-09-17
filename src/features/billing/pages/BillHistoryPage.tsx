@@ -401,7 +401,9 @@ const BillHistoryPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {pagedBills.visibleItems.map((bill) => (
+                {pagedBills.visibleItems.map((bill) => {
+                  const hasReturn = ((bill as any).bill_returns?.length ?? 0) > 0 || ((bill as any).bill_return_allocations?.length ?? 0) > 0;
+                  return (
                   <tr
                     key={bill.id}
                     className="border-b border-slate-100 last:border-0 hover:bg-blue-50/40 transition-colors cursor-pointer"
@@ -415,11 +417,18 @@ const BillHistoryPage: React.FC = () => {
                       <span className="font-semibold text-slate-900 truncate block">
                         {bill.farmer_name_snapshot || t('billing.walkInCustomer', 'Walk-in Customer')}
                       </span>
-                      {(bill as any).branch_name_snapshot && (
-                        <span className="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-sky-700 ring-1 ring-sky-200 mt-0.5">
-                          {(bill as any).branch_name_snapshot}
-                        </span>
-                      )}
+                      <span className="flex flex-wrap items-center gap-1 mt-0.5">
+                        {(bill as any).branch_name_snapshot && (
+                          <span className="inline-flex items-center rounded bg-sky-50 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-sky-700 ring-1 ring-sky-200">
+                            {(bill as any).branch_name_snapshot}
+                          </span>
+                        )}
+                        {hasReturn && (
+                          <span className="inline-flex items-center rounded bg-orange-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-orange-800 ring-1 ring-orange-300">
+                            Return
+                          </span>
+                        )}
+                      </span>
                     </td>
                     {showItems ? (
                       <td className="px-4 py-3 text-sm text-slate-600">
@@ -492,7 +501,8 @@ const BillHistoryPage: React.FC = () => {
                       {formatCurrency(bill.total)}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -504,6 +514,7 @@ const BillHistoryPage: React.FC = () => {
               const day = billDate.getDate();
               const month = billDate.toLocaleDateString('en-US', { month: 'short' });
               const isLast = index === pagedBills.visibleItems.length - 1;
+              const hasReturn = ((bill as any).bill_returns?.length ?? 0) > 0 || ((bill as any).bill_return_allocations?.length ?? 0) > 0;
 
               return (
                 <React.Fragment key={bill.id}>
@@ -528,6 +539,11 @@ const BillHistoryPage: React.FC = () => {
                           {bill.type === 'adjustment' && (
                             <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
                               Rate Adjustment
+                            </span>
+                          )}
+                          {hasReturn && (
+                            <span className="inline-flex items-center rounded-md bg-orange-100 px-2 py-1 text-xs font-bold text-orange-800 ring-1 ring-inset ring-orange-300">
+                              Return
                             </span>
                           )}
                         </div>

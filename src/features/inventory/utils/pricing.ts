@@ -31,6 +31,19 @@ export const pickNextSellingLot = (lots: InventoryLot[]): InventoryLot | null =>
 export const getNextSellingLot = (item: InventoryItem): InventoryLot | null =>
   pickNextSellingLot(item.inventory_lots || []);
 
+// Given FIFO-sorted lots (oldest first, see sortLotsFifo), returns the oldest one
+// that isn't already fully claimed by what's in the cart. Null if every lot is
+// already at capacity in the cart.
+export const pickLotWithCapacity = (
+  lots: InventoryLot[],
+  cartQtyForLot: (lotId: string) => number
+): InventoryLot | null => {
+  for (const lot of lots) {
+    if (cartQtyForLot(lot.id) < lot.remaining_quantity) return lot;
+  }
+  return null;
+};
+
 export const getInventoryBasePrice = (item: InventoryItem) => {
   const lot = getNextSellingLot(item);
   if (lot) return Number(lot.mrp || lot.selling_price || 0);

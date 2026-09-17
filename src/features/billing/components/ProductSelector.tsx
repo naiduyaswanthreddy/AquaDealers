@@ -17,7 +17,7 @@ import { useFarmers, useFarmerProductDiscounts } from '@/features/farmers/hooks/
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { Banknote, QrCode, CreditCard } from 'lucide-react';
-import { getLotsWithStock } from '@/features/inventory/utils/pricing';
+import { getLotsWithStock, pickLotWithCapacity } from '@/features/inventory/utils/pricing';
 
 const getBadgeForLot = (lot: any, allLots: any[]) => {
   if (!allLots || allLots.length < 2) return null;
@@ -497,20 +497,9 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
     setTimeout(() => setJustAdded(null), 300);
 
     const lots = getLotsWithStock(item);
-    let targetLot = lots.length > 0 ? lots[lots.length - 1] : null;
-
-    if (lots.length > 0) {
-      // Find the oldest lot that still has available capacity
-      // lots is newest first, so iterate from end to start (oldest to newest)
-      for (let i = lots.length - 1; i >= 0; i--) {
-        const l = lots[i];
-        const inCartQty = cartItemsForProduct.find((c) => c.lot_id === l.id)?.quantity || 0;
-        if (inCartQty < l.remaining_quantity) {
-          targetLot = l;
-          break;
-        }
-      }
-    }
+    const targetLot =
+      pickLotWithCapacity(lots, (lotId) => cartItemsForProduct.find((c) => c.lot_id === lotId)?.quantity || 0) ??
+      (lots.length > 0 ? lots[0] : null);
 
     const maxQty = item.quantity_in_stock;
 
@@ -570,10 +559,10 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
 
   const ProductCard = ({ item }: { item: InventoryItem }) => {
     const lots = getLotsWithStock(item);
-    const newestLot = lots.length > 0 ? lots[0] : null;
-    const badge = newestLot ? getBadgeForLot(newestLot, lots) : null;
+    const oldestLot = lots.length > 0 ? lots[0] : null;
+    const badge = oldestLot ? getBadgeForLot(oldestLot, lots) : null;
     
-    const price = newestLot ? (newestLot.selling_price || newestLot.mrp) : (item.selling_price || item.product.default_price || 0);
+    const price = oldestLot ? (oldestLot.selling_price || oldestLot.mrp) : (item.selling_price || item.product.default_price || 0);
     const outOfStock = item.quantity_in_stock <= 0;
     
     // Sum all quantities of this product in cart
@@ -629,11 +618,11 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
 
   const GridCard = ({ item }: { item: InventoryItem }) => {
     const lots = getLotsWithStock(item);
-    const newestLot = lots.length > 0 ? lots[0] : null;
-    const badge = newestLot ? getBadgeForLot(newestLot, lots) : null;
+    const oldestLot = lots.length > 0 ? lots[0] : null;
+    const badge = oldestLot ? getBadgeForLot(oldestLot, lots) : null;
     
-    // Grid card should show newest lot's price usually, or base price
-    const price = newestLot ? (newestLot.selling_price || newestLot.mrp) : (item.selling_price || item.product.default_price || 0);
+    // Show the price of the next-to-sell (oldest, FIFO) lot — matches what handleAdd will actually charge.
+    const price = oldestLot ? (oldestLot.selling_price || oldestLot.mrp) : (item.selling_price || item.product.default_price || 0);
     const outOfStock = item.quantity_in_stock <= 0;
     
     // Sum all quantities of this product in cart
@@ -768,9 +757,9 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
               }
 
               const lots = getLotsWithStock(item);
-              const newestLot = lots.length > 0 ? lots[0] : null;
-              const badge = newestLot ? getBadgeForLot(newestLot, lots) : null;
-              const price = newestLot ? (newestLot.selling_price || newestLot.mrp) : (item.selling_price || item.product.default_price || 0);
+              const oldestLot = lots.length > 0 ? lots[0] : null;
+              const badge = oldestLot ? getBadgeForLot(oldestLot, lots) : null;
+              const price = oldestLot ? (oldestLot.selling_price || oldestLot.mrp) : (item.selling_price || item.product.default_price || 0);
               const cartQty = items.filter((cartItem: any) => cartItem.inventory_id === item.id).reduce((sum: number, c: any) => sum + c.quantity, 0);
 
               return (
@@ -927,14 +916,24 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
                       </div>
                       <div className="justify-self-center">
                         {isEditingList ? (
-                          <button
-                            type="button"
-                            onClick={() => handleEditItem(item)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/20"
-                            aria-label="Edit item"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleEditItem(item)}
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/20"
+                              aria-label="Edit item"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeItem(item.inventory_id, item.lot_id)}
+                              className="flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-red-500 transition-colors hover:bg-red-100"
+                              aria-label="Remove item"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         ) : (
                           <div className="billing-qty-control billing-qty-control--sm scale-[0.85] sm:scale-100 origin-center">
                             <button
@@ -1116,7 +1115,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
                    {items.map((item, index) => {
                      const unitPrice = Number((item.base_unit_price * (1 - item.discount_percentage / 100)).toFixed(2));
                      return (
-                        <div key={item.inventory_id} className="grid grid-cols-none gap-2 items-center group px-2 py-2 border-b border-dashed border-slate-200 last:border-0 hover:bg-slate-50 rounded-lg" style={{ gridTemplateColumns: '1.5rem minmax(0,1fr) 4.25rem 6rem 4.75rem 3.5rem 5.25rem 1.5rem' }}>
+                        <div key={item.inventory_id} className="grid grid-cols-none gap-2 items-center group px-2 py-2 border-b border-dashed border-slate-200 last:border-0 hover:bg-slate-50 rounded-lg cursor-pointer" style={{ gridTemplateColumns: '1.5rem minmax(0,1fr) 4.25rem 6rem 4.75rem 3.5rem 5.25rem 1.5rem' }} onClick={() => handleEditItem(item)}>
                          <div className="text-[10px] font-bold text-slate-400 tabular-nums">{index + 1}</div>
                          <div className="flex items-center gap-3 min-w-0">
                            <div className="min-w-0">
@@ -1127,7 +1126,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
                          <div className="text-right text-sm font-bold text-slate-600">
                            {formatCurrency(item.mrp || 0)}
                          </div>
-                         <div className="flex justify-center items-center group/edit cursor-pointer" onClick={() => handleEditItem(item)}>
+                         <div className="flex justify-center items-center group/edit">
                             {item.product_type === 'medicine' ? (
                               <div className="flex items-center text-[11px] bg-slate-50 border border-slate-200 rounded px-1.5 py-1 hover:border-primary transition-colors">
                                 <span className={item.discount_percentage === (item.default_discount_percentage || 0) ? "text-emerald-700 font-black" : "text-slate-500 font-bold"}>
@@ -1152,7 +1151,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
                               <span className="text-slate-300">-</span>
                             )}
                           </div>
-                          <div className="flex justify-end">
+                          <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
                              <RateInput
                                item={item}
                                unitPrice={unitPrice}
@@ -1160,16 +1159,16 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({ onNext, onSucc
                                onPrice={updateItemPrice}
                              />
                            </div>
-                          <div className="flex justify-center">
-                            <QuantityInput 
-                              item={item} 
-                              onChange={updateQuantity} 
+                          <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+                            <QuantityInput
+                              item={item}
+                              onChange={updateQuantity}
                             />
                           </div>
-                          <div className="flex justify-end">
+                          <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
                             <AmountInput item={item} onDiscount={updateItemDiscount} onPrice={updateItemPrice} />
                           </div>
-                         <div className="flex items-center justify-end">
+                         <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
                             <button onClick={() => removeItem(item.inventory_id, item.lot_id)} className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-all"><Trash2 className="w-4 h-4" /></button>
                          </div>
                        </div>

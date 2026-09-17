@@ -43,10 +43,10 @@
     <tbody>
       <tr>
         <td><code>create_bill_v2</code></td>
-        <td>Atomic bill creation with FIFO lot allocation</td>
-        <td>farmer_id, items[], payment_type, amount_paid, branch_id, client_ref</td>
+        <td>Atomic bill creation with FIFO lot allocation, idempotent on idempotency_key</td>
+        <td>farmer_id, items[], payment_type, amount_paid, branch_id, idempotency_key</td>
         <td><span class="badge b-pri">dealer/staff</span></td>
-        <td>Bill record with bill_number</td>
+        <td>Bill record with bill_number (existing bill if idempotency_key already used)</td>
       </tr>
       <tr>
         <td><code>create_bill_offline_sync</code></td>

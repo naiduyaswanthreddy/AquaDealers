@@ -7,6 +7,7 @@ import {
   getInventoryDisplayPrice,
   getLotsWithStock,
   getNextSellingLot,
+  pickLotWithCapacity,
 } from './pricing';
 
 const baseLot = (overrides: Partial<InventoryLot>): InventoryLot =>
@@ -136,6 +137,26 @@ describe('getInventoryBasePrice / getInventoryDisplayPrice', () => {
       inventory_lots: [baseLot({ remaining_quantity: 0, selling_price: 1200 })],
     });
     expect(getInventoryDisplayPrice(item)).toBe(900);
+  });
+});
+
+describe('pickLotWithCapacity', () => {
+  it('picks the oldest (first) lot when nothing is in the cart yet', () => {
+    const lots = [baseLot({ id: 'oldest' }), baseLot({ id: 'newest' })];
+    expect(pickLotWithCapacity(lots, () => 0)?.id).toBe('oldest');
+  });
+
+  it('moves to the next-oldest lot once the oldest is fully claimed by the cart', () => {
+    const lots = [
+      baseLot({ id: 'oldest', remaining_quantity: 5 }),
+      baseLot({ id: 'newest', remaining_quantity: 5 }),
+    ];
+    expect(pickLotWithCapacity(lots, (id) => (id === 'oldest' ? 5 : 0))?.id).toBe('newest');
+  });
+
+  it('returns null when every lot is already fully claimed by the cart', () => {
+    const lots = [baseLot({ id: 'a', remaining_quantity: 3 })];
+    expect(pickLotWithCapacity(lots, () => 3)).toBeNull();
   });
 });
 

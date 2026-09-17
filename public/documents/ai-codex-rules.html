@@ -125,12 +125,12 @@
 
 <div class="card">
 <h4>Bill Creation Flow</h4>
-<p>User selects products &rarr; <code>useCheckout</code> builds payload &rarr; <code>supabase.rpc('create_bill_v2', payload)</code> &rarr; RPC atomically: validates stock, consumes FIFO lots, creates bill + items, allocates payment, updates <code>farmer.total_due</code> via trigger, logs transaction event &rarr; React Query cache invalidated &rarr; PDF generated client-side &rarr; optional WhatsApp notification.</p>
+<p>User selects products &rarr; <code>useCheckout</code> builds payload (incl. a fresh <code>idempotency_key</code> per submit attempt) &rarr; <code>supabase.rpc('create_bill_v2', payload)</code> &rarr; RPC checks <code>(dealer_id, idempotency_key)</code> first and returns the existing bill if already present, otherwise atomically: validates stock, consumes FIFO lots, creates bill + items, allocates payment, updates <code>farmer.total_due</code> via trigger, logs transaction event &rarr; React Query cache invalidated &rarr; PDF generated client-side &rarr; optional WhatsApp notification.</p>
 </div>
 
 <div class="card">
 <h4>Offline Sync Flow</h4>
-<p>Bill created offline with <code>client_ref</code> UUID &rarr; stored in IndexedDB via React Query persistence &rarr; on reconnect, <code>create_bill_v2</code> called with same <code>client_ref</code> &rarr; RPC checks for existing bill with that <code>client_ref</code> &rarr; returns existing if found (idempotent), creates new if not.</p>
+<p>Bill queued offline gets its own <code>client_ref</code> UUID (minted when it's queued, <strong>not</strong> reused from any earlier online attempt) &rarr; stored in IndexedDB &rarr; on reconnect, <code>create_bill_offline_sync(payload, client_ref)</code> is called &rarr; it checks for an existing bill with that <code>client_ref</code> first and returns it if found, otherwise calls <code>create_bill_v2(payload)</code>, which does its own dedupe by <code>idempotency_key</code> (see above) before inserting, then stamps the new <code>client_ref</code> onto whichever bill it returned. This two-layer check is what prevents a duplicate bill when an online submit actually committed but its response was lost (see <code>20260917000001_bill_v2_idempotency_key.sql</code> / <a href="/documents/glossary.html">Glossary: idempotency_key</a>) &mdash; <code>client_ref</code> alone can't catch that case because the retry always mints a new one.</p>
 </div>
 
 <div class="card">

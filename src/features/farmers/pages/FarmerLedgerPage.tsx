@@ -1,8 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { useFarmer, useFarmerBillsPage, useFarmerPaymentsPage, useFarmerTransactions, useFarmerLedgerPage, useFarmerStatement } from '../hooks/useFarmerLedger';
-import { Skeleton, Button, DateRangeFilter, FarmerAvatar } from '@/components/ui';
+import { getFarmerReturnDetail } from '@/features/billing/services/billReturnsService';
+import { Skeleton, Button, DateRangeFilter, FarmerAvatar, Modal } from '@/components/ui';
 import { ListLoadMore } from '@/components/ui/ListLoadMore';
 import CollectPaymentModal from '../components/CollectPaymentModal';
 import BalanceStatementModal from '../components/BalanceStatementModal';
@@ -56,6 +58,12 @@ export const FarmerLedgerPage: React.FC = () => {
   const [isCollectModalOpen, setIsCollectModalOpen] = useState(false);
   const [collectPreset, setCollectPreset] = useState<FarmerItemBill | null>(null);
   const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
+  const [selectedReturnId, setSelectedReturnId] = useState<string | null>(null);
+  const { data: selectedReturn, isLoading: isLoadingReturn } = useQuery({
+    queryKey: ['farmer-return-detail', selectedReturnId],
+    queryFn: () => getFarmerReturnDetail(selectedReturnId!),
+    enabled: !!selectedReturnId,
+  });
   const { data: allTimeStatement } = useFarmerStatement(id || '', '2000-01-01', new Date().toISOString().slice(0, 10));
   const [activeTab, setActiveTab] = useState<TabType>('ledger');
   const [startDate, setStartDate] = useState(() => {
@@ -287,13 +295,20 @@ export const FarmerLedgerPage: React.FC = () => {
                   </div>
 
                   <div className="min-w-0">
-                    {bill.items.length ? (
-                      <div className="truncate text-[0.95rem] font-bold tracking-tight text-slate-900">
-                        {bill.items.map(i => i.product_name).join(', ')}
-                      </div>
-                    ) : (
-                      <div className="truncate text-[0.95rem] font-bold tracking-tight text-slate-900">{bill.refNumber}</div>
-                    )}
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      {bill.items.length ? (
+                        <div className="truncate text-[0.95rem] font-bold tracking-tight text-slate-900">
+                          {bill.items.map(i => i.product_name).join(', ')}
+                        </div>
+                      ) : (
+                        <div className="truncate text-[0.95rem] font-bold tracking-tight text-slate-900">{bill.refNumber}</div>
+                      )}
+                      {bill.hasReturn && (
+                        <span className="inline-flex shrink-0 items-center rounded bg-orange-100 px-1.5 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-orange-800 ring-1 ring-orange-300">
+                          Return
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-0.5 flex flex-wrap gap-x-2 text-[0.78rem] font-medium text-slate-500">
                       {bill.items.length ? (
                         bill.items.map(i => (
@@ -531,6 +546,7 @@ export const FarmerLedgerPage: React.FC = () => {
                   isLoading={ledgerQuery.isLoading}
                   backTo={`/farmers/${farmer.id}`}
                   headerComponent={renderDateFilter()}
+                  onReturnClick={setSelectedReturnId}
                   serverPagination={{
                     total: pagedLedgerTotal,
                     hasMore: !!ledgerQuery.hasNextPage,
@@ -622,6 +638,48 @@ export const FarmerLedgerPage: React.FC = () => {
           farmerId={farmer.id}
         />
       )}
+      <Modal
+        isOpen={!!selectedReturnId}
+        onClose={() => setSelectedReturnId(null)}
+        title={selectedReturn?.returnNumber || 'Return details'}
+        contentClassName="max-w-xl"
+      >
+        {isLoadingReturn ? (
+          <Skeleton className="h-48 w-full rounded-xl" />
+        ) : selectedReturn ? (
+          <div className="grid gap-4 text-sm">
+            <div className="rounded-xl bg-orange-50 p-3 text-orange-950">
+              <div className="font-black">Returned on {formatDate(selectedReturn.returnDate)}</div>
+              {selectedReturn.startDate && selectedReturn.endDate && (
+                <div className="mt-1 text-xs">Bills from {formatDate(selectedReturn.startDate)} to {formatDate(selectedReturn.endDate)}</div>
+              )}
+            </div>
+            <div className="rounded-xl border border-slate-200">
+              <div className="grid grid-cols-[1fr_5rem_6rem] gap-2 bg-slate-50 px-3 py-2 text-[10px] font-black uppercase text-slate-500">
+                <span>Returned item</span><span className="text-right">Qty</span><span className="text-right">Price</span>
+              </div>
+              {selectedReturn.items.map((item, idx) => (
+                <div key={`${item.product_id}-${idx}`} className="grid grid-cols-[1fr_5rem_6rem] gap-2 border-t border-slate-100 px-3 py-2">
+                  <span className="font-semibold text-slate-800">{item.name}</span>
+                  <span className="text-right">{item.quantity}</span>
+                  <span className="text-right">{formatCurrency(item.unmatched_unit_price)}</span>
+                </div>
+              ))}
+            </div>
+            {selectedReturn.notes && (
+              <div className="rounded-xl border border-slate-200 p-3">
+                <div className="text-xs font-black uppercase text-slate-500">Note</div>
+                <div className="mt-1 text-slate-700">{selectedReturn.notes}</div>
+              </div>
+            )}
+            <div className="flex justify-between rounded-xl bg-slate-900 p-3 font-black text-white">
+              <span>Total returned value</span><span>{formatCurrency(selectedReturn.totalAmount)}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-slate-500">Return details are unavailable.</div>
+        )}
+      </Modal>
       </PageShell>
   );
 };

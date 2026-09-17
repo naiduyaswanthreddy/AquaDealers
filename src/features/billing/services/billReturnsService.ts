@@ -175,13 +175,19 @@ export async function replaceFarmerReturn(params: {
 }
 
 export async function getFarmerReturnDetail(returnId: string): Promise<FarmerReturnDetail> {
-  const [{ data: returnRow, error: returnError }, { data: lines, error: linesError }, { data: event, error: eventError }] = await Promise.all([
+  // farmer_return_lines only has rows for the farmer-first flow (create_farmer_return_v1).
+  // A bill-first return (create_bill_return) has zero rows there — its items live in
+  // bill_return_items instead — so both are fetched and merged, otherwise a bill-first
+  // return silently renders with an empty item list.
+  const [{ data: returnRow, error: returnError }, { data: lines, error: linesError }, { data: billFirstItems, error: billFirstError }, { data: event, error: eventError }] = await Promise.all([
     supabase.from('bill_returns').select('id, farmer_id, branch_id, return_number, return_date, source_bill_start_date, source_bill_end_date, notes, settlement_method, total_amount, farmers(name)').eq('id', returnId).single(),
     supabase.from('farmer_return_lines').select('product_id, product_name_snapshot, quantity, unmatched_unit_price').eq('return_id', returnId).order('created_at'),
+    supabase.from('bill_return_items').select('product_id, product_name_snapshot, quantity, unit_price').eq('return_id', returnId).order('created_at'),
     supabase.from('transaction_events').select('id').eq('source_type', 'bill_return').eq('source_id', returnId).eq('status', 'active').maybeSingle(),
   ]);
   if (returnError) throw returnError;
   if (linesError) throw linesError;
+  if (billFirstError) throw billFirstError;
   if (eventError) throw eventError;
 
   return {
@@ -197,12 +203,20 @@ export async function getFarmerReturnDetail(returnId: string): Promise<FarmerRet
     notes: returnRow.notes,
     settlementMethod: returnRow.settlement_method === 'cash_refund' ? 'cash_refund' : 'farmer_credit',
     totalAmount: Number(returnRow.total_amount || 0),
-    items: (lines || []).map((line) => ({
-      product_id: line.product_id,
-      name: line.product_name_snapshot || 'Product',
-      quantity: Number(line.quantity || 0),
-      unmatched_unit_price: Number(line.unmatched_unit_price || 0),
-    })),
+    items: [
+      ...(lines || []).map((line) => ({
+        product_id: line.product_id,
+        name: line.product_name_snapshot || 'Product',
+        quantity: Number(line.quantity || 0),
+        unmatched_unit_price: Number(line.unmatched_unit_price || 0),
+      })),
+      ...(billFirstItems || []).map((item) => ({
+        product_id: item.product_id,
+        name: item.product_name_snapshot || 'Product',
+        quantity: Number(item.quantity || 0),
+        unmatched_unit_price: Number(item.unit_price || 0),
+      })),
+    ],
   };
 }
 

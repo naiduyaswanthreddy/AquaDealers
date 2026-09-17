@@ -343,6 +343,7 @@ export interface FarmerBillRow {
   amount: number;
   createdAt: string;
   items: { product_name: string; quantity: number }[];
+  hasReturn: boolean;
 }
 
 export interface FarmerPaymentRow {
@@ -366,7 +367,7 @@ export async function getFarmerBillsPage(params: {
 
   let query = supabase
     .from('bills')
-    .select('id, bill_number, bill_date, total, created_at, is_estimate, bill_items(product_name_snapshot, quantity)', { count: 'exact' })
+    .select('id, bill_number, bill_date, total, created_at, is_estimate, bill_items(product_name_snapshot, quantity), bill_returns(id), bill_return_allocations(id)', { count: 'exact' })
     .eq('dealer_id', params.dealerId)
     .eq('farmer_id', params.farmerId)
     .neq('status', 'cancelled');
@@ -389,6 +390,7 @@ export async function getFarmerBillsPage(params: {
       amount: Number(bill.total),
       createdAt: bill.created_at,
       items: ((bill as any).bill_items ?? []).map((i: any) => ({ product_name: i.product_name_snapshot, quantity: i.quantity })),
+      hasReturn: ((bill as any).bill_returns?.length ?? 0) > 0 || ((bill as any).bill_return_allocations?.length ?? 0) > 0,
     })),
     total: count || 0,
     limit: params.limit,
@@ -486,6 +488,33 @@ export async function getFarmerStatement(
     .eq('farmer_id', farmerId);
   if (returnsErr) throw returnsErr;
 
+  // Return line items live in one of two tables depending on which flow created
+  // the return (bill-first vs farmer-first) — see supabase/migrations/20260717000006
+  // and 20260721000000. Neither carries a clean "unit_price" for farmer-first lines
+  // (they can blend a matched bill price with a dealer-entered unmatched price), so
+  // we derive a display-only average from total_amount/quantity for those.
+  const returnItemsByReturnId = new Map<string, { product_name_snapshot: string; quantity: number; unit_price: number }[]>();
+  const returnIds = (returns ?? []).map((r) => r.id);
+  if (returnIds.length > 0) {
+    const [{ data: billFirstItems, error: biErr }, { data: farmerFirstLines, error: frErr }] = await Promise.all([
+      supabase.from('bill_return_items').select('return_id, product_name_snapshot, quantity, unit_price').in('return_id', returnIds),
+      supabase.from('farmer_return_lines').select('return_id, product_name_snapshot, quantity, total_amount').in('return_id', returnIds),
+    ]);
+    if (biErr) throw biErr;
+    if (frErr) throw frErr;
+    (billFirstItems ?? []).forEach((row) => {
+      const list = returnItemsByReturnId.get(row.return_id) ?? [];
+      list.push({ product_name_snapshot: row.product_name_snapshot || 'Product', quantity: Number(row.quantity), unit_price: Number(row.unit_price) });
+      returnItemsByReturnId.set(row.return_id, list);
+    });
+    (farmerFirstLines ?? []).forEach((row) => {
+      const quantity = Number(row.quantity) || 0;
+      const list = returnItemsByReturnId.get(row.return_id) ?? [];
+      list.push({ product_name_snapshot: row.product_name_snapshot || 'Product', quantity, unit_price: quantity > 0 ? Number(row.total_amount) / quantity : 0 });
+      returnItemsByReturnId.set(row.return_id, list);
+    });
+  }
+
   // 2. Separate into "before start" and "in range"
   // Use business date strings (YYYY-MM-DD) for comparison — avoids Date constructor
   // timezone issues and correctly handles backdated entries where created_at differs
@@ -549,6 +578,7 @@ export async function getFarmerStatement(
         amount: Number(farmerReturn.total_amount),
         createdAt: farmerReturn.created_at,
         branchName: farmerReturn.branch_name_snapshot,
+        items: returnItemsByReturnId.get(farmerReturn.id) ?? [],
       });
       totalReturns += Number(farmerReturn.total_amount);
     }

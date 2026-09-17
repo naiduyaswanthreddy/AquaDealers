@@ -227,10 +227,22 @@ const BillDetailsPage: React.FC = () => {
         eyebrow={t('billing.invoiceDetails', 'Invoice Details')}
         title={bill.bill_number}
         description={
-          (bill as any).branch_name_snapshot ? (
-            <span className="inline-flex items-center rounded bg-sky-100 px-2 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider text-sky-800 ring-1 ring-sky-300">
-              Branch · {(bill as any).branch_name_snapshot}
-            </span>
+          (bill as any).branch_name_snapshot || existingReturns.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {(bill as any).branch_name_snapshot && (
+                <span className="inline-flex items-center rounded bg-sky-100 px-2 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider text-sky-800 ring-1 ring-sky-300">
+                  Branch · {(bill as any).branch_name_snapshot}
+                </span>
+              )}
+              {existingReturns.length > 0 && (
+                <a
+                  href="#returns-on-bill"
+                  className="inline-flex items-center gap-1 rounded bg-orange-100 px-2 py-0.5 text-[0.7rem] font-bold uppercase tracking-wider text-orange-800 ring-1 ring-orange-300 hover:bg-orange-200"
+                >
+                  <Undo2 className="h-3 w-3" /> Return Filed · {formatCurrency(existingReturns.reduce((s: number, r: any) => s + Number(r.total_amount || 0), 0))}
+                </a>
+              )}
+            </div>
           ) : undefined
         }
         onBack={() => navigate(backTo)}
@@ -435,6 +447,8 @@ const BillDetailsPage: React.FC = () => {
         </div>
       )}
 
+      <div className={existingReturns.length > 0 ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start lg:gap-6' : undefined}>
+      <div className="min-w-0">
       {hasProPlus ? (
         <div className="flex justify-start md:justify-center overflow-x-auto bg-slate-100 rounded-xl mb-12 w-full print:overflow-visible print:bg-white print:m-0 print:rounded-none">
           <MobileZoomableContainer>
@@ -500,7 +514,8 @@ const BillDetailsPage: React.FC = () => {
                   <td className="py-3 px-4 text-sm text-gray-500 text-right">{item.hsn_code_snapshot || '-'}</td>
                   <td className="py-3 px-4 text-sm text-gray-900 text-right">
                     {(() => {
-                      const returned = (item.bill_return_allocations ?? []).reduce((s: number, a: any) => s + Number(a.quantity), 0);
+                      const returned = (item.bill_return_allocations ?? []).reduce((s: number, a: any) => s + Number(a.quantity), 0)
+                        + (item.bill_return_items ?? []).reduce((s: number, r: any) => s + Number(r.quantity), 0);
                       const net = item.quantity - returned;
                       if (returned <= 0) return item.quantity;
                       return (
@@ -616,6 +631,35 @@ const BillDetailsPage: React.FC = () => {
         )}
       </div>
       )}
+      </div>
+
+      {existingReturns.length > 0 && (
+        <div id="returns-on-bill" className="mt-6 scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4 lg:sticky lg:top-24 lg:mt-0">
+          <div className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-600">
+            <Undo2 className="w-4 h-4" /> Returns on this bill
+          </div>
+          <div className="space-y-2">
+            {existingReturns.map((r: any) => (
+              <div key={r.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm">
+                <div className="flex items-baseline justify-between">
+                  <div className="font-bold text-slate-800">
+                    {r.return_number}
+                    {r.branch_name && <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-[0.65rem] font-semibold text-slate-600 uppercase tracking-wider">{r.branch_name}</span>}
+                  </div>
+                  <div className="text-emerald-700 font-bold tabular-nums">− {formatCurrency(Number(r.total_amount))}</div>
+                </div>
+                <div className="mt-1 text-xs text-slate-500">{formatDate(r.return_date)}{r.notes ? ` · ${r.notes}` : ''}</div>
+                <ul className="mt-1 text-xs text-slate-600">
+                  {r.items.map((it: any) => (
+                    <li key={it.id}>• {it.product_name || 'item'} × {Number(it.quantity)} = {formatCurrency(Number(it.total_price))}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      </div>
 
       {/* Modals */}
       {bill.type !== 'adjustment' && hasProPlus && (
@@ -654,33 +698,6 @@ const BillDetailsPage: React.FC = () => {
             }}
           />
         </>
-      )}
-
-      {existingReturns.length > 0 && (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wider text-slate-600">
-            <Undo2 className="w-4 h-4" /> Returns on this bill
-          </div>
-          <div className="space-y-2">
-            {existingReturns.map((r: any) => (
-              <div key={r.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm">
-                <div className="flex items-baseline justify-between">
-                  <div className="font-bold text-slate-800">
-                    {r.return_number}
-                    {r.branch_name && <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-[0.65rem] font-semibold text-slate-600 uppercase tracking-wider">{r.branch_name}</span>}
-                  </div>
-                  <div className="text-emerald-700 font-bold tabular-nums">− {formatCurrency(Number(r.total_amount))}</div>
-                </div>
-                <div className="mt-1 text-xs text-slate-500">{formatDate(r.return_date)}{r.notes ? ` · ${r.notes}` : ''}</div>
-                <ul className="mt-1 text-xs text-slate-600">
-                  {r.items.map((it: any) => (
-                    <li key={it.id}>• {it.product_name || 'item'} × {Number(it.quantity)} = {formatCurrency(Number(it.total_price))}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
       )}
 
       {/* Settlement Discount Modal */}

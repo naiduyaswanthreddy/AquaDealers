@@ -109,6 +109,10 @@
     <td>Harmonized System of Nomenclature code. Required for GST classification in India. Each product can have an HSN code that determines its GST rate.</td>
   </tr>
   <tr>
+    <td><strong>idempotency_key</strong></td>
+    <td>UUID generated client-side once per checkout submit attempt and sent through <code>create_bill_v2</code>. If the same key is sent again &mdash; e.g. the original request committed but its response was lost, so the client silently retries through the offline queue with a new <code>client_ref</code> &mdash; the server returns the existing bill instead of creating a duplicate. Complements <code>client_ref</code>, which only protects re-runs of the offline sync queue itself.</td>
+  </tr>
+  <tr>
     <td><strong>Ledger</strong></td>
     <td>Chronological record of all bills and payments for a farmer, with a running balance. Each entry shows date, type (bill/payment/return), amount, and cumulative balance due.</td>
   </tr>
