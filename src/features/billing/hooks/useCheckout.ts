@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
+import { useStaffStore } from '@/stores/staffStore';
 import { useBranchStore } from '@/stores/branchStore';
 import { useOfflineBillStore, generateTempBillNumber, isNetworkError } from '../offline/offlineBillStore';
 import { useCartStore } from '../stores/cartStore';
@@ -145,12 +146,19 @@ export const useCheckout = () => {
 
     // Guard: verify the Supabase session is still alive before calling the
     // RPC. An expired JWT causes "Dealer access denied" from auth.uid()=NULL.
-    const { data: { session: liveSession } } = await supabase.auth.getSession();
-    if (!liveSession) {
-      toast.error('Your session has expired. Please log in again.');
-      useAuthStore.getState().clearSession();
-      useAuthStore.getState().setUser(null);
-      return;
+    // Staff mode has no Supabase Auth session by design (authStore sets
+    // session: null and auth runs via the x-staff-token header instead — see
+    // sessionTokens.ts) so this guard would always misfire for staff; the RPC
+    // itself already rejects an expired/invalid staff token server-side.
+    const isStaffMode = !!useStaffStore.getState().currentStaff;
+    if (!isStaffMode) {
+      const { data: { session: liveSession } } = await supabase.auth.getSession();
+      if (!liveSession) {
+        toast.error('Your session has expired. Please log in again.');
+        useAuthStore.getState().clearSession();
+        useAuthStore.getState().setUser(null);
+        return;
+      }
     }
 
     if (amountPaid > totals.total) {
